@@ -101,11 +101,22 @@ RETRO_API void retro_reset(void) {
 
 static void update_variables() {
     bool updated = false;
-    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE, &updated) && updated) {
+    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE, &updated) || !game_loaded) {
         struct retro_variable var;
+
         var.key = "cytrus_layout";
         if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value) {
             layout_option = var.value;
+        }
+
+        var.key = "cytrus_is_new_3ds";
+        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value) {
+            Settings::values.is_new_3ds.SetValue(std::string(var.value) == "true");
+        }
+
+        var.key = "cytrus_resolution_factor";
+        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value) {
+            Settings::values.resolution_factor.SetValue(std::stoi(var.value));
         }
     }
 }
@@ -216,6 +227,8 @@ RETRO_API bool retro_load_game(const struct retro_game_info *game) {
     Settings::values.graphics_api.SetValue(Settings::GraphicsAPI::Software);
     Settings::values.use_cpu_jit.SetValue(false);
     Settings::values.output_type.SetValue(AudioCore::SinkType::Libretro);
+
+    update_variables();
 
     if (system.Load(*emu_window, game->path) != Core::System::ResultStatus::Success) {
         return false;
