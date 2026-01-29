@@ -11,6 +11,7 @@
 #include "core/arm/dynarmic/arm_dynarmic_cp15.h"
 #include "core/arm/dynarmic/arm_exclusive_monitor.h"
 #include "core/arm/dynarmic/arm_tick_counts.h"
+#include "core/arm/dynarmic/static_ir_executor.h"
 #include "core/core.h"
 #include "core/core_timing.h"
 #include "core/gdbstub/gdbstub.h"
@@ -127,6 +128,7 @@ ARM_Dynarmic::ARM_Dynarmic(Core::System& system_, Memory::MemorySystem& memory_,
                            Core::ExclusiveMonitor& exclusive_monitor_)
     : ARM_Interface(core_id_, timer_), system(system_), memory(memory_),
       cb(std::make_unique<DynarmicUserCallbacks>(*this)),
+      static_executor(std::make_unique<StaticIRExecutor>(*this)),
       exclusive_monitor{dynamic_cast<Core::DynarmicExclusiveMonitor&>(exclusive_monitor_)} {
     SetPageTable(memory.GetCurrentPageTable());
 }
@@ -139,11 +141,19 @@ void ARM_Dynarmic::Run() {
     ASSERT(memory.GetCurrentPageTable() == current_page_table);
     MICROPROFILE_SCOPE(ARM_Jit);
 
-    jit->Run();
+    if (Settings::values.use_cpu_jit) {
+        jit->Run();
+    } else {
+        static_executor->Execute(GetPC());
+    }
 }
 
 void ARM_Dynarmic::Step() {
-    jit->Step();
+    if (Settings::values.use_cpu_jit) {
+        jit->Step();
+    } else {
+        static_executor->Execute(GetPC());
+    }
 
     if (GDBStub::IsConnected()) {
         ServeBreak();

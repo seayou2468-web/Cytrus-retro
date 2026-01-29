@@ -1,0 +1,83 @@
+STATIC_LINKING := 0
+AR             := ar
+
+ifeq ($(platform),)
+platform = unix
+ifeq ($(shell uname -a),)
+   platform = win
+else ifneq ($(findstring MINGW,$(shell uname -a)),)
+   platform = win
+else ifneq ($(findstring Darwin,$(shell uname -a)),)
+   platform = osx
+else ifneq ($(findstring win,$(shell uname -a)),)
+   platform = win
+endif
+endif
+
+# system platform
+system_platform = unix
+ifeq ($(shell uname -a),)
+	system_platform = win
+else ifneq ($(findstring Darwin,$(shell uname -a)),)
+	system_platform = osx
+else ifneq ($(findstring MINGW,$(shell uname -a)),)
+	system_platform = win
+endif
+
+TARGET_NAME := cytrus
+
+ifeq ($(platform), unix)
+   TARGET := $(TARGET_NAME)_libretro.so
+   fpic := -fPIC
+   SHARED := -shared -Wl,--version-script=libretro/link.T -Wl,--no-undefined
+else ifeq ($(platform), osx)
+   TARGET := $(TARGET_NAME)_libretro.dylib
+   fpic := -fPIC
+   SHARED := -dynamiclib
+else ifeq ($(platform), ios-arm64)
+   TARGET := $(TARGET_NAME)_libretro_ios.dylib
+   fpic := -fPIC
+   SHARED := -dynamiclib
+   CC = clang -arch arm64 -isysroot $(IOSSDK)
+   CXX = clang++ -arch arm64 -isysroot $(IOSSDK)
+   CXXFLAGS += -DIOS
+endif
+
+include sources.mk
+
+OBJS := $(SOURCES_CXX:.cpp=.o) $(SOURCES_C:.c=.o) $(SOURCES_OBJC:.mm=.o)
+
+# Aggressive Optimizations
+CXXFLAGS += -O3 -ffast-math -flto -DNDEBUG
+CFLAGS   += -O3 -ffast-math -flto -DNDEBUG
+LDFLAGS  += -O3 -flto
+
+# Includes
+INCFLAGS := -ICore/include -ICore -I. -Ilibretro -IInputManager
+
+# Defines
+DEFINES := -D__LIBRETRO__ -DENABLE_SOFTWARE_RENDERER -DENABLE_HLE_DSP
+
+CXXFLAGS += $(fpic) $(INCFLAGS) $(DEFINES) -std=c++20
+CFLAGS   += $(fpic) $(INCFLAGS) $(DEFINES)
+
+all: $(TARGET)
+
+$(TARGET): $(OBJS)
+	$(CXX) $(SHARED) -o $@ $(OBJS) $(LDFLAGS)
+	# Delete .o files as requested
+	rm -f $(OBJS)
+
+%.o: %.cpp
+	$(CXX) $(CXXFLAGS) -c -o $@ $<
+
+%.o: %.c
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+%.o: %.mm
+	$(CXX) $(CXXFLAGS) -c -o $@ $<
+
+clean:
+	rm -f $(OBJS) $(TARGET)
+
+.PHONY: clean all

@@ -22,6 +22,7 @@ class DynarmicUserCallbacks;
 class DynarmicExclusiveMonitor;
 class ExclusiveMonitor;
 class System;
+class StaticIRExecutor;
 
 class ARM_Dynarmic final : public ARM_Interface {
 public:
@@ -66,6 +67,7 @@ private:
     Core::System& system;
     Memory::MemorySystem& memory;
     std::unique_ptr<DynarmicUserCallbacks> cb;
+    std::unique_ptr<StaticIRExecutor> static_executor;
     std::unique_ptr<Dynarmic::A32::Jit> MakeJit();
 
     u32 fpexc = 0;
