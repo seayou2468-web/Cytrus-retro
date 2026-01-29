@@ -1,0 +1,61 @@
+name: Build Libretro Core
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-ios:
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Select Xcode
+      run: sudo xcode-select -s /Applications/Xcode_16.1.app
+
+    - name: Build iOS dylib
+      run: |
+        export IOSSDK=$(xcrun --sdk iphoneos --show-sdk-path)
+        make -f Makefile.libretro platform=ios-arm64 -j$(sysctl -n hw.ncpu)
+
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: cytrus_libretro_ios
+        path: cytrus_libretro_ios.dylib
+
+  build-osx:
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Build macOS dylib
+      run: make -f Makefile.libretro platform=osx -j$(sysctl -n hw.ncpu)
+
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: cytrus_libretro_osx
+        path: cytrus_libretro.dylib
+
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Build Linux so
+      run: make -f Makefile.libretro platform=unix -j$(nproc)
+
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: cytrus_libretro_linux
+        path: cytrus_libretro.so

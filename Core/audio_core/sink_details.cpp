@@ -11,12 +11,18 @@
 #include "audio_core/coreaudio_sink.h"
 #include "audio_core/sdl3_sink.h"
 #include "audio_core/openal_sink.h"
+#include "audio_core/libretro_sink.h"
 #include "common/logging/log.h"
 
 namespace AudioCore {
 namespace {
 // sink_details is ordered in terms of desirability, with the best choice at the top.
 constexpr std::array sink_details = {
+    SinkDetails{SinkType::Libretro, "Libretro",
+                [](std::string_view device_id) -> std::unique_ptr<Sink> {
+                    return std::make_unique<LibretroSink>(device_id);
+                },
+                &ListLibretroSinkDevices},
     SinkDetails{SinkType::CoreAudio, "CoreAudio",
                 [](std::string_view device_id) -> std::unique_ptr<Sink> {
                     return std::make_unique<CoreAudioSink>(std::string(device_id));
