@@ -18,6 +18,7 @@
 #include "core/hle/service/ir/ir_user.h"
 #if CITRA_ARCH(x86_64) || CITRA_ARCH(arm64)
 #include "core/arm/dynarmic/arm_dynarmic.h"
+#include "core/arm/dynarmic/arm_static_ir.h"
 #endif
 #include "core/arm/dyncom/arm_dyncom.h"
 #include "core/cheats/cheats.h"
@@ -466,10 +467,18 @@ System::ResultStatus System::Init(Frontend::EmuWindow& emu_window,
     cpu_cores.reserve(num_cores);
     if (Settings::values.use_cpu_jit) {
 #if CITRA_ARCH(x86_64) || CITRA_ARCH(arm64)
+#ifdef __APPLE__
+        // Force Static IR on iOS/Apple platforms to bypass JIT restrictions
+        for (u32 i = 0; i < num_cores; ++i) {
+            cpu_cores.push_back(std::make_shared<ARM_StaticIR>(
+                *this, *memory, i, timing->GetTimer(i), *exclusive_monitor));
+        }
+#else
         for (u32 i = 0; i < num_cores; ++i) {
             cpu_cores.push_back(std::make_shared<ARM_Dynarmic>(
                 *this, *memory, i, timing->GetTimer(i), *exclusive_monitor));
         }
+#endif
 #else
         for (u32 i = 0; i < num_cores; ++i) {
             cpu_cores.push_back(

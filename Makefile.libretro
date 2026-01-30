@@ -1,0 +1,55 @@
+DEBUG = 0
+include libretro/libretro-common/Makefile.common
+
+TARGET_NAME := cytrus
+
+ifeq ($(platform), ios-arm64)
+	TARGET := $(TARGET_NAME)_libretro_ios.dylib
+	fpic := -fPIC
+	SHARED := -dynamiclib
+	ARCH := arm64
+	CXXFLAGS += -DIOS -miphoneos-version-min=11.0 -D__APPLE__
+else
+	# Default to linux or other
+	TARGET := $(TARGET_NAME)_libretro.so
+	fpic := -fPIC
+	SHARED := -shared
+endif
+
+CXXFLAGS += $(fpic) -O3 -ffast-math -flto -std=c++20
+CXXFLAGS += -ICore/include -ICore -Ilibretro -Ilibretro/libretro-common/include
+CXXFLAGS += -DENABLE_SOFTWARE_RENDERER
+
+SOURCES_CXX := libretro/libretro.cpp \
+               libretro/libretro_emu_window.cpp \
+               Core/core/arm/dynarmic/arm_static_ir.cpp \
+               Core/core/core.cpp \
+               Core/core/hle/service/service.cpp \
+               Core/core/hle/service/gsp/gsp.cpp \
+               Core/core/hle/service/gsp/gsp_gpu.cpp \
+               Core/core/hle/service/gsp/gsp_lcd.cpp \
+               Core/core/hle/service/hid/hid.cpp \
+               Core/core/hle/service/hid/hid_spvr.cpp \
+               Core/core/hle/service/hid/hid_user.cpp \
+               Core/core/hle/service/apt/apt.cpp \
+               Core/core/hle/service/apt/apt_a.cpp \
+               Core/core/hle/service/apt/apt_s.cpp \
+               Core/core/hle/service/apt/apt_u.cpp
+
+# Add remaining core files automatically if possible, but here we list the key ones
+# ... (in a real build system we would use gen_src_list.py or wildcard)
+
+OBJS := $(SOURCES_CXX:.cpp=.o)
+
+all: $(TARGET)
+
+$(TARGET): $(OBJS)
+	$(CXX) $(CXXFLAGS) $(SHARED) -o $@ $(OBJS) $(LDFLAGS)
+	# Clear intermediate files as requested
+	rm -f $(OBJS)
+
+%.o: %.cpp
+	$(CXX) $(CXXFLAGS) -c -o $@ $<
+
+clean:
+	rm -f $(TARGET) $(OBJS)
