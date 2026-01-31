@@ -46,8 +46,8 @@ INCFLAGS += -I$(EXTERNAL_BASE)/httplib
 INCFLAGS += -I$(EXTERNAL_BASE)/libressl/include
 
 # Compiler flags
-CXXFLAGS += -fPIC -O3 -ffast-math -flto -std=c++20 $(INCFLAGS)
-CFLAGS   += -fPIC -O3 -ffast-math -flto $(INCFLAGS)
+CXXFLAGS += -fPIC -O3 -ffast-math -flto -std=c++20 -MMD -MP $(INCFLAGS)
+CFLAGS   += -fPIC -O3 -ffast-math -flto -MMD -MP $(INCFLAGS)
 
 # Libretro defines
 CXXFLAGS += -DENABLE_SOFTWARE_RENDERER -D__LIBRETRO__ -DCPPHTTPLIB_OPENSSL_SUPPORT
@@ -70,8 +70,11 @@ else
 endif
 
 OBJECTS := $(SOURCES_CXX:.cpp=.o) $(SOURCES_C:.c=.o)
+DEPS := $(SOURCES_CXX:.cpp=.d) $(SOURCES_C:.c=.d)
 
 all: $(TARGET)
+
+-include $(DEPS)
 
 $(TARGET): $(OBJECTS)
 	$(CXX) $(CXXFLAGS) $(OBJECTS) -o $@ $(LDFLAGS)
