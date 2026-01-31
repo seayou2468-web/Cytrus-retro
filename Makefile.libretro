@@ -18,26 +18,11 @@ endif
 
 CXXFLAGS += $(fpic) -O3 -ffast-math -flto -std=c++20
 CXXFLAGS += -ICore/include -ICore -Ilibretro -Ilibretro/libretro-common/include
-CXXFLAGS += -DENABLE_SOFTWARE_RENDERER
+CXXFLAGS += -DENABLE_SOFTWARE_RENDERER -D__LIBRETRO__
 
-SOURCES_CXX := libretro/libretro.cpp \
-               libretro/libretro_emu_window.cpp \
-               Core/core/arm/dynarmic/arm_static_ir.cpp \
-               Core/core/core.cpp \
-               Core/core/hle/service/service.cpp \
-               Core/core/hle/service/gsp/gsp.cpp \
-               Core/core/hle/service/gsp/gsp_gpu.cpp \
-               Core/core/hle/service/gsp/gsp_lcd.cpp \
-               Core/core/hle/service/hid/hid.cpp \
-               Core/core/hle/service/hid/hid_spvr.cpp \
-               Core/core/hle/service/hid/hid_user.cpp \
-               Core/core/hle/service/apt/apt.cpp \
-               Core/core/hle/service/apt/apt_a.cpp \
-               Core/core/hle/service/apt/apt_s.cpp \
-               Core/core/hle/service/apt/apt_u.cpp
-
-# Add remaining core files automatically if possible, but here we list the key ones
-# ... (in a real build system we would use gen_src_list.py or wildcard)
+# Automatically find source files in Core directory, excluding frontends and tests
+SOURCES_CXX := $(shell find Core -name "*.cpp" | grep -v "tests" | grep -v "citra_qt" | grep -v "citra_android")
+SOURCES_CXX += libretro/libretro.cpp libretro/libretro_emu_window.cpp
 
 OBJS := $(SOURCES_CXX:.cpp=.o)
 
