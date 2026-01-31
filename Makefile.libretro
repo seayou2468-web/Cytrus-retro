@@ -25,7 +25,7 @@ SOURCES_CXX := $(filter-out %/cubeb/%,$(SOURCES_CXX))
 SOURCES_CXX := $(filter-out %/dumping/%,$(SOURCES_CXX))
 
 # Include paths
-EXTERNAL_BASE := libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals
+EXTERNAL_BASE := libretro/azahar/externals
 INCFLAGS += -ICore/include -ICore -Ilibretro -Ilibretro/libretro-common/include
 INCFLAGS += -I$(EXTERNAL_BASE)/boost
 INCFLAGS += -I$(EXTERNAL_BASE)/fmt/include
@@ -57,8 +57,12 @@ CFLAGS   += -DENABLE_SOFTWARE_RENDERER -D__LIBRETRO__ -DCPPHTTPLIB_OPENSSL_SUPPO
 ifeq ($(shell uname -s),Darwin)
     # Target iOS if requested, else macOS
     ifeq ($(PLATFORM),ios)
-        CXXFLAGS += -miphoneos-version-min=15.0 -arch arm64
-        LDFLAGS += -miphoneos-version-min=15.0 -arch arm64 -dynamiclib
+        IPHONEOS_SDK := $(shell xcrun --sdk iphoneos --show-sdk-path)
+        CC := $(shell xcrun --sdk iphoneos --find clang)
+        CXX := $(shell xcrun --sdk iphoneos --find clang++)
+        CXXFLAGS += -isysroot $(IPHONEOS_SDK) -miphoneos-version-min=15.0 -arch arm64
+        CFLAGS += -isysroot $(IPHONEOS_SDK) -miphoneos-version-min=15.0 -arch arm64
+        LDFLAGS += -isysroot $(IPHONEOS_SDK) -miphoneos-version-min=15.0 -arch arm64 -dynamiclib
         TARGET := $(TARGET_NAME)_libretro_ios.dylib
     else
         LDFLAGS += -dynamiclib
