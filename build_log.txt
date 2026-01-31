@@ -1,0 +1,682 @@
+g++ -fPIC -O3 -ffast-math -flto -std=c++20 -ICore/include -ICore -Ilibretro -Ilibretro/libretro-common/include -Ilibretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/boost -Ilibretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/fmt/include -Ilibretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/dynarmic/src -Ilibretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/dynarmic/externals/mcl/include -Ilibretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals -Ilibretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/microprofile -Ilibretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/nihstro/include -Ilibretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/xxHash -Ilibretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/zstd/lib -Ilibretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/zstd/contrib -Ilibretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/json/include -Ilibretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/lodepng/lodepng -Ilibretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/inih -Ilibretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/enet/include -Ilibretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/dds-ktx -Ilibretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/httplib -Ilibretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/libressl/include -DENABLE_SOFTWARE_RENDERER -D__LIBRETRO__ -DCPPHTTPLIB_OPENSSL_SUPPORT Core/core/rpc/packet.o Core/core/rpc/server.o Core/core/rpc/rpc_server.o Core/core/rpc/udp_server.o Core/core/hw/rsa/rsa.o Core/core/hw/unique_data.o Core/core/hw/y2r.o Core/core/hw/aes/ccm.o Core/core/hw/aes/key.o Core/core/hw/aes/arithmetic128.o Core/core/hw/ecc.o Core/core/loader/elf.o Core/core/loader/loader.o Core/core/loader/ncch.o Core/core/loader/artic.o Core/core/loader/smdh.o Core/core/loader/3dsx.o Core/core/perf_stats.o Core/core/core.o Core/core/system_titles.o Core/core/frontend/camera/interface.o Core/core/frontend/camera/blank_camera.o Core/core/frontend/camera/factory.o Core/core/frontend/applets/swkbd.o Core/core/frontend/applets/default_applets.o Core/core/frontend/applets/mii_selector.o Core/core/frontend/emu_window.o Core/core/frontend/image_interface.o Core/core/frontend/framebuffer_layout.o Core/core/gdbstub/gdbstub.o Core/core/gdbstub/hio.o Core/core/tracer/recorder.o Core/core/core_timing.o Core/core/cheats/gateway_cheat.o Core/core/cheats/cheats.o Core/core/cheats/cheat_base.o Core/core/hle/romfs.o Core/core/hle/applets/applet.o Core/core/hle/applets/swkbd.o Core/core/hle/applets/mint.o Core/core/hle/applets/erreula.o Core/core/hle/applets/mii_selector.o Core/core/hle/kernel/thread.o Core/core/hle/kernel/client_session.o Core/core/hle/kernel/ipc.o Core/core/hle/kernel/wait_object.o Core/core/hle/kernel/shared_memory.o Core/core/hle/kernel/mutex.o Core/core/hle/kernel/server_port.o Core/core/hle/kernel/address_arbiter.o Core/core/hle/kernel/semaphore.o Core/core/hle/kernel/hle_ipc.o Core/core/hle/kernel/event.o Core/core/hle/kernel/object.o Core/core/hle/kernel/handle_table.o Core/core/hle/kernel/session.o Core/core/hle/kernel/kernel.o Core/core/hle/kernel/client_port.o Core/core/hle/kernel/svc.o Core/core/hle/kernel/vm_manager.o Core/core/hle/kernel/process.o Core/core/hle/kernel/timer.o Core/core/hle/kernel/memory.o Core/core/hle/kernel/config_mem.o Core/core/hle/kernel/resource_limit.o Core/core/hle/kernel/shared_page.o Core/core/hle/kernel/server_session.o Core/core/hle/kernel/ipc_debugger/recorder.o Core/core/hle/mii.o Core/core/hle/service/gsp/gsp_lcd.o Core/core/hle/service/gsp/gsp.o Core/core/hle/service/gsp/gsp_gpu.o Core/core/hle/service/mvd/mvd_std.o Core/core/hle/service/mvd/mvd.o Core/core/hle/service/qtm/qtm_u.o Core/core/hle/service/qtm/qtm.o Core/core/hle/service/qtm/qtm_c.o Core/core/hle/service/qtm/qtm_s.o Core/core/hle/service/qtm/qtm_sp.o Core/core/hle/service/boss/boss_p.o Core/core/hle/service/boss/boss.o Core/core/hle/service/boss/boss_u.o Core/core/hle/service/boss/online_service.o Core/core/hle/service/ssl/ssl_c.o Core/core/hle/service/fs/fs_user.o Core/core/hle/service/fs/directory.o Core/core/hle/service/fs/archive.o Core/core/hle/service/fs/file.o Core/core/hle/service/plgldr/plgldr.o Core/core/hle/service/mcu/mcu_hwc.o Core/core/hle/service/mcu/mcu.o Core/core/hle/service/pxi/dev.o Core/core/hle/service/pxi/pxi.o Core/core/hle/service/cfg/cfg_i.o Core/core/hle/service/cfg/cfg.o Core/core/hle/service/cfg/cfg_nor.o Core/core/hle/service/cfg/cfg_defaults.o Core/core/hle/service/cfg/cfg_u.o Core/core/hle/service/cfg/cfg_s.o Core/core/hle/service/apt/apt_u.o Core/core/hle/service/apt/apt_s.o Core/core/hle/service/apt/ns_s.o Core/core/hle/service/apt/apt.o Core/core/hle/service/apt/apt_a.o Core/core/hle/service/apt/ns_c.o Core/core/hle/service/apt/applet_manager.o Core/core/hle/service/apt/ns.o Core/core/hle/service/apt/bcfnt/bcfnt.o Core/core/hle/service/dlp/dlp_srvr.o Core/core/hle/service/dlp/dlp_fkcl.o Core/core/hle/service/dlp/dlp.o Core/core/hle/service/dlp/dlp_clnt.o Core/core/hle/service/news/news_u.o Core/core/hle/service/news/news.o Core/core/hle/service/news/news_s.o Core/core/hle/service/pm/pm_app.o Core/core/hle/service/pm/pm.o Core/core/hle/service/pm/pm_dbg.o Core/core/hle/service/ac/ac_i.o Core/core/hle/service/ac/ac_u.o Core/core/hle/service/ac/ac.o Core/core/hle/service/ptm/ptm_gets.o Core/core/hle/service/ptm/ptm_sets.o Core/core/hle/service/ptm/ptm.o Core/core/hle/service/ptm/ptm_u.o Core/core/hle/service/ptm/ptm_sysm.o Core/core/hle/service/ptm/ptm_play.o Core/core/hle/service/soc/soc_u.o Core/core/hle/service/dsp/dsp_dsp.o Core/core/hle/service/service.o Core/core/hle/service/ir/extra_hid.o Core/core/hle/service/ir/ir.o Core/core/hle/service/ir/ir_u.o Core/core/hle/service/ir/ir_rst.o Core/core/hle/service/ir/ir_user.o Core/core/hle/service/cam/cam_c.o Core/core/hle/service/cam/cam_s.o Core/core/hle/service/cam/cam_u.o Core/core/hle/service/cam/y2r_u.o Core/core/hle/service/cam/cam.o Core/core/hle/service/cam/cam_q.o Core/core/hle/service/nim/nim.o Core/core/hle/service/nim/nim_s.o Core/core/hle/service/nim/nim_u.o Core/core/hle/service/nim/nim_aoc.o Core/core/hle/service/mic/mic_u.o Core/core/hle/service/csnd/csnd_snd.o Core/core/hle/service/nwm/nwm_inf.o Core/core/hle/service/nwm/nwm_tst.o Core/core/hle/service/nwm/nwm_sap.o Core/core/hle/service/nwm/nwm_soc.o Core/core/hle/service/nwm/nwm_cec.o Core/core/hle/service/nwm/uds_data.o Core/core/hle/service/nwm/nwm_ext.o Core/core/hle/service/nwm/nwm_uds.o Core/core/hle/service/nwm/uds_connection.o Core/core/hle/service/nwm/nwm.o Core/core/hle/service/nwm/uds_beacon.o Core/core/hle/service/act/act.o Core/core/hle/service/act/act_a.o Core/core/hle/service/act/act_errors.o Core/core/hle/service/act/act_u.o Core/core/hle/service/err/err_f.o Core/core/hle/service/am/am_u.o Core/core/hle/service/am/am_net.o Core/core/hle/service/am/am.o Core/core/hle/service/am/am_app.o Core/core/hle/service/am/am_sys.o Core/core/hle/service/ndm/ndm_u.o Core/core/hle/service/frd/frd_a.o Core/core/hle/service/frd/frd_u.o Core/core/hle/service/frd/frd.o Core/core/hle/service/sm/sm.o Core/core/hle/service/sm/srv.o Core/core/hle/service/hid/hid_user.o Core/core/hle/service/hid/hid.o Core/core/hle/service/hid/hid_spvr.o Core/core/hle/service/ldr_ro/cro_helper.o Core/core/hle/service/ldr_ro/ldr_ro.o Core/core/hle/service/ps/ps_ps.o Core/core/hle/service/http/http_c.o Core/core/hle/service/nfc/amiibo_crypto.o Core/core/hle/service/nfc/nfc_device.o Core/core/hle/service/nfc/nfc.o Core/core/hle/service/nfc/nfc_u.o Core/core/hle/service/nfc/nfc_m.o Core/core/hle/service/cecd/cecd_u.o Core/core/hle/service/cecd/cecd.o Core/core/hle/service/cecd/cecd_s.o Core/core/hle/service/cecd/cecd_ndm.o Core/core/movie.o Core/core/file_sys/archive_sdmc.o Core/core/file_sys/disk_archive.o Core/core/file_sys/path_parser.o Core/core/file_sys/delay_generator.o Core/core/file_sys/archive_backend.o Core/core/file_sys/archive_sdmcwriteonly.o Core/core/file_sys/secure_value_backend.o Core/core/file_sys/ivfc_archive.o Core/core/file_sys/patch.o Core/core/file_sys/romfs_reader.o Core/core/file_sys/secure_value_backend_artic.o Core/core/file_sys/artic_cache.o Core/core/file_sys/plugin_3gx.o Core/core/file_sys/archive_savedata.o Core/core/file_sys/otp.o Core/core/file_sys/ncch_container.o Core/core/file_sys/title_metadata.o Core/core/file_sys/ticket.o Core/core/file_sys/archive_systemsavedata.o Core/core/file_sys/savedata_archive.o Core/core/file_sys/certificate.o Core/core/file_sys/archive_ncch.o Core/core/file_sys/layered_fs.o Core/core/file_sys/archive_extsavedata.o Core/core/file_sys/archive_selfncch.o Core/core/file_sys/archive_other_savedata.o Core/core/file_sys/archive_source_sd_savedata.o Core/core/file_sys/archive_artic.o Core/core/file_sys/cia_container.o Core/core/file_sys/seed_db.o Core/core/savestate.o Core/core/dumping/backend.o Core/core/nus_download.o Core/core/memory.o Core/core/arm/dynarmic/arm_exclusive_monitor.o Core/core/arm/dynarmic/arm_tick_counts.o Core/core/arm/dynarmic/arm_static_ir.o Core/core/arm/dynarmic/arm_dynarmic.o Core/core/arm/dynarmic/arm_dynarmic_cp15.o Core/core/arm/dyncom/arm_dyncom_trans.o Core/core/arm/dyncom/arm_dyncom_interpreter.o Core/core/arm/dyncom/arm_dyncom_dec.o Core/core/arm/dyncom/arm_dyncom.o Core/core/arm/dyncom/arm_dyncom_thumb.o Core/core/arm/exclusive_monitor.o Core/core/arm/skyeye_common/vfp/vfpinstr.o Core/core/arm/skyeye_common/vfp/vfpsingle.o Core/core/arm/skyeye_common/vfp/vfp.o Core/core/arm/skyeye_common/vfp/vfpdouble.o Core/core/arm/skyeye_common/armsupp.o Core/core/arm/skyeye_common/armstate.o Core/common/thread.o Core/common/play_time_manager.o Core/common/microprofile.o Core/common/texture.o Core/common/memory_detect.o Core/common/hacks/hack_manager.o Core/common/hacks/hack_list.o Core/common/detached_tasks.o Core/common/settings.o Core/common/cityhash.o Core/common/zstd_compression.o Core/common/dynamic_library/dynamic_library.o Core/common/logging/backend.o Core/common/logging/text_formatter.o Core/common/logging/filter.o Core/common/aarch64/cpu_detect.o Core/common/param_package.o Core/common/string_util.o Core/common/math_util.o Core/common/file_util.o Core/common/timer.o Core/common/scm_rev.o Core/common/memory_ref.o Core/common/error.o libretro/libretro.o libretro/libretro_emu_window.o  -o cytrus_libretro.so -shared -Wl,--version-script=libretro/link.T
+libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/boost/boost/optional/detail/optional_aligned_storage.hpp:29:27: warning: type ‘union dummy_u’ violates the C++ One Definition Rule [-Wodr]
+   29 |     union BOOST_MAY_ALIAS dummy_u
+      |                           ^
+libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/boost/boost/optional/detail/optional_aligned_storage.hpp:29:27: note: a different type is defined in another translation unit
+   29 |     union BOOST_MAY_ALIAS dummy_u
+      |                           ^
+libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/boost/boost/optional/detail/optional_aligned_storage.hpp:31:23: note: the first difference of corresponding definitions is field ‘data’
+   31 |         unsigned char data[ sizeof(T) ];
+      |                       ^
+libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/boost/boost/optional/detail/optional_aligned_storage.hpp:31:23: note: a field of same name but different type is defined in another translation unit
+   31 |         unsigned char data[ sizeof(T) ];
+      |                       ^
+libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/boost/boost/optional/detail/optional_aligned_storage.hpp:29:27: note: array types have different bounds
+   29 |     union BOOST_MAY_ALIAS dummy_u
+      |                           ^
+libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/boost/boost/optional/detail/optional_aligned_storage.hpp:25:7: warning: type ‘struct aligned_storage’ violates the C++ One Definition Rule [-Wodr]
+   25 | class aligned_storage
+      |       ^
+libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/boost/boost/optional/detail/optional_aligned_storage.hpp:25:7: note: a different type is defined in another translation unit
+   25 | class aligned_storage
+      |       ^
+libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/boost/boost/optional/detail/optional_aligned_storage.hpp:34:7: note: the first difference of corresponding definitions is field ‘dummy_’
+   34 |     } dummy_ ;
+      |       ^
+libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/boost/boost/optional/detail/optional_aligned_storage.hpp:34:7: note: a field of same name but different type is defined in another translation unit
+   34 |     } dummy_ ;
+      |       ^
+libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/boost/boost/optional/detail/optional_aligned_storage.hpp:29:27: note: type ‘union dummy_u’ itself violates the C++ One Definition Rule
+   29 |     union BOOST_MAY_ALIAS dummy_u
+      |                           ^
+libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/boost/boost/optional/optional.hpp:132:7: warning: type ‘struct optional_base’ violates the C++ One Definition Rule [-Wodr]
+  132 | class optional_base : public optional_tag
+      |       ^
+libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/boost/boost/optional/optional.hpp:132:7: note: a different type is defined in another translation unit
+  132 | class optional_base : public optional_tag
+      |       ^
+libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/boost/boost/optional/optional.hpp:530:18: note: the first difference of corresponding definitions is field ‘m_storage’
+  530 |     storage_type m_storage ;
+      |                  ^
+libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/boost/boost/optional/optional.hpp:530:18: note: a field of same name but different type is defined in another translation unit
+  530 |     storage_type m_storage ;
+      |                  ^
+libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/boost/boost/optional/optional.hpp:132:7: note: type ‘struct storage_type’ itself violates the C++ One Definition Rule
+  132 | class optional_base : public optional_tag
+      |       ^
+libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/boost/boost/optional/optional.hpp:646:7: warning: type ‘struct optional’ violates the C++ One Definition Rule [-Wodr]
+  646 | class optional
+      |       ^
+libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/boost/boost/optional/optional.hpp:646:7: note: a type with different bases is defined in another translation unit
+  646 | class optional
+      |       ^
+Core/include/core/core.h:79:7: warning: type ‘struct System’ violates the C++ One Definition Rule [-Wodr]
+   79 | class System {
+      |       ^
+Core/include/core/core.h:79:7: note: a different type is defined in another translation unit
+   79 | class System {
+      |       ^
+Core/include/core/core.h:477:68: note: the first difference of corresponding definitions is field ‘restore_plugin_context’
+  477 |     Signal current_signal;
+      |                                                                    ^
+Core/include/core/core.h:481:68: note: a field of same name but different type is defined in another translation unit
+  481 |     bool mic_permission_granted = false;
+      |                                                                    ^
+libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/boost/boost/optional/optional.hpp:646:7: note: type ‘struct optional’ itself violates the C++ One Definition Rule
+  646 | class optional
+      |       ^
+Core/include/core/hle/service/plgldr/plgldr.h:42:12: warning: type ‘struct PluginLoaderContext’ violates the C++ One Definition Rule [-Wodr]
+   42 |     };
+      |            ^
+Core/include/core/hle/service/plgldr/plgldr.h:42:12: note: a different type is defined in another translation unit
+   42 |     };
+      |            ^
+Core/include/core/hle/service/plgldr/plgldr.h:81:13: note: the first difference of corresponding definitions is field ‘memory_region’
+   81 |         PAddr plugin_fb_addr = 0;
+      |             ^
+Core/include/core/hle/service/plgldr/plgldr.h:42:12: note: a type with different number of fields is defined in another translation unit
+   42 |     };
+      |            ^
+Core/include/core/hle/service/plgldr/plgldr.h:34:7: warning: type ‘struct PLG_LDR’ violates the C++ One Definition Rule [-Wodr]
+   34 | namespace Service::PLGLDR {
+      |       ^
+Core/include/core/hle/service/plgldr/plgldr.h:34:7: note: a different type is defined in another translation unit
+   34 | namespace Service::PLGLDR {
+      |       ^
+Core/include/core/hle/service/plgldr/plgldr.h:122:25: note: the first difference of corresponding definitions is field ‘plgldr_context’
+  122 |         return plgldr_context.plugin_fb_addr;
+      |                         ^
+Core/include/core/hle/service/plgldr/plgldr.h:126:25: note: a field of same name but different type is defined in another translation unit
+  126 |     Core::System& system;
+      |                         ^
+Core/include/core/hle/service/plgldr/plgldr.h:42:12: note: type ‘struct PluginLoaderContext’ itself violates the C++ One Definition Rule
+   42 |     };
+      |            ^
+Core/include/core/hle/service/apt/applet_manager.h:226:8: warning: type ‘struct CaptureBufferInfo’ violates the C++ One Definition Rule [-Wodr]
+  226 |
+      |        ^
+Core/include/core/hle/service/apt/applet_manager.h:228:8: note: a different type is defined in another translation unit
+  228 | struct CaptureBufferInfo {
+      |        ^
+Core/include/core/hle/service/apt/applet_manager.h:229:5: note: the first difference of corresponding definitions is field ‘pad229’
+  229 |     u32_le size;
+      |     ^
+Core/include/core/hle/service/apt/applet_manager.h:231:5: note: a field with different name is defined in another translation unit
+  231 |     INSERT_PADDING_BYTES(0x3); // Padding for alignment
+      |     ^
+Core/include/core/hle/service/apt/applet_manager.h:436:12: warning: type ‘struct AppletSlotData’ violates the C++ One Definition Rule [-Wodr]
+  436 |         HomeMenu,
+      |            ^
+Core/include/core/hle/service/apt/applet_manager.h:443:12: note: a different type is defined in another translation unit
+  443 |     struct AppletSlotData {
+      |            ^
+Core/include/core/hle/service/apt/applet_manager.h:440:14: note: the first difference of corresponding definitions is field ‘registered’
+  440 |         Error,
+      |              ^
+Core/include/core/hle/service/apt/applet_manager.h:447:23: note: a field with different name is defined in another translation unit
+  447 |         FS::MediaType media_type;
+      |                       ^
+Core/include/core/hle/service/apt/applet_manager.h:259:7: warning: type ‘struct AppletManager’ violates the C++ One Definition Rule [-Wodr]
+  259 | };
+      |       ^
+Core/include/core/hle/service/apt/applet_manager.h:261:7: note: a different type is defined in another translation unit
+  261 | class AppletManager : public std::enable_shared_from_this<AppletManager> {
+      |       ^
+Core/include/core/hle/service/apt/applet_manager.h:488:73: note: the first difference of corresponding definitions is field ‘hle_applets’
+  488 |     bool ordered_to_close_sys_applet = false;
+      |                                                                         ^
+Core/include/core/hle/service/apt/applet_manager.h:497:51: note: a field with different name is defined in another translation unit
+  497 |     std::optional<std::array<u8, SysMenuArgSize>> sys_menu_arg;
+      |                                                   ^
+Core/include/core/hle/service/service.h:83:12: warning: type ‘struct FunctionInfoBase’ violates the C++ One Definition Rule [-Wodr]
+   83 |     struct FunctionInfoBase {
+      |            ^
+Core/include/core/hle/service/service.h:83:12: note: a different type is defined in another translation unit
+   83 |     struct FunctionInfoBase {
+      |            ^
+Core/include/core/hle/service/service.h:87:14: note: the first difference of corresponding definitions is field ‘implemented’
+   87 |         bool implemented = true;
+      |              ^
+Core/include/core/hle/service/service.h:83:12: note: a type with different number of fields is defined in another translation unit
+   83 |     struct FunctionInfoBase {
+      |            ^
+Core/include/core/hle/service/service.h:125: warning: type ‘struct FunctionInfo’ violates the C++ One Definition Rule [-Wodr]
+  125 |     /// Contains information about a request type which is handled by the service.
+      |
+Core/include/core/hle/service/service.h:126: note: a type with different bases is defined in another translation unit
+  126 |     struct FunctionInfo : FunctionInfoBase {
+      |
+libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/httplib/httplib.h:1240:10: warning: type ‘struct Socket’ violates the C++ One Definition Rule [-Wodr]
+ 1240 |   struct Socket {
+      |          ^
+libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/httplib/httplib.h:1240: note: a different type is defined in another translation unit
+ 1240 |   struct Socket {
+      |
+libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/httplib/httplib.h:1243: note: the first difference of corresponding definitions is field ‘ssl’
+ 1243 |     SSL *ssl = nullptr;
+      |
+libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/httplib/httplib.h:1240: note: a type with different number of fields is defined in another translation unit
+ 1240 |   struct Socket {
+      |
+libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/httplib/httplib.h:1011:7: warning: type ‘struct ClientImpl’ violates the C++ One Definition Rule [-Wodr]
+ 1011 | class ClientImpl {
+      |       ^
+libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/httplib/httplib.h:1011: note: a different type is defined in another translation unit
+ 1011 | class ClientImpl {
+      |
+libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/httplib/httplib.h:1276:10: note: the first difference of corresponding definitions is field ‘socket_’
+ 1276 |   Socket socket_;
+      |          ^
+libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/httplib/httplib.h:1276: note: a field of same name but different type is defined in another translation unit
+ 1276 |   Socket socket_;
+      |
+libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/httplib/httplib.h:1240:10: note: type ‘struct Socket’ itself violates the C++ One Definition Rule
+ 1240 |   struct Socket {
+      |          ^
+libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/httplib/httplib.h:1240: note: the incompatible type is defined here
+ 1240 |   struct Socket {
+      |
+libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/httplib/httplib.h:466:8: warning: type ‘struct Request’ violates the C++ One Definition Rule [-Wodr]
+  466 | struct Request {
+      |        ^
+libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/httplib/httplib.h:466: note: a different type is defined in another translation unit
+  466 | struct Request {
+      |
+libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/httplib/httplib.h:511:10: note: the first difference of corresponding definitions is field ‘redirect_count_’
+  511 |   size_t redirect_count_ = CPPHTTPLIB_REDIRECT_MAX_COUNT;
+      |          ^
+libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/httplib/httplib.h:491: note: a field with different name is defined in another translation unit
+  491 |   const SSL *ssl = nullptr;
+      |
+Core/core/arm/dynarmic/arm_static_ir.cpp:26: warning: type ‘struct DynarmicUserCallbacks’ violates the C++ One Definition Rule [-Wodr]
+   26 | class DynarmicUserCallbacks final : public Dynarmic::A32::UserCallbacks {
+      |
+Core/core/arm/dynarmic/arm_dynarmic.cpp:22: note: a different type is defined in another translation unit
+   22 | class DynarmicUserCallbacks final : public Dynarmic::A32::UserCallbacks {
+      |
+Core/core/arm/dynarmic/arm_static_ir.cpp:79: note: the first difference of corresponding definitions is field ‘parent’
+   79 |     ARM_StaticIR& parent;
+      |
+Core/core/arm/dynarmic/arm_dynarmic.cpp:120: note: a field of same name but different type is defined in another translation unit
+  120 |     ARM_Dynarmic& parent;
+      |
+Core/include/core/arm/dynarmic/arm_static_ir.h:33: note: type name ‘Core::ARM_StaticIR’ should match type name ‘Core::ARM_Dynarmic’
+   33 | class ARM_StaticIR final : public ARM_Interface {
+      |
+Core/include/core/arm/dynarmic/arm_dynarmic.h:26:7: note: the incompatible type is defined here
+   26 | class ARM_Dynarmic final : public ARM_Interface {
+      |       ^
+Core/core/arm/dynarmic/arm_dynarmic.cpp:77: warning: type of ‘ExceptionRaised’ does not match original declaration [-Wlto-type-mismatch]
+   77 |     void ExceptionRaised(VAddr pc, Dynarmic::A32::Exception exception) override {
+      |
+Core/core/arm/dynarmic/arm_static_ir.cpp:64: note: ‘ExceptionRaised’ was previously declared here
+   64 |     void ExceptionRaised(Dynarmic::A32::VAddr pc, Dynarmic::A32::Exception exception) override {
+      |
+Core/core/arm/dynarmic/arm_static_ir.cpp:64: note: code may be misoptimized unless ‘-fno-strict-aliasing’ is used
+Core/core/arm/dynarmic/arm_dynarmic.cpp:67: warning: type of ‘InterpreterFallback’ does not match original declaration [-Wlto-type-mismatch]
+   67 |     void InterpreterFallback(VAddr pc, std::size_t num_instructions) override {
+      |
+Core/core/arm/dynarmic/arm_static_ir.cpp:54: note: ‘InterpreterFallback’ was previously declared here
+   54 |     void InterpreterFallback(Dynarmic::A32::VAddr pc, std::size_t num_instructions) override {
+      |
+Core/core/arm/dynarmic/arm_static_ir.cpp:54: note: code may be misoptimized unless ‘-fno-strict-aliasing’ is used
+Core/core/arm/dynarmic/arm_dynarmic.cpp:116: warning: type of ‘GetTicksForCode’ does not match original declaration [-Wlto-type-mismatch]
+  116 |     std::uint64_t GetTicksForCode(bool is_thumb, VAddr, std::uint32_t instruction) override {
+      |
+Core/core/arm/dynarmic/arm_static_ir.cpp:75: note: ‘GetTicksForCode’ was previously declared here
+   75 |     std::uint64_t GetTicksForCode(bool is_thumb, Dynarmic::A32::VAddr, std::uint32_t instruction) override {
+      |
+Core/core/arm/dynarmic/arm_static_ir.cpp:75: note: code may be misoptimized unless ‘-fno-strict-aliasing’ is used
+Core/core/arm/dynarmic/arm_dynarmic.cpp:26: warning: type of ‘__dt_del ’ does not match original declaration [-Wlto-type-mismatch]
+   26 |     ~DynarmicUserCallbacks() = default;
+      |
+Core/core/arm/dynarmic/arm_static_ir.cpp:26: note: ‘__dt_del ’ was previously declared here
+   26 | class DynarmicUserCallbacks final : public Dynarmic::A32::UserCallbacks {
+      |
+Core/core/arm/dynarmic/arm_static_ir.cpp:26: note: code may be misoptimized unless ‘-fno-strict-aliasing’ is used
+Core/core/arm/dynarmic/arm_dynarmic.cpp:26: warning: type of ‘__dt_comp ’ does not match original declaration [-Wlto-type-mismatch]
+   26 |     ~DynarmicUserCallbacks() = default;
+      |
+Core/core/arm/dynarmic/arm_static_ir.cpp:26: note: ‘__dt_comp ’ was previously declared here
+   26 | class DynarmicUserCallbacks final : public Dynarmic::A32::UserCallbacks {
+      |
+Core/core/arm/dynarmic/arm_static_ir.cpp:26: note: code may be misoptimized unless ‘-fno-strict-aliasing’ is used
+Core/core/arm/dynarmic/arm_dynarmic.cpp:26: warning: type of ‘__dt_base ’ does not match original declaration [-Wlto-type-mismatch]
+   26 |     ~DynarmicUserCallbacks() = default;
+      |
+Core/core/arm/dynarmic/arm_static_ir.cpp:26: note: ‘__dt_base ’ was previously declared here
+   26 | class DynarmicUserCallbacks final : public Dynarmic::A32::UserCallbacks {
+      |
+Core/core/arm/dynarmic/arm_static_ir.cpp:26: note: code may be misoptimized unless ‘-fno-strict-aliasing’ is used
+Core/core/arm/dynarmic/arm_dynarmic.cpp:28: warning: type of ‘MemoryRead8’ does not match original declaration [-Wlto-type-mismatch]
+   28 |     std::uint8_t MemoryRead8(VAddr vaddr) override {
+      |
+Core/core/arm/dynarmic/arm_static_ir.cpp:31: note: ‘MemoryRead8’ was previously declared here
+   31 |     std::uint8_t MemoryRead8(Dynarmic::A32::VAddr vaddr) override { return memory.Read8(vaddr); }
+      |
+Core/core/arm/dynarmic/arm_static_ir.cpp:31: note: code may be misoptimized unless ‘-fno-strict-aliasing’ is used
+Core/core/arm/dynarmic/arm_dynarmic.cpp:31: warning: type of ‘MemoryRead16’ does not match original declaration [-Wlto-type-mismatch]
+   31 |     std::uint16_t MemoryRead16(VAddr vaddr) override {
+      |
+Core/core/arm/dynarmic/arm_static_ir.cpp:32: note: ‘MemoryRead16’ was previously declared here
+   32 |     std::uint16_t MemoryRead16(Dynarmic::A32::VAddr vaddr) override { return memory.Read16(vaddr); }
+      |
+Core/core/arm/dynarmic/arm_static_ir.cpp:32: note: code may be misoptimized unless ‘-fno-strict-aliasing’ is used
+Core/core/arm/dynarmic/arm_dynarmic.cpp:34: warning: type of ‘MemoryRead32’ does not match original declaration [-Wlto-type-mismatch]
+   34 |     std::uint32_t MemoryRead32(VAddr vaddr) override {
+      |
+Core/core/arm/dynarmic/arm_static_ir.cpp:33: note: ‘MemoryRead32’ was previously declared here
+   33 |     std::uint32_t MemoryRead32(Dynarmic::A32::VAddr vaddr) override { return memory.Read32(vaddr); }
+      |
+Core/core/arm/dynarmic/arm_static_ir.cpp:33: note: code may be misoptimized unless ‘-fno-strict-aliasing’ is used
+Core/core/arm/dynarmic/arm_dynarmic.cpp:37: warning: type of ‘MemoryRead64’ does not match original declaration [-Wlto-type-mismatch]
+   37 |     std::uint64_t MemoryRead64(VAddr vaddr) override {
+      |
+Core/core/arm/dynarmic/arm_static_ir.cpp:34: note: ‘MemoryRead64’ was previously declared here
+   34 |     std::uint64_t MemoryRead64(Dynarmic::A32::VAddr vaddr) override { return memory.Read64(vaddr); }
+      |
+Core/core/arm/dynarmic/arm_static_ir.cpp:34: note: code may be misoptimized unless ‘-fno-strict-aliasing’ is used
+Core/core/arm/dynarmic/arm_dynarmic.cpp:41: warning: type of ‘MemoryWrite8’ does not match original declaration [-Wlto-type-mismatch]
+   41 |     void MemoryWrite8(VAddr vaddr, std::uint8_t value) override {
+      |
+Core/core/arm/dynarmic/arm_static_ir.cpp:36: note: ‘MemoryWrite8’ was previously declared here
+   36 |     void MemoryWrite8(Dynarmic::A32::VAddr vaddr, std::uint8_t value) override { memory.Write8(vaddr, value); }
+      |
+Core/core/arm/dynarmic/arm_static_ir.cpp:36: note: code may be misoptimized unless ‘-fno-strict-aliasing’ is used
+Core/core/arm/dynarmic/arm_dynarmic.cpp:44: warning: type of ‘MemoryWrite16’ does not match original declaration [-Wlto-type-mismatch]
+   44 |     void MemoryWrite16(VAddr vaddr, std::uint16_t value) override {
+      |
+Core/core/arm/dynarmic/arm_static_ir.cpp:37: note: ‘MemoryWrite16’ was previously declared here
+   37 |     void MemoryWrite16(Dynarmic::A32::VAddr vaddr, std::uint16_t value) override { memory.Write16(vaddr, value); }
+      |
+Core/core/arm/dynarmic/arm_static_ir.cpp:37: note: code may be misoptimized unless ‘-fno-strict-aliasing’ is used
+Core/core/arm/dynarmic/arm_dynarmic.cpp:47: warning: type of ‘MemoryWrite32’ does not match original declaration [-Wlto-type-mismatch]
+   47 |     void MemoryWrite32(VAddr vaddr, std::uint32_t value) override {
+      |
+Core/core/arm/dynarmic/arm_static_ir.cpp:38: note: ‘MemoryWrite32’ was previously declared here
+   38 |     void MemoryWrite32(Dynarmic::A32::VAddr vaddr, std::uint32_t value) override { memory.Write32(vaddr, value); }
+      |
+Core/core/arm/dynarmic/arm_static_ir.cpp:38: note: code may be misoptimized unless ‘-fno-strict-aliasing’ is used
+Core/core/arm/dynarmic/arm_dynarmic.cpp:50: warning: type of ‘MemoryWrite64’ does not match original declaration [-Wlto-type-mismatch]
+   50 |     void MemoryWrite64(VAddr vaddr, std::uint64_t value) override {
+      |
+Core/core/arm/dynarmic/arm_static_ir.cpp:39: note: ‘MemoryWrite64’ was previously declared here
+   39 |     void MemoryWrite64(Dynarmic::A32::VAddr vaddr, std::uint64_t value) override { memory.Write64(vaddr, value); }
+      |
+Core/core/arm/dynarmic/arm_static_ir.cpp:39: note: code may be misoptimized unless ‘-fno-strict-aliasing’ is used
+Core/core/arm/dynarmic/arm_dynarmic.cpp:54: warning: type of ‘MemoryWriteExclusive8’ does not match original declaration [-Wlto-type-mismatch]
+   54 |     bool MemoryWriteExclusive8(u32 vaddr, u8 value, u8 expected) override {
+      |
+Core/core/arm/dynarmic/arm_static_ir.cpp:41: note: ‘MemoryWriteExclusive8’ was previously declared here
+   41 |     bool MemoryWriteExclusive8(Dynarmic::A32::VAddr vaddr, u8 value, u8 expected) override {
+      |
+Core/core/arm/dynarmic/arm_static_ir.cpp:41: note: code may be misoptimized unless ‘-fno-strict-aliasing’ is used
+Core/core/arm/dynarmic/arm_dynarmic.cpp:57: warning: type of ‘MemoryWriteExclusive16’ does not match original declaration [-Wlto-type-mismatch]
+   57 |     bool MemoryWriteExclusive16(u32 vaddr, u16 value, u16 expected) override {
+      |
+Core/core/arm/dynarmic/arm_static_ir.cpp:44: note: ‘MemoryWriteExclusive16’ was previously declared here
+   44 |     bool MemoryWriteExclusive16(Dynarmic::A32::VAddr vaddr, u16 value, u16 expected) override {
+      |
+Core/core/arm/dynarmic/arm_static_ir.cpp:44: note: code may be misoptimized unless ‘-fno-strict-aliasing’ is used
+Core/core/arm/dynarmic/arm_dynarmic.cpp:60: warning: type of ‘MemoryWriteExclusive32’ does not match original declaration [-Wlto-type-mismatch]
+   60 |     bool MemoryWriteExclusive32(u32 vaddr, u32 value, u32 expected) override {
+      |
+Core/core/arm/dynarmic/arm_static_ir.cpp:47: note: ‘MemoryWriteExclusive32’ was previously declared here
+   47 |     bool MemoryWriteExclusive32(Dynarmic::A32::VAddr vaddr, u32 value, u32 expected) override {
+      |
+Core/core/arm/dynarmic/arm_static_ir.cpp:47: note: code may be misoptimized unless ‘-fno-strict-aliasing’ is used
+Core/core/arm/dynarmic/arm_dynarmic.cpp:63: warning: type of ‘MemoryWriteExclusive64’ does not match original declaration [-Wlto-type-mismatch]
+   63 |     bool MemoryWriteExclusive64(u32 vaddr, u64 value, u64 expected) override {
+      |
+Core/core/arm/dynarmic/arm_static_ir.cpp:50: note: ‘MemoryWriteExclusive64’ was previously declared here
+   50 |     bool MemoryWriteExclusive64(Dynarmic::A32::VAddr vaddr, u64 value, u64 expected) override {
+      |
+Core/core/arm/dynarmic/arm_static_ir.cpp:50: note: code may be misoptimized unless ‘-fno-strict-aliasing’ is used
+Core/core/arm/dynarmic/arm_dynarmic.cpp:73: warning: type of ‘CallSVC’ does not match original declaration [-Wlto-type-mismatch]
+   73 |     void CallSVC(std::uint32_t swi) override {
+      |
+Core/core/arm/dynarmic/arm_static_ir.cpp:60: note: ‘CallSVC’ was previously declared here
+   60 |     void CallSVC(std::uint32_t swi) override {
+      |
+Core/core/arm/dynarmic/arm_static_ir.cpp:60: note: code may be misoptimized unless ‘-fno-strict-aliasing’ is used
+Core/core/arm/dynarmic/arm_dynarmic.cpp:109: warning: type of ‘AddTicks’ does not match original declaration [-Wlto-type-mismatch]
+  109 |     void AddTicks(std::uint64_t ticks) override {
+      |
+Core/core/arm/dynarmic/arm_static_ir.cpp:70: note: ‘AddTicks’ was previously declared here
+   70 |     void AddTicks(std::uint64_t ticks) override { parent.GetTimer().AddTicks(ticks); }
+      |
+Core/core/arm/dynarmic/arm_static_ir.cpp:70: note: code may be misoptimized unless ‘-fno-strict-aliasing’ is used
+Core/core/arm/dynarmic/arm_dynarmic.cpp:112: warning: type of ‘GetTicksRemaining’ does not match original declaration [-Wlto-type-mismatch]
+  112 |     std::uint64_t GetTicksRemaining() override {
+      |
+Core/core/arm/dynarmic/arm_static_ir.cpp:71: note: ‘GetTicksRemaining’ was previously declared here
+   71 |     std::uint64_t GetTicksRemaining() override {
+      |
+Core/core/arm/dynarmic/arm_static_ir.cpp:71: note: code may be misoptimized unless ‘-fno-strict-aliasing’ is used
+libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/httplib/httplib.h:5141: warning: type of ‘set_header’ does not match original declaration [-Wlto-type-mismatch]
+ 5141 | inline void Request::set_header(const std::string &key,
+      |
+libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/httplib/httplib.h:5141:13: note: ‘set_header’ was previously declared here
+ 5141 | inline void Request::set_header(const std::string &key,
+      |             ^
+libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/httplib/httplib.h:6623: warning: type of ‘__dt_del ’ does not match original declaration [-Wlto-type-mismatch]
+ 6623 | inline ClientImpl::~ClientImpl() {
+      |
+libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/httplib/httplib.h:6623:8: note: ‘__dt_del ’ was previously declared here
+ 6623 | inline ClientImpl::~ClientImpl() {
+      |        ^
+libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/httplib/httplib.h:6623: warning: type of ‘__dt_comp ’ does not match original declaration [-Wlto-type-mismatch]
+ 6623 | inline ClientImpl::~ClientImpl() {
+      |
+libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/httplib/httplib.h:6623:8: note: ‘__dt_comp ’ was previously declared here
+ 6623 | inline ClientImpl::~ClientImpl() {
+      |        ^
+libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/httplib/httplib.h:6623: warning: type of ‘__dt_base ’ does not match original declaration [-Wlto-type-mismatch]
+ 6623 | inline ClientImpl::~ClientImpl() {
+      |
+libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/httplib/httplib.h:6623:8: note: ‘__dt_base ’ was previously declared here
+ 6623 | inline ClientImpl::~ClientImpl() {
+      |        ^
+libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/httplib/httplib.h:6696: warning: type of ‘create_and_connect_socket’ does not match original declaration [-Wlto-type-mismatch]
+ 6696 | inline bool ClientImpl::create_and_connect_socket(Socket &socket,
+      |
+libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/httplib/httplib.h:6696:13: note: type mismatch in parameter 1
+ 6696 | inline bool ClientImpl::create_and_connect_socket(Socket &socket,
+      |             ^
+libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/httplib/httplib.h:1240:10: note: type ‘struct Socket’ itself violates the C++ One Definition Rule
+ 1240 |   struct Socket {
+      |          ^
+libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/httplib/httplib.h:1240: note: the incompatible type is defined here
+ 1240 |   struct Socket {
+      |
+libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/httplib/httplib.h:6696:13: note: ‘create_and_connect_socket’ was previously declared here
+ 6696 | inline bool ClientImpl::create_and_connect_socket(Socket &socket,
+      |             ^
+libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/httplib/httplib.h:6675: warning: type of ‘create_client_socket’ does not match original declaration [-Wlto-type-mismatch]
+ 6675 | inline socket_t ClientImpl::create_client_socket(Error &error) const {
+      |
+libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/httplib/httplib.h:6675:17: note: ‘create_client_socket’ was previously declared here
+ 6675 | inline socket_t ClientImpl::create_client_socket(Error &error) const {
+      |                 ^
+libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/httplib/httplib.h:5166: warning: type of ‘is_multipart_form_data’ does not match original declaration [-Wlto-type-mismatch]
+ 5166 | inline bool Request::is_multipart_form_data() const {
+      |
+libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/httplib/httplib.h:5166:13: note: ‘is_multipart_form_data’ was previously declared here
+ 5166 | inline bool Request::is_multipart_form_data() const {
+      |             ^
+libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/httplib/httplib.h:7385: warning: type of ‘process_socket’ does not match original declaration [-Wlto-type-mismatch]
+ 7385 | ClientImpl::process_socket(const Socket &socket,
+      |
+libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/httplib/httplib.h:7385:1: note: type mismatch in parameter 1
+ 7385 | ClientImpl::process_socket(const Socket &socket,
+      | ^
+libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/httplib/httplib.h:7385:1: note: type ‘const struct Socket’ itself violates the C++ One Definition Rule
+libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/httplib/httplib.h:7385:1: note: ‘process_socket’ was previously declared here
+libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/httplib/httplib.h:6717: warning: type of ‘close_socket’ does not match original declaration [-Wlto-type-mismatch]
+ 6717 | inline void ClientImpl::close_socket(Socket &socket) {
+      |
+libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/httplib/httplib.h:6717:13: note: type mismatch in parameter 1
+ 6717 | inline void ClientImpl::close_socket(Socket &socket) {
+      |             ^
+libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/httplib/httplib.h:1240:10: note: type ‘struct Socket’ itself violates the C++ One Definition Rule
+ 1240 |   struct Socket {
+      |          ^
+libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/httplib/httplib.h:1240: note: the incompatible type is defined here
+ 1240 |   struct Socket {
+      |
+libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/httplib/httplib.h:6717:13: note: ‘close_socket’ was previously declared here
+ 6717 | inline void ClientImpl::close_socket(Socket &socket) {
+      |             ^
+libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/httplib/httplib.h:6704: warning: type of ‘shutdown_ssl’ does not match original declaration [-Wlto-type-mismatch]
+ 6704 | inline void ClientImpl::shutdown_ssl(Socket & /*socket*/,
+      |
+libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/httplib/httplib.h:6704:13: note: type mismatch in parameter 1
+ 6704 | inline void ClientImpl::shutdown_ssl(Socket & /*socket*/,
+      |             ^
+libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/httplib/httplib.h:1240:10: note: type ‘struct Socket’ itself violates the C++ One Definition Rule
+ 1240 |   struct Socket {
+      |          ^
+libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/httplib/httplib.h:1240: note: the incompatible type is defined here
+ 1240 |   struct Socket {
+      |
+libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/httplib/httplib.h:6704:13: note: ‘shutdown_ssl’ was previously declared here
+ 6704 | inline void ClientImpl::shutdown_ssl(Socket & /*socket*/,
+      |             ^
+libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/httplib/httplib.h:7392: warning: type of ‘is_ssl’ does not match original declaration [-Wlto-type-mismatch]
+ 7392 | inline bool ClientImpl::is_ssl() const { return false; }
+      |
+libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/httplib/httplib.h:7392:13: note: ‘is_ssl’ was previously declared here
+ 7392 | inline bool ClientImpl::is_ssl() const { return false; }
+      |             ^
+libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/httplib/httplib.h:6629: warning: type of ‘is_valid’ does not match original declaration [-Wlto-type-mismatch]
+ 6629 | inline bool ClientImpl::is_valid() const { return true; }
+      |
+libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/httplib/httplib.h:6629:13: note: ‘is_valid’ was previously declared here
+ 6629 | inline bool ClientImpl::is_valid() const { return true; }
+      |             ^
+Core/include/core/hle/service/plgldr/plgldr.h:91:5: warning: type of ‘__dt_del ’ does not match original declaration [-Wlto-type-mismatch]
+   91 |
+      |     ^
+Core/include/core/hle/service/plgldr/plgldr.h:93:5: warning: type of ‘__dt_del ’ does not match original declaration [-Wlto-type-mismatch]
+   93 |     ~PLG_LDR() {}
+      |     ^
+Core/include/core/hle/service/plgldr/plgldr.h:87:5: note: ‘__dt_del ’ was previously declared here
+   87 |         template <class Archive>
+      |     ^
+Core/include/core/hle/service/plgldr/plgldr.h:91:5: warning: type of ‘__dt_comp ’ does not match original declaration [-Wlto-type-mismatch]
+   91 |
+      |     ^
+Core/include/core/hle/service/plgldr/plgldr.h:93:5: warning: type of ‘__dt_comp ’ does not match original declaration [-Wlto-type-mismatch]
+   93 |     ~PLG_LDR() {}
+      |     ^
+Core/include/core/hle/service/plgldr/plgldr.h:87:5: note: ‘__dt_comp ’ was previously declared here
+   87 |         template <class Archive>
+      |     ^
+Core/include/core/hle/service/plgldr/plgldr.h:91:5: warning: type of ‘__dt_base ’ does not match original declaration [-Wlto-type-mismatch]
+   91 |
+      |     ^
+Core/include/core/hle/service/plgldr/plgldr.h:93:5: warning: type of ‘__dt_base ’ does not match original declaration [-Wlto-type-mismatch]
+   93 |     ~PLG_LDR() {}
+      |     ^
+Core/include/core/hle/service/plgldr/plgldr.h:87:5: note: ‘__dt_base ’ was previously declared here
+   87 |         template <class Archive>
+      |     ^
+Core/include/core/hle/service/service.h:96:10: warning: ‘RegisterHandlersBase’ violates the C++ One Definition Rule [-Wodr]
+   96 |
+      |          ^
+Core/core/hle/service/service.cpp:147:6: note: type mismatch in parameter 1
+  147 | void ServiceFrameworkBase::RegisterHandlersBase(const FunctionInfoBase* functions, std::size_t n) {
+      |      ^
+Core/core/hle/service/service.cpp:147:6: note: type ‘const struct FunctionInfoBase’ itself violates the C++ One Definition Rule
+Core/core/hle/service/service.cpp:147:6: note: ‘RegisterHandlersBase’ was previously declared here
+Core/include/core/hle/service/plgldr/plgldr.h:89:10: warning: type of ‘OnProcessRun’ does not match original declaration [-Wlto-type-mismatch]
+   89 |         friend class boost::serialization::access;
+      |          ^
+Core/core/hle/service/plgldr/plgldr.cpp:98:6: note: ‘OnProcessRun’ was previously declared here
+   98 | void PLG_LDR::OnProcessRun(Kernel::Process& process, Kernel::KernelSystem& kernel) {
+      |      ^
+Core/include/core/hle/service/plgldr/plgldr.h:90:10: warning: type of ‘OnProcessExit’ does not match original declaration [-Wlto-type-mismatch]
+   90 |     };
+      |          ^
+Core/core/hle/service/plgldr/plgldr.cpp:155:6: note: ‘OnProcessExit’ was previously declared here
+  155 | void PLG_LDR::OnProcessExit(Kernel::Process& process, Kernel::KernelSystem& kernel) {
+      |      ^
+Core/include/core/hle/service/plgldr/plgldr.h:92:10: warning: type of ‘OnMemoryChanged’ does not match original declaration [-Wlto-type-mismatch]
+   92 |     PLG_LDR(Core::System& system_);
+      |          ^
+Core/core/hle/service/plgldr/plgldr.cpp:188:6: note: ‘OnMemoryChanged’ was previously declared here
+  188 | void PLG_LDR::OnMemoryChanged(Kernel::Process& process, Kernel::KernelSystem& kernel) {
+      |      ^
+Core/include/core/hle/service/plgldr/plgldr.h:91:31: warning: type of ‘GetMemoryChangedHandle’ does not match original declaration [-Wlto-type-mismatch]
+   91 |
+      |                               ^
+Core/core/hle/service/plgldr/plgldr.cpp:175:27: note: ‘GetMemoryChangedHandle’ was previously declared here
+  175 | ResultVal<Kernel::Handle> PLG_LDR::GetMemoryChangedHandle(Kernel::KernelSystem& kernel) {
+      |                           ^
+Core/include/core/hle/service/apt/applet_manager.h:305:12: warning: type of ‘PrepareToCloseLibraryApplet’ does not match original declaration [-Wlto-type-mismatch]
+  305 |     Result StartLibraryApplet(AppletId applet_id, std::shared_ptr<Kernel::Object> object,
+      |            ^
+Core/core/hle/service/apt/applet_manager.cpp:688:8: note: ‘PrepareToCloseLibraryApplet’ was previously declared here
+  688 | Result AppletManager::PrepareToCloseLibraryApplet(bool not_pause, bool exiting, bool jump_home) {
+      |        ^
+Core/include/core/hle/service/apt/applet_manager.h:306:12: warning: type of ‘CloseLibraryApplet’ does not match original declaration [-Wlto-type-mismatch]
+  306 |                               const std::vector<u8>& buffer);
+      |            ^
+Core/core/hle/service/apt/applet_manager.cpp:706:8: note: ‘CloseLibraryApplet’ was previously declared here
+  706 | Result AppletManager::CloseLibraryApplet(std::shared_ptr<Kernel::Object> object,
+      |        ^
+Core/include/core/hle/service/apt/applet_manager.h:270:10: warning: type of ‘CancelAndSendParameter’ does not match original declaration [-Wlto-type-mismatch]
+  270 |      * HLE Applets and should be likely removed in the future
+      |          ^
+Core/core/hle/service/apt/applet_manager.cpp:256:6: note: ‘CancelAndSendParameter’ was previously declared here
+  256 | void AppletManager::CancelAndSendParameter(const MessageParameter& parameter) {
+      |      ^
+Core/include/core/core.h:361:10: warning: type of ‘LoadState’ does not match original declaration [-Wlto-type-mismatch]
+  361 |     SaveStateStatus GetSaveStateStatus() {
+      |          ^
+Core/core/savestate.cpp:179: note: ‘LoadState’ was previously declared here
+  179 | void System::LoadState(u32 slot) {
+      |
+Core/include/core/core.h:359:10: warning: type of ‘SaveState’ does not match original declaration [-Wlto-type-mismatch]
+  359 |     };
+      |          ^
+Core/core/savestate.cpp:131: note: ‘SaveState’ was previously declared here
+  131 | void System::SaveState(u32 slot) const {
+      |
+Core/include/core/hle/service/apt/applet_manager.h:264:10: warning: type of ‘ReloadInputDevices’ does not match original declaration [-Wlto-type-mismatch]
+  264 |     ~AppletManager();
+      |          ^
+Core/core/hle/service/apt/applet_manager.cpp:1767:6: note: ‘ReloadInputDevices’ was previously declared here
+ 1767 | void AppletManager::ReloadInputDevices() {
+      |      ^
+Core/include/core/core.h:490: warning: type of ‘serialize’ does not match original declaration [-Wlto-type-mismatch]
+  490 |     void serialize(Archive& ar, const unsigned int file_version);
+      |
+Core/core/core.cpp:772:6: note: ‘serialize’ was previously declared here
+  772 | void System::serialize(Archive& ar, const unsigned int file_version) {
+      |      ^
+Core/include/core/core.h:490: warning: type of ‘serialize’ does not match original declaration [-Wlto-type-mismatch]
+  490 |     void serialize(Archive& ar, const unsigned int file_version);
+      |
+Core/core/core.cpp:772:6: note: ‘serialize’ was previously declared here
+  772 | void System::serialize(Archive& ar, const unsigned int file_version) {
+      |      ^
+Core/include/core/core.h:121: warning: type of ‘RunLoop’ does not match original declaration [-Wlto-type-mismatch]
+  121 |     [[nodiscard]] ResultStatus RunLoop(bool tight_loop = true);
+      |
+Core/core/core.cpp:82:22: note: ‘RunLoop’ was previously declared here
+   82 | System::ResultStatus System::RunLoop(bool tight_loop) {
+      |                      ^
+Core/include/core/core.h:159: warning: type of ‘Load’ does not match original declaration [-Wlto-type-mismatch]
+  159 |     [[nodiscard]] ResultStatus Load(Frontend::EmuWindow& emu_window, const std::string& filepath,
+      |
+Core/core/core.cpp:298:22: note: ‘Load’ was previously declared here
+  298 | System::ResultStatus System::Load(Frontend::EmuWindow& emu_window, const std::string& filepath,
+      |                      ^
+Core/include/core/core.h:130: warning: type of ‘Shutdown’ does not match original declaration [-Wlto-type-mismatch]
+  130 |     void Shutdown(bool is_deserializing = false);
+      |
+Core/core/core.cpp:644:6: note: ‘Shutdown’ was previously declared here
+  644 | void System::Shutdown(bool is_deserializing) {
+      |      ^
+Core/include/core/core.h:109: warning: type of ‘__dt_comp ’ does not match original declaration [-Wlto-type-mismatch]
+  109 |     ~System();
+      |
+Core/core/core.cpp:80:1: note: ‘__dt_comp ’ was previously declared here
+   80 | System::~System() = default;
+      | ^
+Core/include/core/hle/service/apt/applet_manager.h:337:33: warning: type of ‘ReceiveDeliverArg’ does not match original declaration [-Wlto-type-mismatch]
+  337 |     boost::optional<DeliverArg> ReceiveDeliverArg() {
+      |                                 ^
+Core/include/core/hle/service/apt/applet_manager.h:333:33: note: ‘ReceiveDeliverArg’ was previously declared here
+  333 |     Result PrepareToDoApplicationJump(u64 title_id, FS::MediaType media_type,
+      |                                 ^
+Core/include/core/core.h:137:10: warning: type of ‘SendSignal’ does not match original declaration [-Wlto-type-mismatch]
+  137 |     bool SendSignal(Signal signal, u32 param = 0);
+      |          ^
+Core/core/core.cpp:283:6: note: ‘SendSignal’ was previously declared here
+  283 | bool System::SendSignal(System::Signal signal, u32 param) {
+      |      ^
+Core/include/core/core.h:383: warning: type of ‘IsInitialSetup’ does not match original declaration [-Wlto-type-mismatch]
+  383 |     bool IsInitialSetup();
+      |
+Core/core/core.cpp:767:6: note: ‘IsInitialSetup’ was previously declared here
+  767 | bool System::IsInitialSetup() {
+      |      ^
+Core/include/core/core.h:287: warning: type of ‘Movie’ does not match original declaration [-Wlto-type-mismatch]
+  287 |     [[nodiscard]] Core::Movie& Movie();
+      |
+Core/core/core.cpp:624:14: note: ‘Movie’ was previously declared here
+  624 | Core::Movie& System::Movie() {
+      |              ^
+Core/include/core/core.h:263:27: warning: type of ‘CoreTiming’ does not match original declaration [-Wlto-type-mismatch]
+  263 |     [[nodiscard]] Timing& CoreTiming();
+      |                           ^
+Core/core/core.cpp:588:9: note: ‘CoreTiming’ was previously declared here
+  588 | Timing& System::CoreTiming() {
+      |         ^
+Core/include/core/core.h:258:24: warning: type of ‘KernelRunning’ does not match original declaration [-Wlto-type-mismatch]
+  258 |
+      |                        ^
+Core/core/core.cpp:584:6: note: ‘KernelRunning’ was previously declared here
+  584 | bool System::KernelRunning() {
+      |      ^
+Core/include/core/core.h:233: warning: type of ‘GPU’ does not match original declaration [-Wlto-type-mismatch]
+  233 |     [[nodiscard]] VideoCore::GPU& GPU();
+      |
+Core/core/core.cpp:556:17: note: ‘GPU’ was previously declared here
+  556 | VideoCore::GPU& System::GPU() {
+      |                 ^
+Core/include/core/core.h:246:48: warning: type of ‘ArchiveManager’ does not match original declaration [-Wlto-type-mismatch]
+  246 |
+      |                                                ^
+Core/core/core.cpp:568:30: note: ‘ArchiveManager’ was previously declared here
+  568 | Service::FS::ArchiveManager& System::ArchiveManager() {
+      |                              ^
+Core/include/core/core.h:237:48: warning: type of ‘ServiceManager’ does not match original declaration [-Wlto-type-mismatch]
+  237 |      * @returns A reference to the service manager.
+      |                                                ^
+Core/include/core/core.h:237:48: warning: type of ‘ServiceManager’ does not match original declaration [-Wlto-type-mismatch]
+  237 |      * @returns A reference to the service manager.
+      |                                                ^
+Core/include/core/core.h:239:48: warning: type of ‘ServiceManager’ does not match original declaration [-Wlto-type-mismatch]
+  239 |     [[nodiscard]] Service::SM::ServiceManager& ServiceManager();
+      |                                                ^
+Core/core/core.cpp:560:30: note: ‘ServiceManager’ was previously declared here
+  560 | Service::SM::ServiceManager& System::ServiceManager() {
+      |                              ^
+Core/include/core/core.h:456: warning: ‘s_instance’ violates the C++ One Definition Rule [-Wodr]
+  456 |     static System s_instance;
+      |
+Core/include/core/core.h:79:7: note: type ‘struct System’ itself violates the C++ One Definition Rule
+   79 | class System {
+      |       ^
+Core/core/core.cpp:61:19: note: ‘s_instance’ was previously declared here
+   61 | /*static*/ System System::s_instance;
+      |                   ^
+Core/include/core/core.h:269:41: warning: type of ‘Memory’ does not match original declaration [-Wlto-type-mismatch]
+  269 |     [[nodiscard]] Memory::MemorySystem& Memory();
+      |                                         ^
+Core/core/core.cpp:596:23: note: ‘Memory’ was previously declared here
+  596 | Memory::MemorySystem& System::Memory() {
+      |                       ^
+Core/include/core/core.h:252:41: warning: type of ‘Kernel’ does not match original declaration [-Wlto-type-mismatch]
+  252 |
+      |                                         ^
+Core/include/core/core.h:252:41: warning: type of ‘Kernel’ does not match original declaration [-Wlto-type-mismatch]
+  252 |
+      |                                         ^
+Core/include/core/core.h:254:41: warning: type of ‘Kernel’ does not match original declaration [-Wlto-type-mismatch]
+  254 |     [[nodiscard]] Kernel::KernelSystem& Kernel();
+      |                                         ^
+Core/core/core.cpp:576:23: note: ‘Kernel’ was previously declared here
+  576 | Kernel::KernelSystem& System::Kernel() {
+      |                       ^
+Core/include/core/hle/kernel/kernel.h:108: warning: type ‘Kernel::MemoryMode’ violates the C++ One Definition Rule [-Wodr]
+  108 | enum class MemoryMode : u8 {
+      |
+Core/include/core/hle/kernel/kernel.h:108: note: an enum with different number of values is defined in another translation unit
+  108 | enum class MemoryMode : u8 {
+      |
+lto-wrapper: warning: using serial compilation of 113 LTRANS jobs
+lto-wrapper: note: see the ‘-flto’ option documentation for more information

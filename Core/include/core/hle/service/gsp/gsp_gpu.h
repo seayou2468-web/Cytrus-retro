@@ -37,6 +37,10 @@ struct FrameBufferInfo {
     u32 format;   // maps to 0x1EF00X70 ?
     u32 shown_fb; // maps to 0x1EF00X78 ?
     u32 unknown;
+
+    u32 GetPixelFormat() const {
+        return format;
+    }
 };
 static_assert(sizeof(FrameBufferInfo) == 0x1c, "Struct has incorrect size");
 

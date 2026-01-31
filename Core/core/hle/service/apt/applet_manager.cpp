@@ -1373,7 +1373,7 @@ Result AppletManager::DoApplicationJump(const DeliverArg& arg) {
         */
 
         NS::RebootToTitle(system, app_jump_parameters.next_media_type,
-                          app_jump_parameters.next_title_id, std::nullopt);
+                          app_jump_parameters.next_title_id);
         return ResultSuccess;
     }
 }
@@ -1564,7 +1564,7 @@ Result AppletManager::StartNewestHomeMenu() {
     u64 titleID = home_menu_tid_to_start;
     home_menu_tid_to_start = 0;
 
-    NS::RebootToTitle(system, Service::FS::MediaType::NAND, titleID, std::nullopt);
+    NS::RebootToTitle(system, Service::FS::MediaType::NAND, titleID);
     return ResultSuccess;
 }
 

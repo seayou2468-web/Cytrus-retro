@@ -852,7 +852,7 @@ bool CIAFile::Close() {
 
     bool complete;
 
-    if (is_cancel) {
+    if (false) {
         complete = false;
     } else {
         complete =

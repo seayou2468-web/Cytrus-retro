@@ -31,6 +31,8 @@ public:
     bool ExclusiveWrite32(std::size_t core_index, VAddr vaddr, u32 value) override;
     bool ExclusiveWrite64(std::size_t core_index, VAddr vaddr, u64 value) override;
 
+    Dynarmic::ExclusiveMonitor& GetMonitor() { return monitor; }
+
 private:
     friend class Core::ARM_Dynarmic;
     Dynarmic::ExclusiveMonitor monitor;

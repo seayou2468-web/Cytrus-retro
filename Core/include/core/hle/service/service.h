@@ -84,6 +84,7 @@ private:
         u32 command_id;
         HandlerFnP<ServiceFrameworkBase> handler_callback;
         const char* name;
+        bool implemented = true;
     };
 
     using InvokerFn = void(ServiceFrameworkBase* object, HandlerFnP<ServiceFrameworkBase> member,

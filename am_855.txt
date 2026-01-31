@@ -1,0 +1,31 @@
+}
+
+bool CIAFile::Close() {
+    if (is_closed)
+        return true;
+    is_closed = true;
+
+    // Commit last pending install result
+    if (current_content_install_result.type != InstallResult::Type::NONE) {
+        install_results.push_back(current_content_install_result);
+        current_content_install_result.type = InstallResult::Type::NONE;
+    }
+
+    bool complete;
+
+    if (is_cancel) {
+        complete = false;
+    } else {
+        complete =
+            from_cdn ? is_done
+                     : (install_state >= CIAInstallState::TMDLoaded &&
+                        content_written.size() == container.GetTitleMetadata().GetContentCount() &&
+                        std::all_of(content_written.begin(), content_written.end(),
+                                    [this, i = 0](auto& bytes_written) mutable {
+                                        return bytes_written >=
+                                               container.GetContentSize(static_cast<u16>(i++));
+                                    }));
+    }
+
+    // Install aborted
+    if (!complete) {

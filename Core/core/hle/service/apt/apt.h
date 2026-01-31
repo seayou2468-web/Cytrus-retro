@@ -107,6 +107,8 @@ public:
          *     1 : Result of function, 0 on success, otherwise error code
          */
         void RebootSystemClean(Kernel::HLERequestContext& ctx);
+
+        void CardUpdateInitialize(Kernel::HLERequestContext& ctx);
     };
 
     class APTInterface : public ServiceFramework<APTInterface> {
@@ -495,6 +497,8 @@ public:
          *      1 : Result of function
          */
         void PrepareToStartNewestHomeMenu(Kernel::HLERequestContext& ctx);
+
+        void StartNewestHomeMenu(Kernel::HLERequestContext& ctx);
 
         /**
          * APT::PreloadLibraryApplet service function

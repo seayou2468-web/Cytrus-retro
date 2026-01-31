@@ -28,10 +28,10 @@ namespace Service::APT {
 
 class AppletManager;
 
+constexpr std::size_t SysMenuArgSize = 0x40;
+
 /// Each APT service can only have up to 2 sessions connected at the same time.
 static const u32 MaxAPTSessions = 2;
-
-constexpr std::size_t SysMenuArgSize = 0x40;
 
 enum class StartupArgumentType : u32 {
     OtherApp = 0,
@@ -52,6 +52,14 @@ public:
     ~Module();
 
     std::shared_ptr<AppletManager> GetAppletManager() const;
+
+    std::vector<u8> GetWirelessRebootInfoBuffer() const {
+        return wireless_reboot_info;
+    }
+
+    void SetWirelessRebootInfoBuffer(const std::vector<u8>& buffer) {
+        wireless_reboot_info = buffer;
+    }
 
     class NSInterface : public ServiceFramework<NSInterface> {
     public:
@@ -104,6 +112,8 @@ public:
          *     1 : Result of function, 0 on success, otherwise error code
          */
         void RebootSystemClean(Kernel::HLERequestContext& ctx);
+
+        void CardUpdateInitialize(Kernel::HLERequestContext& ctx);
     };
 
     class APTInterface : public ServiceFramework<APTInterface> {
@@ -492,6 +502,8 @@ public:
          *      1 : Result of function
          */
         void PrepareToStartNewestHomeMenu(Kernel::HLERequestContext& ctx);
+
+        void StartNewestHomeMenu(Kernel::HLERequestContext& ctx);
 
         /**
          * APT::PreloadLibraryApplet service function

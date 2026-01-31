@@ -21,6 +21,6 @@ std::shared_ptr<Kernel::Process> LaunchTitle(Core::System& system, FS::MediaType
 
 /// Reboots the system to the specified title.
 void RebootToTitle(Core::System& system, FS::MediaType media_type, u64 title_id,
-                   std::optional<Kernel::MemoryMode> mem_mode);
+                   Kernel::MemoryMode mem_mode = Kernel::MemoryMode::Prod);
 
 } // namespace Service::NS

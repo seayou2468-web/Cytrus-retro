@@ -224,6 +224,10 @@ public:
         is_done = true;
     }
 
+    void Cancel() {
+        is_done = false;
+    }
+
     const std::vector<InstallResult>& GetInstallResults() const {
         return install_results;
     }
@@ -803,6 +807,8 @@ public:
          *      2-3 : CIAFile handle for application to write to
          */
         void BeginImportProgram(Kernel::HLERequestContext& ctx);
+
+        void CancelImportProgram(Kernel::HLERequestContext& ctx);
 
         /**
          * AM::BeginImportProgramTemporarily service function

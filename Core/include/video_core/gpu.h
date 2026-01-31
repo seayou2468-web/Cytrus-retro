@@ -96,6 +96,8 @@ public:
 
     void ReportLoadingProgramID(u64 program_ID);
 
+    void ApplyPerProgramSettings(u64 program_id) {}
+
 private:
     void SubmitCmdList(u32 index);
 
