@@ -25,10 +25,9 @@ namespace Core {
 
 using namespace Dynarmic;
 
-namespace {
-class DynarmicUserCallbacks final : public Dynarmic::A32::UserCallbacks {
+class ARM_StaticIR_Callbacks final : public Dynarmic::A32::UserCallbacks {
 public:
-    explicit DynarmicUserCallbacks(ARM_StaticIR& parent)
+    explicit ARM_StaticIR_Callbacks(ARM_StaticIR& parent)
         : parent(parent), memory(parent.memory), svc_context(parent.system) {}
 
     std::uint8_t MemoryRead8(Dynarmic::A32::VAddr vaddr) override { return memory.Read8(vaddr); }
@@ -83,13 +82,12 @@ public:
     Memory::MemorySystem& memory;
     Kernel::SVCContext svc_context;
 };
-} // Anonymous namespace
 
 ARM_StaticIR::ARM_StaticIR(Core::System& system_, Memory::MemorySystem& memory_, u32 core_id_,
                            std::shared_ptr<Core::Timing::Timer> timer_,
                            Core::ExclusiveMonitor& exclusive_monitor_)
     : ARM_Interface(core_id_, timer_), system(system_), memory(memory_),
-      cb(std::make_unique<DynarmicUserCallbacks>(*this)),
+      cb(std::make_unique<ARM_StaticIR_Callbacks>(*this)),
       exclusive_monitor{dynamic_cast<Core::DynarmicExclusiveMonitor&>(exclusive_monitor_)} {
 
     config.callbacks = cb.get();
@@ -100,7 +98,7 @@ ARM_StaticIR::ARM_StaticIR(Core::System& system_, Memory::MemorySystem& memory_,
 
 ARM_StaticIR::~ARM_StaticIR() = default;
 
-DynarmicUserCallbacks& ARM_StaticIR::GetCallbacks() { return *cb; }
+ARM_StaticIR_Callbacks& ARM_StaticIR::GetCallbacks() { return *cb; }
 
 void ARM_StaticIR::Run() {
     while (system.IsPoweredOn()) {
@@ -178,7 +176,7 @@ const ARM_StaticIR::TranslatedBlock& ARM_StaticIR::GetOrTranslateBlock(u32 pc) {
     auto it = block_cache.find(pc);
     if (it != block_cache.end()) return it->second;
 
-    Dynarmic::A32::LocationDescriptor ld{pc, Dynarmic::A32::PSR{cpsr}, Dynarmic::A32::FPSCR{fpscr}};
+    Dynarmic::A32::LocationDescriptor ld{pc, Dynarmic::A32::PSR(cpsr), Dynarmic::A32::FPSCR(fpscr)};
     IR::Block block = A32::Translate(ld, cb.get(), {config.arch_version, config.define_unpredictable_behaviour, config.hook_hint_instructions});
 
     TranslatedBlock tb;

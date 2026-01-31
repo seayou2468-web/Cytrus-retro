@@ -22,4 +22,19 @@ typedef void* HANDLE;
 
 #include <microprofile.h>
 
+#if !MICROPROFILE_ENABLED
+#ifndef MICROPROFILE_DEFINE
+#define MICROPROFILE_DEFINE(...)
+#endif
+#ifndef MICROPROFILE_DECLARE
+#define MICROPROFILE_DECLARE(...)
+#endif
+#ifndef MICROPROFILE_SCOPE
+#define MICROPROFILE_SCOPE(...)
+#endif
+#ifndef MicroProfileFlip
+#define MicroProfileFlip(...)
+#endif
+#endif
+
 #define MP_RGB(r, g, b) ((r) << 16 | (g) << 8 | (b) << 0)

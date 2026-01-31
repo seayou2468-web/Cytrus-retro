@@ -19,12 +19,11 @@
 
 namespace Core {
 
-namespace {
-class DynarmicUserCallbacks final : public Dynarmic::A32::UserCallbacks {
+class ARM_Jit_Callbacks final : public Dynarmic::A32::UserCallbacks {
 public:
-    explicit DynarmicUserCallbacks(ARM_Dynarmic& parent)
+    explicit ARM_Jit_Callbacks(ARM_Dynarmic& parent)
         : parent(parent), svc_context(parent.system), memory(parent.memory) {}
-    ~DynarmicUserCallbacks() = default;
+    ~ARM_Jit_Callbacks() = default;
 
     std::uint8_t MemoryRead8(VAddr vaddr) override {
         return memory.Read8(vaddr);
@@ -122,13 +121,12 @@ public:
     Kernel::SVCContext svc_context;
     Memory::MemorySystem& memory;
 };
-} // Anonymous namespace
 
 ARM_Dynarmic::ARM_Dynarmic(Core::System& system_, Memory::MemorySystem& memory_, u32 core_id_,
                            std::shared_ptr<Core::Timing::Timer> timer_,
                            Core::ExclusiveMonitor& exclusive_monitor_)
     : ARM_Interface(core_id_, timer_), system(system_), memory(memory_),
-      cb(std::make_unique<DynarmicUserCallbacks>(*this)),
+      cb(std::make_unique<ARM_Jit_Callbacks>(*this)),
       exclusive_monitor{dynamic_cast<Core::DynarmicExclusiveMonitor&>(exclusive_monitor_)} {
     SetPageTable(memory.GetCurrentPageTable());
 }
