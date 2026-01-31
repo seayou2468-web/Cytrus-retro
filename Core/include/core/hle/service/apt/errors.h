@@ -9,5 +9,6 @@ enum {
     ParameterPresent = 2,
     InvalidAppletSlot = 4,
     AppNotRunning = 11,
+    IncorrectMemoryMode = 12,
 };
 } // namespace Service::APT::ErrCodes

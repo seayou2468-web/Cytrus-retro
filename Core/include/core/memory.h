@@ -645,6 +645,11 @@ public:
 
     void RasterizerFlushVirtualRegion(VAddr start, u32 size, FlushMode mode);
 
+    u32& Plugin3GXFramebufferAddress() {
+        static u32 addr = 0;
+        return addr;
+    }
+
 private:
     template <typename T>
     T Read(const std::shared_ptr<PageTable>& page_table, const VAddr vaddr);

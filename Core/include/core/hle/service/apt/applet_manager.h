@@ -27,6 +27,8 @@ namespace HLE::Applets {
 class Applet;
 }
 
+#include "core/hle/service/apt/apt.h"
+
 namespace Service::APT {
 
 /// Signals used by APT functions
@@ -311,6 +313,8 @@ public:
     Result SendDspWakeUp(AppletId from_applet_id, std::shared_ptr<Kernel::Object> object);
 
     Result PrepareToStartSystemApplet(AppletId applet_id);
+    Result PrepareToStartNewestHomeMenu();
+    Result StartNewestHomeMenu();
     Result StartSystemApplet(AppletId applet_id, std::shared_ptr<Kernel::Object> object,
                              const std::vector<u8>& buffer);
     Result PrepareToCloseSystemApplet();
@@ -338,6 +342,9 @@ public:
     void SetDeliverArg(boost::optional<DeliverArg> arg) {
         deliver_arg = std::move(arg);
     }
+
+    Result LoadSysMenuArg(std::vector<u8>& buffer);
+    Result StoreSysMenuArg(const std::vector<u8>& buffer);
 
     std::vector<u8> GetCaptureInfo() {
         std::vector<u8> buffer;
@@ -437,6 +444,7 @@ private:
         AppletId applet_id;
         AppletSlot slot;
         u64 title_id;
+        FS::MediaType media_type;
         bool registered;
         bool loaded;
         AppletAttributes attributes;
@@ -448,6 +456,7 @@ private:
             applet_id = AppletId::None;
             registered = false;
             title_id = 0;
+            media_type = static_cast<FS::MediaType>(UINT32_MAX);
             attributes.raw = 0;
         }
 
@@ -484,6 +493,10 @@ private:
     // This flag is used to determine if an app that supports New 3DS capabilities should use them.
     // It also affects the results of APT:GetTargetPlatform and APT:GetApplicationRunningMode.
     bool new_3ds_mode_blocked = false;
+
+    std::optional<std::array<u8, SysMenuArgSize>> sys_menu_arg;
+    u64 home_menu_tid_to_start = 0;
+    FS::MediaType next_app_mediatype = static_cast<FS::MediaType>(UINT32_MAX);
 
     std::unordered_map<AppletId, std::shared_ptr<HLE::Applets::Applet>> hle_applets;
     Core::TimingEventType* hle_applet_update_event;

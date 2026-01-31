@@ -81,6 +81,7 @@ public:
     u32 entry_point{};
     const void* cached_shader{};
     bool uniforms_dirty = true;
+    bool requires_fixup = false;
 
 private:
     bool program_code_hash_dirty{true};

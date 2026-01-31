@@ -137,8 +137,10 @@ public:
     bool SendSignal(Signal signal, u32 param = 0);
 
     /// Request reset of the system
-    void RequestReset(const std::string& chainload = "") {
+    void RequestReset(const std::string& chainload = "",
+                      std::optional<u8> mem_mode_override = std::nullopt) {
         m_chainloadpath = chainload;
+        m_mem_mode_override = mem_mode_override;
         SendSignal(Signal::Reset);
     }
 
@@ -313,6 +315,10 @@ public:
         return *app_loader;
     }
 
+    [[nodiscard]] const std::string& GetCartridge() const {
+        return m_filepath;
+    }
+
     /// Frontend Applets
 
     void RegisterMiiSelector(std::shared_ptr<Frontend::MiiSelector> mii_selector);
@@ -463,6 +469,7 @@ private:
     Frontend::EmuWindow* m_secondary_window;
     std::string m_filepath;
     std::string m_chainloadpath;
+    std::optional<u8> m_mem_mode_override;
     u64 title_id;
     bool self_delete_pending;
 

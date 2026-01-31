@@ -67,6 +67,9 @@ public:
 
     std::optional<ProductInfo> GetProductInfo(u32 process_id);
 
+    void GetCardType(Kernel::HLERequestContext& ctx);
+    std::string GetRegisteredGamecardPath() const;
+
     /// Gets the registered program info of a process.
     ResultVal<ProgramInfo> GetProgramLaunchInfo(u32 process_id) const {
         auto info = program_info_map.find(process_id);

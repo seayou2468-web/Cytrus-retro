@@ -1,0 +1,155 @@
+g++ -fPIC -O3 -ffast-math -flto -std=c++20 -ICore/include -ICore -Ilibretro -Ilibretro/libretro-common/include -Ilibretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/boost -Ilibretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/fmt/include -Ilibretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/dynarmic/src -Ilibretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/dynarmic/externals/mcl/include -DENABLE_SOFTWARE_RENDERER -D__LIBRETRO__ -c -o Core/core/arm/dynarmic/arm_static_ir.o Core/core/arm/dynarmic/arm_static_ir.cpp
+In file included from Core/core/arm/dynarmic/arm_static_ir.cpp:11:
+Core/include/common/assert.h:16: warning: "ASSERT" redefined
+   16 | #define ASSERT(_a_)                                                                                \
+      |
+In file included from libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/dynarmic/externals/mcl/include/mcl/container/intrusive_list.hpp:12,
+                 from libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/dynarmic/src/dynarmic/ir/basic_block.h:13,
+                 from Core/core/arm/dynarmic/arm_static_ir.cpp:7:
+libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/dynarmic/externals/mcl/include/mcl/assert.hpp:28: note: this is the location of the previous definition
+   28 | #define ASSERT(expr)                                                     \
+      |
+Core/include/common/assert.h:28: warning: "ASSERT_MSG" redefined
+   28 | #define ASSERT_MSG(_a_, ...)                                                                       \
+      |
+libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/dynarmic/externals/mcl/include/mcl/assert.hpp:41: note: this is the location of the previous definition
+   41 | #define ASSERT_MSG(expr, ...)                                                \
+      |
+Core/include/common/assert.h:40: warning: "UNREACHABLE" redefined
+   40 | #define UNREACHABLE()                                                                              \
+      |
+libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/dynarmic/externals/mcl/include/mcl/assert.hpp:26: note: this is the location of the previous definition
+   26 | #define UNREACHABLE() ASSERT_FALSE("Unreachable code!")
+      |
+Core/include/common/assert.h:60: warning: "DEBUG_ASSERT" redefined
+   60 | #define DEBUG_ASSERT(_a_)
+      |
+libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/dynarmic/externals/mcl/include/mcl/assert.hpp:60: note: this is the location of the previous definition
+   60 | #    define DEBUG_ASSERT(expr) ASSERT(expr)
+      |
+Core/include/common/assert.h:61: warning: "DEBUG_ASSERT_MSG" redefined
+   61 | #define DEBUG_ASSERT_MSG(_a_, _desc_, ...)
+      |
+libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/dynarmic/externals/mcl/include/mcl/assert.hpp:61: note: this is the location of the previous definition
+   61 | #    define DEBUG_ASSERT_MSG(expr, ...) ASSERT_MSG(expr, __VA_ARGS__)
+      |
+In file included from Core/include/common/assert.h:10:
+Core/core/arm/dynarmic/arm_static_ir.cpp: In member function ‘virtual void Core::DynarmicUserCallbacks::InterpreterFallback(Dynarmic::A32::VAddr, std::size_t)’:
+Core/include/common/logging/log.h:70:5: error: reference to ‘Common’ is ambiguous
+   70 |     Common::Log::FmtLogMessage(Common::Log::Class::log_class, Common::Log::Level::Critical,        \
+      |     ^~~~~~
+Core/core/arm/dynarmic/arm_static_ir.cpp:54:9: note: in expansion of macro ‘LOG_CRITICAL’
+   54 |         LOG_CRITICAL(Core_ARM, "InterpreterFallback reached at 0x{:08X}", pc);
+      |         ^~~~~~~~~~~~
+In file included from Core/include/common/logging/filter.h:10,
+                 from Core/include/common/logging/backend.h:8,
+                 from Core/include/common/assert.h:9:
+Core/include/common/logging/types.h:9:11: note: candidates are: ‘namespace Common { }’
+    9 | namespace Common::Log {
+      |           ^~~~~~
+libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/dynarmic/src/dynarmic/ir/basic_block.h:21:21: note:                 ‘namespace Dynarmic::Common { }’
+   21 | namespace Dynarmic::Common {
+      |                     ^~~~~~
+Core/include/common/logging/log.h:70:32: error: reference to ‘Common’ is ambiguous
+   70 |     Common::Log::FmtLogMessage(Common::Log::Class::log_class, Common::Log::Level::Critical,        \
+      |                                ^~~~~~
+Core/core/arm/dynarmic/arm_static_ir.cpp:54:9: note: in expansion of macro ‘LOG_CRITICAL’
+   54 |         LOG_CRITICAL(Core_ARM, "InterpreterFallback reached at 0x{:08X}", pc);
+      |         ^~~~~~~~~~~~
+Core/include/common/logging/types.h:9:11: note: candidates are: ‘namespace Common { }’
+    9 | namespace Common::Log {
+      |           ^~~~~~
+libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/dynarmic/src/dynarmic/ir/basic_block.h:21:21: note:                 ‘namespace Dynarmic::Common { }’
+   21 | namespace Dynarmic::Common {
+      |                     ^~~~~~
+Core/include/common/logging/log.h:70:63: error: reference to ‘Common’ is ambiguous
+   70 |     Common::Log::FmtLogMessage(Common::Log::Class::log_class, Common::Log::Level::Critical,        \
+      |                                                               ^~~~~~
+Core/core/arm/dynarmic/arm_static_ir.cpp:54:9: note: in expansion of macro ‘LOG_CRITICAL’
+   54 |         LOG_CRITICAL(Core_ARM, "InterpreterFallback reached at 0x{:08X}", pc);
+      |         ^~~~~~~~~~~~
+Core/include/common/logging/types.h:9:11: note: candidates are: ‘namespace Common { }’
+    9 | namespace Common::Log {
+      |           ^~~~~~
+libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/dynarmic/src/dynarmic/ir/basic_block.h:21:21: note:                 ‘namespace Dynarmic::Common { }’
+   21 | namespace Dynarmic::Common {
+      |                     ^~~~~~
+Core/include/common/logging/log.h:71:32: error: reference to ‘Common’ is ambiguous
+   71 |                                Common::Log::TrimSourcePath(__FILE__), __LINE__, __func__,          \
+      |                                ^~~~~~
+Core/core/arm/dynarmic/arm_static_ir.cpp:54:9: note: in expansion of macro ‘LOG_CRITICAL’
+   54 |         LOG_CRITICAL(Core_ARM, "InterpreterFallback reached at 0x{:08X}", pc);
+      |         ^~~~~~~~~~~~
+Core/include/common/logging/types.h:9:11: note: candidates are: ‘namespace Common { }’
+    9 | namespace Common::Log {
+      |           ^~~~~~
+libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/dynarmic/src/dynarmic/ir/basic_block.h:21:21: note:                 ‘namespace Dynarmic::Common { }’
+   21 | namespace Dynarmic::Common {
+      |                     ^~~~~~
+Core/core/arm/dynarmic/arm_static_ir.cpp: In member function ‘virtual void Core::DynarmicUserCallbacks::CallSVC(uint32_t)’:
+Core/core/arm/dynarmic/arm_static_ir.cpp:58:32: error: ‘class Kernel::KernelSystem’ has no member named ‘GetSVCContext’
+   58 |         parent.system.Kernel().GetSVCContext().CallSVC(swi);
+      |                                ^~~~~~~~~~~~~
+Core/core/arm/dynarmic/arm_static_ir.cpp: In member function ‘virtual void Core::DynarmicUserCallbacks::ExceptionRaised(Dynarmic::A32::VAddr, Dynarmic::A32::Exception)’:
+Core/include/common/logging/log.h:70:5: error: reference to ‘Common’ is ambiguous
+   70 |     Common::Log::FmtLogMessage(Common::Log::Class::log_class, Common::Log::Level::Critical,        \
+      |     ^~~~~~
+Core/core/arm/dynarmic/arm_static_ir.cpp:62:9: note: in expansion of macro ‘LOG_CRITICAL’
+   62 |         LOG_CRITICAL(Core_ARM, "ExceptionRaised: {} at 0x{:08X}", (int)exception, pc);
+      |         ^~~~~~~~~~~~
+Core/include/common/logging/types.h:9:11: note: candidates are: ‘namespace Common { }’
+    9 | namespace Common::Log {
+      |           ^~~~~~
+libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/dynarmic/src/dynarmic/ir/basic_block.h:21:21: note:                 ‘namespace Dynarmic::Common { }’
+   21 | namespace Dynarmic::Common {
+      |                     ^~~~~~
+Core/include/common/logging/log.h:70:32: error: reference to ‘Common’ is ambiguous
+   70 |     Common::Log::FmtLogMessage(Common::Log::Class::log_class, Common::Log::Level::Critical,        \
+      |                                ^~~~~~
+Core/core/arm/dynarmic/arm_static_ir.cpp:62:9: note: in expansion of macro ‘LOG_CRITICAL’
+   62 |         LOG_CRITICAL(Core_ARM, "ExceptionRaised: {} at 0x{:08X}", (int)exception, pc);
+      |         ^~~~~~~~~~~~
+Core/include/common/logging/types.h:9:11: note: candidates are: ‘namespace Common { }’
+    9 | namespace Common::Log {
+      |           ^~~~~~
+libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/dynarmic/src/dynarmic/ir/basic_block.h:21:21: note:                 ‘namespace Dynarmic::Common { }’
+   21 | namespace Dynarmic::Common {
+      |                     ^~~~~~
+Core/include/common/logging/log.h:70:63: error: reference to ‘Common’ is ambiguous
+   70 |     Common::Log::FmtLogMessage(Common::Log::Class::log_class, Common::Log::Level::Critical,        \
+      |                                                               ^~~~~~
+Core/core/arm/dynarmic/arm_static_ir.cpp:62:9: note: in expansion of macro ‘LOG_CRITICAL’
+   62 |         LOG_CRITICAL(Core_ARM, "ExceptionRaised: {} at 0x{:08X}", (int)exception, pc);
+      |         ^~~~~~~~~~~~
+Core/include/common/logging/types.h:9:11: note: candidates are: ‘namespace Common { }’
+    9 | namespace Common::Log {
+      |           ^~~~~~
+libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/dynarmic/src/dynarmic/ir/basic_block.h:21:21: note:                 ‘namespace Dynarmic::Common { }’
+   21 | namespace Dynarmic::Common {
+      |                     ^~~~~~
+Core/include/common/logging/log.h:71:32: error: reference to ‘Common’ is ambiguous
+   71 |                                Common::Log::TrimSourcePath(__FILE__), __LINE__, __func__,          \
+      |                                ^~~~~~
+Core/core/arm/dynarmic/arm_static_ir.cpp:62:9: note: in expansion of macro ‘LOG_CRITICAL’
+   62 |         LOG_CRITICAL(Core_ARM, "ExceptionRaised: {} at 0x{:08X}", (int)exception, pc);
+      |         ^~~~~~~~~~~~
+Core/include/common/logging/types.h:9:11: note: candidates are: ‘namespace Common { }’
+    9 | namespace Common::Log {
+      |           ^~~~~~
+libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/dynarmic/src/dynarmic/ir/basic_block.h:21:21: note:                 ‘namespace Dynarmic::Common { }’
+   21 | namespace Dynarmic::Common {
+      |                     ^~~~~~
+Core/core/arm/dynarmic/arm_static_ir.cpp: In constructor ‘Core::ARM_StaticIR::ARM_StaticIR(Core::System&, Memory::MemorySystem&, u32, std::shared_ptr<Core::Timing::Timer>, Core::ExclusiveMonitor&)’:
+Core/core/arm/dynarmic/arm_static_ir.cpp:88:48: error: ‘Dynarmic::ExclusiveMonitor Core::DynarmicExclusiveMonitor::monitor’ is private within this context
+   88 |     config.global_monitor = &exclusive_monitor.monitor;
+      |                                                ^~~~~~~
+In file included from Core/core/arm/dynarmic/arm_static_ir.cpp:14:
+Core/include/core/arm/dynarmic/arm_exclusive_monitor.h:36:32: note: declared private here
+   36 |     Dynarmic::ExclusiveMonitor monitor;
+      |                                ^~~~~~~
+Core/core/arm/dynarmic/arm_static_ir.cpp: In member function ‘const Core::ARM_StaticIR::TranslatedBlock& Core::ARM_StaticIR::GetOrTranslateBlock(u32)’:
+Core/core/arm/dynarmic/arm_static_ir.cpp:170:61: error: converting to ‘Dynarmic::A32::PSR’ from initializer list would use explicit constructor ‘Dynarmic::A32::PSR::PSR(u32)’
+  170 |     Dynarmic::A32::LocationDescriptor ld{pc, {cpsr}, {fpscr}};
+      |                                                             ^
+Core/core/arm/dynarmic/arm_static_ir.cpp:170:61: error: converting to ‘Dynarmic::A32::FPSCR’ from initializer list would use explicit constructor ‘Dynarmic::A32::FPSCR::FPSCR(u32)’
+make: *** [Makefile.libretro:49: Core/core/arm/dynarmic/arm_static_ir.o] Error 1

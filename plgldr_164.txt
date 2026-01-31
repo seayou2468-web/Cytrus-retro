@@ -1,0 +1,31 @@
+            plugin_loader.Load(plgldr_context, process, kernel, *this);
+        }
+    }
+}
+
+void PLG_LDR::OnProcessExit(Kernel::Process& process, Kernel::KernelSystem& kernel) {
+    if (plgldr_context.plugin_loaded && process.process_id == plgldr_context.plugin_process_id) {
+        u32 status = kernel.memory.Read32(FileSys::Plugin3GXLoader::_3GX_exe_load_addr - 0xC);
+        if (status == 0) {
+            LOG_CRITICAL(Service_PLGLDR, "Failed to launch {}: Checksum failed",
+                         plgldr_context.plugin_path);
+        }
+        if (plgldr_context.memory_region != static_cast<Kernel::MemoryRegion>(0)) {
+            kernel.GetMemoryRegion(plgldr_context.memory_region)
+                ->Free(plgldr_context.memory_block.first, plgldr_context.memory_block.second);
+            plgldr_context.memory_region = static_cast<Kernel::MemoryRegion>(0);
+        }
+        plgldr_context.plugin_loaded = false;
+        plgldr_context.plugin_process_id = UINT32_MAX;
+        plgldr_context.memory_changed_handle = 0;
+        kernel.memory.Plugin3GXFramebufferAddress() = 0;
+        LOG_INFO(Service_PLGLDR, "Plugin unloaded successfully.");
+    }
+}
+
+ResultVal<Kernel::Handle> PLG_LDR::GetMemoryChangedHandle(Kernel::KernelSystem& kernel) {
+    if (plgldr_context.memory_changed_handle) {
+        return plgldr_context.memory_changed_handle;
+    }
+
+    std::shared_ptr<Kernel::Event> evt =

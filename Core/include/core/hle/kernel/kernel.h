@@ -106,11 +106,13 @@ union CoreVersion {
 
 /// Common memory memory modes.
 enum class MemoryMode : u8 {
-    Prod = 0, ///< 64MB app memory
-    Dev1 = 2, ///< 96MB app memory
-    Dev2 = 3, ///< 80MB app memory
-    Dev3 = 4, ///< 72MB app memory
-    Dev4 = 5, ///< 32MB app memory
+    Prod = 0,    ///< 64MB app memory
+    Dev1 = 2,    ///< 96MB app memory
+    Dev2 = 3,    ///< 80MB app memory
+    Dev3 = 4,    ///< 72MB app memory
+    Dev4 = 5,    ///< 32MB app memory
+    NewDev1 = 6, ///< 178MB app memory
+    NewProd = 7,
 };
 
 /// New 3DS memory modes.
@@ -319,6 +321,9 @@ public:
         prepare_reschedule_callback();
     }
 
+    void UpdateCPUAndMemoryState(u64 title_id, MemoryMode memory_mode,
+                                 const New3dsHwCapabilities& n3ds_hw_caps) {}
+
     u32 NewThreadId();
 
     void ResetThreadIDs();
@@ -329,6 +334,10 @@ public:
 
     const New3dsHwCapabilities& GetNew3dsHwCapabilities() const {
         return n3ds_hw_caps;
+    }
+
+    bool GetRunning804MHz() const {
+        return n3ds_hw_caps.enable_804MHz_cpu;
     }
 
     std::recursive_mutex& GetHLELock() {

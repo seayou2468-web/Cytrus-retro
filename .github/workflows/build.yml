@@ -21,10 +21,32 @@ jobs:
 
     - name: Build
       run: |
-        make -f Makefile.libretro platform=ios-arm64 -j$(sysctl -n hw.ncpu)
+        make -f Makefile.libretro PLATFORM=ios -j$(sysctl -n hw.ncpu)
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
         name: cytrus_libretro_ios
         path: cytrus_libretro_ios.dylib
+
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential libgl1-mesa-dev
+
+    - name: Build
+      run: |
+        make -f Makefile.libretro -j$(nproc)
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: cytrus_libretro_linux
+        path: cytrus_libretro.so

@@ -19,6 +19,7 @@
 
 namespace Core {
 
+namespace {
 class DynarmicUserCallbacks final : public Dynarmic::A32::UserCallbacks {
 public:
     explicit DynarmicUserCallbacks(ARM_Dynarmic& parent)
@@ -121,6 +122,7 @@ public:
     Kernel::SVCContext svc_context;
     Memory::MemorySystem& memory;
 };
+} // Anonymous namespace
 
 ARM_Dynarmic::ARM_Dynarmic(Core::System& system_, Memory::MemorySystem& memory_, u32 core_id_,
                            std::shared_ptr<Core::Timing::Timer> timer_,

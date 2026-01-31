@@ -1,1 +1,12 @@
-.DS_Store
+*.o
+*.a
+*.so
+*.dylib
+*.log
+Core/common/BuildStrings.h
+Core/core/hle/service/
+Core/include/core/hle/service/
+libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/
+<<<<<<< SEARCH
+=======
+>>>>>>> REPLACE

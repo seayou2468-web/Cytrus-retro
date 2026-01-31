@@ -11,6 +11,7 @@
 #include "common/common_types.h"
 #include "core/arm/arm_interface.h"
 #include "core/arm/dynarmic/arm_dynarmic_cp15.h"
+#include "core/hle/kernel/svc.h"
 
 namespace Memory {
 struct PageTable;
@@ -62,10 +63,6 @@ public:
     void ClearExclusiveState() override;
     void SetPageTable(const std::shared_ptr<Memory::PageTable>& page_table) override;
 
-protected:
-    std::shared_ptr<Memory::PageTable> GetPageTable() const override;
-
-private:
     struct Operand {
         enum Kind { Immediate, Result, Register, ExtReg, Cond, AccType } kind;
         u64 value;
@@ -76,6 +73,14 @@ private:
         std::vector<Operand> args;
         u16 result_index;
     };
+
+    DynarmicUserCallbacks& GetCallbacks();
+
+protected:
+    std::shared_ptr<Memory::PageTable> GetPageTable() const override;
+
+private:
+    friend class DynarmicUserCallbacks;
 
     struct TranslatedBlock {
         std::vector<Instruction> instructions;

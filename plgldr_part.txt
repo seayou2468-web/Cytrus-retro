@@ -1,0 +1,51 @@
+        {0x0003, &PLG_LDR::SetEnabled, "SetEnabled"},
+        {0x0004, &PLG_LDR::SetLoadSettings, "SetLoadSettings"},
+        {0x0005, nullptr, "DisplayMenu"},
+        {0x0006, nullptr, "DisplayMessage"},
+        {0x0007, &PLG_LDR::DisplayErrorMessage, "DisplayErrorMessage"},
+        {0x0008, &PLG_LDR::GetPLGLDRVersion, "GetPLGLDRVersion"},
+        {0x0009, &PLG_LDR::GetArbiter, "GetArbiter"},
+        {0x000A, &PLG_LDR::GetPluginPath, "GetPluginPath"},
+        {0x000B, nullptr, "SetRosalinaMenuBlock"},
+        {0x000C, nullptr, "SetSwapParam"},
+        {0x000D, nullptr, "SetLoadExeParam"},
+        // clang-format on
+    };
+    RegisterHandlers(functions);
+    plgldr_context.memory_changed_handle = 0;
+    plgldr_context.plugin_loaded = false;
+}
+
+template <class Archive>
+void PLG_LDR::PluginLoaderContext::serialize(Archive& ar, const unsigned int) {
+    ar & is_enabled;
+    ar & allow_game_change;
+    ar & plugin_loaded;
+    ar & is_default_path;
+    ar & plugin_path;
+    ar & memory_region;
+    ar & memory_block;
+    ar & plugin_process_id;
+    ar & use_user_load_parameters;
+    ar & user_load_parameters;
+    ar & plg_event;
+    ar & plg_reply;
+    ar & memory_changed_handle;
+    ar & is_exe_load_function_set;
+    ar & exe_load_checksum;
+    ar & load_exe_func;
+    ar & load_exe_args;
+}
+SERIALIZE_IMPL(PLG_LDR::PluginLoaderContext)
+
+template <class Archive>
+void PLG_LDR::serialize(Archive& ar, const unsigned int) {
+    DEBUG_SERIALIZATION_POINT;
+    ar& boost::serialization::base_object<Kernel::SessionRequestHandler>(*this);
+    ar & plgldr_context;
+}
+SERIALIZE_IMPL(PLG_LDR)
+
+void PLG_LDR::OnProcessRun(Kernel::Process& process, Kernel::KernelSystem& kernel) {
+    constexpr u32 TITLE_ID_APP_MASK = 0xFFFFFFED;
+    constexpr u32 TITLE_ID_APP_VALUE = 0x00040000;

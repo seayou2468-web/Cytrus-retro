@@ -22,7 +22,9 @@
 #pragma once
 
 #include <memory>
+#include <utility>
 #include <boost/serialization/export.hpp>
+#include "core/hle/kernel/kernel.h"
 #include "core/hle/service/service.h"
 
 namespace Core {
@@ -77,6 +79,10 @@ public:
         u32_le load_exe_args[4] = {0};
 
         PAddr plugin_fb_addr = 0;
+
+        Kernel::MemoryRegion memory_region = static_cast<Kernel::MemoryRegion>(0);
+        std::pair<u32, u32> memory_block = {0, 0};
+        u32 plugin_process_id = 0;
 
         template <class Archive>
         void serialize(Archive& ar, const unsigned int);

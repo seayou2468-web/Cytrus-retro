@@ -4,7 +4,7 @@
 #include <vector>
 #include "libretro.h"
 #include "core/core.h"
-#include "core/settings.h"
+#include "common/settings.h"
 #include "libretro_emu_window.h"
 #include "common/logging/log.h"
 #include "core/hle/service/hid/hid.h"
@@ -95,11 +95,15 @@ bool retro_load_game(const struct retro_game_info *game) {
 
     struct retro_variable var = { "cytrus_model", nullptr };
     Settings::values.is_new_3ds = false;
+    Settings::values.cpu_clock_percentage.SetValue(100);
     if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value) {
-        if (strcmp(var.value, "New 3DS") == 0) Settings::values.is_new_3ds = true;
+        if (strcmp(var.value, "New 3DS") == 0) {
+            Settings::values.is_new_3ds = true;
+            Settings::values.cpu_clock_percentage.SetValue(300);
+        }
     }
 
-    if (system_instance->Load(game->path) != Core::System::ResultStatus::Success) {
+    if (system_instance->Load(*emu_window, game->path) != Core::System::ResultStatus::Success) {
         return false;
     }
 
@@ -140,7 +144,9 @@ void retro_run(void) {
         // In a full core, this would be handled via Input::Device
     }
 
-    system_instance->RunLoop(true);
+    if (system_instance->RunLoop(true) != Core::System::ResultStatus::Success) {
+        // Handle error
+    }
 
     // Delegate video output
     // Assuming a 400x480 vertical layout
