@@ -7,9 +7,9 @@
 [submodule "docs"]
 	path = libretro/docs
 	url = https://github.com/libretro/docs.git
-[submodule "libretro/cytrusの3dsコアの改善の際に参考にするコア/azahar"]
-	path = libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar
+[submodule "libretro/azahar"]
+	path = libretro/azahar
 	url = https://github.com/azahar-emu/azahar
-[submodule "libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/dynarmic"]
-	path = libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/dynarmic
+[submodule "libretro/dynarmic"]
+	path = libretro/dynarmic
 	url = https://github.com/lioncash/dynarmic.git
