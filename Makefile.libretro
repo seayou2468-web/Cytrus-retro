@@ -72,8 +72,8 @@ INCFLAGS += -I$(EXTERNAL_BASE)/teakra/include
 INCFLAGS += -ICore/include/network
 
 # Compiler flags
-CXXFLAGS += -fPIC -O3 -ffast-math -flto -std=c++20 -include Core/include/common/assert.h $(INCFLAGS)
-CFLAGS   += -fPIC -O3 -ffast-math -flto $(INCFLAGS)
+CXXFLAGS += -fPIC -O3 -ffast-math -fno-strict-aliasing -flto -std=c++20 -include Core/include/common/assert.h $(INCFLAGS)
+CFLAGS   += -fPIC -O3 -ffast-math -fno-strict-aliasing -flto $(INCFLAGS)
 
 # Libretro defines
 CXXFLAGS += -DENABLE_SOFTWARE_RENDERER -D__LIBRETRO__ -DCPPHTTPLIB_OPENSSL_SUPPORT -DZSTD_DISABLE_ASM
@@ -81,14 +81,16 @@ CFLAGS   += -DENABLE_SOFTWARE_RENDERER -D__LIBRETRO__ -DCPPHTTPLIB_OPENSSL_SUPPO
 
 # OS detection
 ifeq ($(shell uname -s),Darwin)
+    CXXFLAGS += -stdlib=libc++
+    LDFLAGS += -stdlib=libc++
     # Target iOS if requested, else macOS
     ifeq ($(PLATFORM),ios)
         IPHONEOS_SDK := $(shell xcrun --sdk iphoneos --show-sdk-path)
         CC := $(shell xcrun --sdk iphoneos --find clang)
         CXX := $(shell xcrun --sdk iphoneos --find clang++)
-        CXXFLAGS += -isysroot $(IPHONEOS_SDK) -miphoneos-version-min=15.0 -arch arm64
-        CFLAGS += -isysroot $(IPHONEOS_SDK) -miphoneos-version-min=15.0 -arch arm64
-        LDFLAGS += -isysroot $(IPHONEOS_SDK) -miphoneos-version-min=15.0 -arch arm64 -dynamiclib
+        CXXFLAGS += -isysroot $(IPHONEOS_SDK) -miphoneos-version-min=15.0 -arch arm64 -fembed-bitcode
+        CFLAGS += -isysroot $(IPHONEOS_SDK) -miphoneos-version-min=15.0 -arch arm64 -fembed-bitcode
+        LDFLAGS += -isysroot $(IPHONEOS_SDK) -miphoneos-version-min=15.0 -arch arm64 -dynamiclib -fembed-bitcode
         TARGET := $(TARGET_NAME)_libretro_ios.dylib
     else
         LDFLAGS += -dynamiclib
