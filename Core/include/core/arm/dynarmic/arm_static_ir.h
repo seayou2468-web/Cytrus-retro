@@ -108,6 +108,8 @@ private:
     std::unordered_map<u32, TranslatedBlock> block_cache;
     std::vector<u64> results_buffer;
 
+public:
+    std::vector<u32> flags_buffer;
     Dynarmic::A32::UserConfig config;
 };
 

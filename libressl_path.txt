@@ -1,2 +1,0 @@
-libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/libressl/include/openssl/x509.h
-libretro/cytrusをirjitとhleに対応させさらに動作を改善させるるのに役に立つ参考にすべき物達/azahar/externals/libressl/crypto/hidden/openssl/x509.h

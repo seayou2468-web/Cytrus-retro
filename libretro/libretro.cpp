@@ -8,6 +8,13 @@
 #include "libretro_emu_window.h"
 #include "common/logging/log.h"
 #include "core/hle/service/hid/hid.h"
+#include "video_core/pica/regs_lcd.h"
+#include "video_core/renderer_software/renderer_software.h"
+#include "video_core/gpu.h"
+#include "audio_core/dsp_interface.h"
+#include "audio_core/hle/hle.h"
+#include "libretro_sink.h"
+#include "libretro_input.h"
 
 static retro_environment_t environ_cb;
 static retro_video_refresh_t video_cb;
@@ -44,6 +51,7 @@ static const ButtonMapping button_map[] = {
 void retro_init(void) {
     system_instance = &Core::System::GetInstance();
     emu_window = new LibretroEmuWindow();
+    Input::RegisterLibretroInput();
 }
 
 void retro_deinit(void) {
@@ -65,12 +73,26 @@ void retro_get_system_info(struct retro_system_info *info) {
 }
 
 void retro_get_system_av_info(struct retro_system_av_info *info) {
-    info->geometry.base_width = 400;
-    info->geometry.base_height = 480;
+    struct retro_variable var = { "cytrus_layout", nullptr };
+    bool side_by_side = false;
+    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value) {
+        if (strcmp(var.value, "Side-by-Side") == 0) {
+            side_by_side = true;
+        }
+    }
+
+    if (side_by_side) {
+        info->geometry.base_width = 720;
+        info->geometry.base_height = 240;
+        info->geometry.aspect_ratio = 720.0f / 240.0f;
+    } else {
+        info->geometry.base_width = 400;
+        info->geometry.base_height = 480;
+        info->geometry.aspect_ratio = 400.0f / 480.0f;
+    }
     info->geometry.max_width = 800;
     info->geometry.max_height = 800;
-    info->geometry.aspect_ratio = 400.0f / 480.0f;
-    info->timing.fps = 60.0;
+    info->timing.fps = 59.8261;
     info->timing.sample_rate = 44100.0;
 }
 
@@ -93,15 +115,33 @@ void retro_set_input_state(retro_input_state_t cb) { input_state_cb = cb; }
 bool retro_load_game(const struct retro_game_info *game) {
     if (!game) return false;
 
+    // Set pixel format
+    enum retro_pixel_format fmt = RETRO_PIXEL_FORMAT_XRGB8888;
+    if (!environ_cb(RETRO_ENVIRONMENT_SET_PIXEL_FORMAT, &fmt)) {
+        LOG_ERROR(Frontend, "XRGB8888 is not supported.");
+        return false;
+    }
+
     struct retro_variable var = { "cytrus_model", nullptr };
     Settings::values.is_new_3ds = false;
     Settings::values.cpu_clock_percentage.SetValue(100);
     if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value) {
         if (strcmp(var.value, "New 3DS") == 0) {
             Settings::values.is_new_3ds = true;
-            Settings::values.cpu_clock_percentage.SetValue(300);
+            Settings::values.cpu_clock_percentage.SetValue(400);
         }
     }
+
+    // Configure Input
+    auto& p = Settings::values.current_input_profile;
+    for (int i = 0; i < Settings::NativeButton::NumButtons; i++) {
+        p.buttons[i] = fmt::format("engine:libretro,button:{}", i);
+    }
+    p.analogs[Settings::NativeAnalog::CirclePad] = "engine:libretro,axis_x:0,axis_y:1";
+    p.analogs[Settings::NativeAnalog::CStick] = "engine:libretro,axis_x:2,axis_y:3";
+    p.touch_device = "engine:libretro";
+
+    Settings::values.graphics_api.SetValue(Settings::GraphicsAPI::Software);
 
     if (system_instance->Load(*emu_window, game->path) != Core::System::ResultStatus::Success) {
         return false;
@@ -115,33 +155,61 @@ void retro_unload_game(void) {
 }
 
 void retro_run(void) {
+    bool updated = false;
+    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE, &updated) && updated) {
+        struct retro_variable var = { "cytrus_layout", nullptr };
+        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value) {
+            bool side_by_side = (strcmp(var.value, "Side-by-Side") == 0);
+            struct retro_game_geometry geometry;
+            if (side_by_side) {
+                geometry.base_width = 720;
+                geometry.base_height = 240;
+                geometry.aspect_ratio = 720.0f / 240.0f;
+            } else {
+                geometry.base_width = 400;
+                geometry.base_height = 480;
+                geometry.aspect_ratio = 400.0f / 480.0f;
+            }
+            geometry.max_width = 800;
+            geometry.max_height = 800;
+            environ_cb(RETRO_ENVIRONMENT_SET_GEOMETRY, &geometry);
+        }
+    }
+
     input_poll_cb();
 
-    auto hid_module = Service::HID::GetModule(*system_instance);
-    if (hid_module) {
-        // Map RetroArch joypad to 3DS HID
-        Service::HID::PadState pad_state = {0};
-        for (auto& mapping : button_map) {
-            if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, mapping.retro)) {
-                switch (mapping.native) {
-                    case Settings::NativeButton::A: pad_state.a.Assign(1); break;
-                    case Settings::NativeButton::B: pad_state.b.Assign(1); break;
-                    case Settings::NativeButton::X: pad_state.x.Assign(1); break;
-                    case Settings::NativeButton::Y: pad_state.y.Assign(1); break;
-                    case Settings::NativeButton::Up: pad_state.up.Assign(1); break;
-                    case Settings::NativeButton::Down: pad_state.down.Assign(1); break;
-                    case Settings::NativeButton::Left: pad_state.left.Assign(1); break;
-                    case Settings::NativeButton::Right: pad_state.right.Assign(1); break;
-                    case Settings::NativeButton::L: pad_state.l.Assign(1); break;
-                    case Settings::NativeButton::R: pad_state.r.Assign(1); break;
-                    case Settings::NativeButton::Start: pad_state.start.Assign(1); break;
-                    case Settings::NativeButton::Select: pad_state.select.Assign(1); break;
-                    default: break;
-                }
-            }
+    // Update Joypad
+    for (auto& mapping : button_map) {
+        bool pressed = input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, mapping.retro);
+        Input::LibretroSetButton(mapping.native, pressed);
+    }
+
+    // Update Analogs
+    float circle_x = input_state_cb(0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_X) / 32768.0f;
+    float circle_y = input_state_cb(0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_Y) / -32768.0f;
+    Input::LibretroSetAnalog(false, circle_x, circle_y);
+
+    float c_stick_x = input_state_cb(0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_RIGHT, RETRO_DEVICE_ID_ANALOG_X) / 32768.0f;
+    float c_stick_y = input_state_cb(0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_RIGHT, RETRO_DEVICE_ID_ANALOG_Y) / -32768.0f;
+    Input::LibretroSetAnalog(true, c_stick_x, c_stick_y);
+
+    // Update Touch
+    bool touch_pressed = input_state_cb(0, RETRO_DEVICE_POINTER, 0, RETRO_DEVICE_ID_POINTER_PRESSED);
+    if (touch_pressed) {
+        float tx = (input_state_cb(0, RETRO_DEVICE_POINTER, 0, RETRO_DEVICE_ID_POINTER_X) + 32767) / 65535.0f;
+        float ty = (input_state_cb(0, RETRO_DEVICE_POINTER, 0, RETRO_DEVICE_ID_POINTER_Y) + 32767) / 65535.0f;
+        // Map tyrosine to 3DS bottom screen area
+        // In vertical layout, top is 400x240, bottom is 320x240 centered (40px padding)
+        // ty in [0.5, 1.0] corresponds to bottom screen
+        if (ty >= 0.5f) {
+            float bty = (ty - 0.5f) * 2.0f;
+            float btx = (tx - 0.1f) / 0.8f; // 320/400 = 0.8, centered
+            Input::LibretroSetTouch(btx, bty, true);
+        } else {
+            Input::LibretroSetTouch(0, 0, false);
         }
-        // Direct injection into HID (simplified for static core)
-        // In a full core, this would be handled via Input::Device
+    } else {
+        Input::LibretroSetTouch(0, 0, false);
     }
 
     if (system_instance->RunLoop(true) != Core::System::ResultStatus::Success) {
@@ -149,24 +217,150 @@ void retro_run(void) {
     }
 
     // Delegate video output
-    // Assuming a 400x480 vertical layout
-    // We would ideally get the pointers from system_instance->GPU().Renderer()
-    // For this bridge implementation, we'll use the LibretroEmuWindow to track frames
-    static std::vector<u32> combined_fb(400 * 480, 0xFF000000);
-    video_cb(combined_fb.data(), 400, 480, 400 * sizeof(u32));
+    auto& gpu = system_instance->GPU();
+    auto& renderer = static_cast<SwRenderer::RendererSoftware&>(gpu.Renderer());
+    const auto& top_screen = renderer.Screen(VideoCore::ScreenId::TopLeft);
+    const auto& bottom_screen = renderer.Screen(VideoCore::ScreenId::Bottom);
+
+    struct retro_variable var = { "cytrus_layout", nullptr };
+    bool side_by_side = false;
+    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value) {
+        if (strcmp(var.value, "Side-by-Side") == 0) {
+            side_by_side = true;
+        }
+    }
+
+    struct retro_framebuffer fb = {0};
+    fb.width = side_by_side ? 720 : 400;
+    fb.height = side_by_side ? 240 : 480;
+    fb.access_flags = RETRO_MEMORY_ACCESS_WRITE;
+
+    void* output_data = nullptr;
+    size_t output_pitch = fb.width * sizeof(u32);
+
+    static std::vector<u32> combined_fb;
+
+    if (environ_cb(RETRO_ENVIRONMENT_GET_CURRENT_SOFTWARE_FRAMEBUFFER, &fb) && fb.data) {
+        output_data = fb.data;
+        output_pitch = fb.pitch;
+    } else {
+        if (combined_fb.size() != fb.width * fb.height) combined_fb.assign(fb.width * fb.height, 0xFF000000);
+        output_data = combined_fb.data();
+        output_pitch = fb.width * sizeof(u32);
+    }
+
+    if (side_by_side) {
+        if (!top_screen.pixels.empty()) {
+            for (u32 y = 0; y < 240; y++) {
+                std::memcpy((u8*)output_data + y * output_pitch, top_screen.pixels.data() + y * 400 * 4, 400 * 4);
+            }
+        }
+        if (!bottom_screen.pixels.empty()) {
+            for (u32 y = 0; y < 240; y++) {
+                std::memcpy((u8*)output_data + y * output_pitch + 400 * 4, bottom_screen.pixels.data() + y * 320 * 4, 320 * 4);
+            }
+        }
+    } else {
+        if (!top_screen.pixels.empty()) {
+            for (u32 y = 0; y < 240; y++) {
+                std::memcpy((u8*)output_data + y * output_pitch, top_screen.pixels.data() + y * 400 * 4, 400 * 4);
+            }
+        }
+        if (!bottom_screen.pixels.empty()) {
+            for (u32 y = 0; y < 240; y++) {
+                std::memcpy((u8*)output_data + (y + 240) * output_pitch + 40 * 4, bottom_screen.pixels.data() + y * 320 * 4, 320 * 4);
+            }
+        }
+    }
+
+    video_cb(output_data, fb.width, fb.height, output_pitch);
+
+    // Delegate audio output
+    auto& dsp = system_instance->DSP();
+    auto& sink = static_cast<AudioCore::LibretroSink&>(dsp.GetSink());
+    s16 audio_buffer[44100 / 50 * 2]; // Enough for one frame
+    std::size_t num_frames = 44100 / 60; // Approximate
+    sink.Pull(audio_buffer, num_frames);
+    audio_batch_cb(audio_buffer, num_frames);
 }
 
 void retro_reset(void) { system_instance->RequestReset(); }
 
-size_t retro_serialize_size(void) { return 0; }
-bool retro_serialize(void *data, size_t size) { return false; }
-bool retro_unserialize(const void *data, size_t size) { return false; }
+size_t retro_serialize_size(void) {
+    // 300MB is enough to hold uncompressed FCRAM (256MB) and other states
+    return 300 * 1024 * 1024;
+}
 
-void retro_cheat_reset(void) {}
-void retro_cheat_set(unsigned index, bool enabled, const char *code) {}
+bool retro_serialize(void *data, size_t size) {
+    try {
+        std::ostringstream sstream{std::ios_base::binary};
+        oarchive oa{sstream};
+        oa << *system_instance;
+        std::string str = sstream.str();
+        if (str.size() > size) {
+            LOG_ERROR(Frontend, "Savestate buffer too small: {} > {}", str.size(), size);
+            return false;
+        }
+        memcpy(data, str.data(), str.size());
+        // Zero-fill remaining space to ensure determinism for RetroArch rollback/netplay
+        if (size > str.size()) {
+            memset((uint8_t*)data + str.size(), 0, size - str.size());
+        }
+        return true;
+    } catch (const std::exception& e) {
+        LOG_ERROR(Frontend, "Failed to serialize: {}", e.what());
+        return false;
+    } catch (...) {
+        LOG_ERROR(Frontend, "Failed to serialize (unknown error)");
+        return false;
+    }
+}
 
-void* retro_get_memory_data(unsigned id) { return nullptr; }
-size_t retro_get_memory_size(unsigned id) { return 0; }
+bool retro_unserialize(const void *data, size_t size) {
+    try {
+        std::string str((const char*)data, size);
+        std::istringstream sstream{str, std::ios_base::binary};
+        iarchive ia{sstream};
+        ia >> *system_instance;
+        return true;
+    } catch (const std::exception& e) {
+        LOG_ERROR(Frontend, "Failed to unserialize: {}", e.what());
+        return false;
+    } catch (...) {
+        LOG_ERROR(Frontend, "Failed to unserialize (unknown error)");
+        return false;
+    }
+}
+
+void retro_cheat_reset(void) {
+    system_instance->CheatEngine().LoadCheatFile(0); // TODO: Pass actual title_id
+}
+
+void retro_cheat_set(unsigned index, bool enabled, const char *code) {
+    // Citra's cheat engine might need more complex integration, but we can try basic support
+}
+
+void* retro_get_memory_data(unsigned id) {
+    switch (id) {
+        case RETRO_MEMORY_SYSTEM_RAM:
+            return system_instance->Memory().GetFCRAMPointer(0);
+        case RETRO_MEMORY_VIDEO_RAM:
+            return system_instance->Memory().GetPhysicalPointer(Memory::VRAM_PADDR);
+        default:
+            return nullptr;
+    }
+}
+
+size_t retro_get_memory_size(unsigned id) {
+    switch (id) {
+        case RETRO_MEMORY_SYSTEM_RAM:
+            return Settings::values.is_new_3ds ? Memory::FCRAM_N3DS_SIZE : Memory::FCRAM_SIZE;
+        case RETRO_MEMORY_VIDEO_RAM:
+            return Memory::VRAM_SIZE;
+        default:
+            return 0;
+    }
+}
 
 unsigned retro_get_region(void) { return RETRO_REGION_NTSC; }
 

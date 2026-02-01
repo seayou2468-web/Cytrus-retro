@@ -1,1 +1,0 @@
-36:    MemoryInit(memory_mode, n3ds_hw_caps.memory_mode, override_init_time);

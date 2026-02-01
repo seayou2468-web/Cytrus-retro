@@ -11,11 +11,14 @@ SOURCES_C   :=
 SOURCES_CXX += $(shell find Core/core -name "*.cpp")
 SOURCES_CXX += $(shell find Core/common -name "*.cpp")
 SOURCES_CXX += $(shell find Core/video_core -name "*.cpp")
+SOURCES_CXX += $(shell find libretro/azahar/src/video_core/renderer_software -name "*.cpp")
 SOURCES_CXX += $(shell find Core/audio_core -name "*.cpp")
 SOURCES_CXX += $(shell find Core/network -name "*.cpp")
 SOURCES_CXX += $(shell find Core/input_common -name "*.cpp")
 SOURCES_CXX += libretro/libretro.cpp
 SOURCES_CXX += libretro/libretro_emu_window.cpp
+SOURCES_CXX += libretro/libretro_sink.cpp
+SOURCES_CXX += libretro/libretro_input.cpp
 
 # Externals
 SOURCES_CXX += $(EXTERNAL_BASE)/fmt/src/format.cc
@@ -41,7 +44,7 @@ CRYPTOPP_SOURCES := $(filter-out $(CRYPTOPP_DIR)/TestPrograms/% $(CRYPTOPP_DIR)/
 
 # Remove problematic or excluded files from main lists
 SOURCES_CXX := $(filter-out %/main.cpp %/ffmpeg.cpp %/ffmpeg_backend.cpp,$(SOURCES_CXX))
-SOURCES_CXX := $(filter-out %_sink.cpp %_input.cpp,$(SOURCES_CXX))
+SOURCES_CXX := $(filter-out Core/%_sink.cpp Core/%_input.cpp,$(SOURCES_CXX))
 SOURCES_CXX := $(filter-out Core/video_core/renderer_vulkan/%,$(SOURCES_CXX))
 SOURCES_CXX := $(filter-out Core/video_core/renderer_opengl/%,$(SOURCES_CXX))
 SOURCES_CXX := $(filter-out Core/video_core/shader/shader_jit%,$(SOURCES_CXX))
@@ -94,8 +97,8 @@ CXXFLAGS += -fPIC -O3 -ffast-math -fno-strict-aliasing -flto -std=c++20 $(INCFLA
 CFLAGS   += -fPIC -O3 -ffast-math -fno-strict-aliasing -flto $(INCFLAGS)
 
 # Libretro defines
-CXXFLAGS += -DENABLE_SOFTWARE_RENDERER -D__LIBRETRO__ -DZSTD_DISABLE_ASM
-CFLAGS   += -DENABLE_SOFTWARE_RENDERER -D__LIBRETRO__ -DZSTD_DISABLE_ASM
+CXXFLAGS += -DENABLE_SOFTWARE_RENDERER -D__LIBRETRO__ -DZSTD_DISABLE_ASM -DCPPHTTPLIB_OPENSSL_SUPPORT
+CFLAGS   += -DENABLE_SOFTWARE_RENDERER -D__LIBRETRO__ -DZSTD_DISABLE_ASM -DCPPHTTPLIB_OPENSSL_SUPPORT
 
 # Crypto++ defines
 CXXFLAGS += -DCRYPTOPP_DISABLE_ASM -DCRYPTOPP_DISABLE_SSSE3 -DCRYPTOPP_DISABLE_AESNI
@@ -120,11 +123,11 @@ ifeq ($(shell uname -s),Darwin)
         TARGET := $(TARGET_NAME)_libretro.dylib
     endif
 else
-    LDFLAGS += -shared -Wl,--version-script=libretro/link.T -lssl -lcrypto
+    LDFLAGS += -shared -Wl,--version-script=$(CURDIR)/libretro/link.T -lssl -lcrypto
     TARGET := $(TARGET_NAME)_libretro.so
 endif
 
-CXXFLAGS += -include Core/include/common/assert.h
+CXXFLAGS += -include Core/include/common/assert.h -include Core/include/common/logging/log.h
 
 OBJECTS := $(patsubst %.cpp,%.o,$(filter %.cpp,$(SOURCES_CXX)))
 OBJECTS += $(patsubst %.cc,%.o,$(filter %.cc,$(SOURCES_CXX)))

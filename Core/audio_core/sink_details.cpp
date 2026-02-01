@@ -12,6 +12,8 @@
 #include "audio_core/coreaudio_sink.h"
 #include "audio_core/sdl3_sink.h"
 #include "audio_core/openal_sink.h"
+#else
+#include "libretro_sink.h"
 #endif
 #include "common/logging/log.h"
 
@@ -35,6 +37,12 @@ constexpr std::array sink_details = {
                     return std::make_unique<SDL3Sink>(std::string(device_id));
                 },
                 &ListSDL3SinkDevices},
+#else
+    SinkDetails{SinkType::Auto, "Libretro",
+                [](std::string_view device_id) -> std::unique_ptr<Sink> {
+                    return std::make_unique<LibretroSink>();
+                },
+                [] { return std::vector<std::string>{"Libretro"}; }},
 #endif
     SinkDetails{SinkType::Null, "None",
                 [](std::string_view device_id) -> std::unique_ptr<Sink> {

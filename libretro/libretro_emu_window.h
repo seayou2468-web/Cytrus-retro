@@ -17,6 +17,8 @@ public:
     void SetFramebuffer(void* data, unsigned width, unsigned height);
     void Present();
 
+    // Use base class implementation of GetFramebufferLayout
+
 private:
     void* framebuffer_data = nullptr;
     unsigned fb_width = 0;

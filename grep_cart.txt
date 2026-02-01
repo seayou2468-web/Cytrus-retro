@@ -1,2 +1,0 @@
-1010:    rb.Push(!system.GetCartridge().empty());
-1693:    if (filepath == system.GetCartridge()) {
