@@ -16,12 +16,11 @@ ExclusiveMonitor::~ExclusiveMonitor() = default;
 std::unique_ptr<Core::ExclusiveMonitor> MakeExclusiveMonitor(Memory::MemorySystem& memory,
                                                              std::size_t num_cores) {
 #if CITRA_ARCH(x86_64) || CITRA_ARCH(arm64)
-    if (Settings::values.use_cpu_jit) {
-        return std::make_unique<Core::DynarmicExclusiveMonitor>(memory, num_cores);
-    }
-#endif
+    return std::make_unique<Core::DynarmicExclusiveMonitor>(memory, num_cores);
+#else
     // TODO(merry): Passthrough exclusive monitor
     return nullptr;
+#endif
 }
 
 } // namespace Core

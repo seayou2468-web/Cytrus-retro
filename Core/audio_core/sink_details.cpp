@@ -8,15 +8,18 @@
 #include <vector>
 #include "audio_core/null_sink.h"
 #include "audio_core/sink_details.h"
+#ifndef __LIBRETRO__
 #include "audio_core/coreaudio_sink.h"
 #include "audio_core/sdl3_sink.h"
 #include "audio_core/openal_sink.h"
+#endif
 #include "common/logging/log.h"
 
 namespace AudioCore {
 namespace {
 // sink_details is ordered in terms of desirability, with the best choice at the top.
 constexpr std::array sink_details = {
+#ifndef __LIBRETRO__
     SinkDetails{SinkType::CoreAudio, "CoreAudio",
                 [](std::string_view device_id) -> std::unique_ptr<Sink> {
                     return std::make_unique<CoreAudioSink>(std::string(device_id));
@@ -32,6 +35,7 @@ constexpr std::array sink_details = {
                     return std::make_unique<SDL3Sink>(std::string(device_id));
                 },
                 &ListSDL3SinkDevices},
+#endif
     SinkDetails{SinkType::Null, "None",
                 [](std::string_view device_id) -> std::unique_ptr<Sink> {
                     return std::make_unique<NullSink>(device_id);

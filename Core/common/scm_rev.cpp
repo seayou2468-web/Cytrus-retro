@@ -6,13 +6,13 @@
 
 #include <string>
 
-#define GIT_BRANCH   "@GIT_BRANCH@"
-#define GIT_DESC     "@GIT_DESC@"
-#define BUILD_NAME   "@REPO_NAME@"
-#define BUILD_VERSION "@BUILD_VERSION@"
-#define SHADER_CACHE_VERSION "@SHADER_CACHE_VERSION@"
+#define GIT_BRANCH   "master"
+#define GIT_DESC     "unknown"
+#define BUILD_NAME   "Cytrus"
+#define BUILD_VERSION "1.0.0"
+#define SHADER_CACHE_VERSION "1"
 
-#import "BuildStrings.h"
+#include "common/BuildStrings.h"
 
 namespace Common {
 
