@@ -2,8 +2,11 @@
 // Licensed under GPLv2 or any later version
 // Refer to the license.txt file included.
 
+#ifdef ENABLE_FAAD
 #include <neaacdec.h>
+#endif
 #include "audio_core/hle/aac_decoder.h"
+#include "common/logging/log.h"
 
 namespace AudioCore::HLE {
 
@@ -12,10 +15,12 @@ AACDecoder::AACDecoder(Memory::MemorySystem& memory) : memory(memory) {
 }
 
 AACDecoder::~AACDecoder() {
+#ifdef ENABLE_FAAD
     if (decoder) {
         NeAACDecClose(decoder);
         decoder = nullptr;
     }
+#endif
 }
 
 BinaryMessage AACDecoder::ProcessRequest(const BinaryMessage& request) {
@@ -73,6 +78,7 @@ BinaryMessage AACDecoder::Decode(const BinaryMessage& request) {
     response.decode_aac_response.num_channels = 2;
     response.decode_aac_response.num_samples = 1024;
 
+#ifdef ENABLE_FAAD
     if (decoder == nullptr) {
         LOG_ERROR(Audio_DSP, "Failed to handle decode request: FAAD2 AAC decoder not open.");
         return response;
@@ -151,11 +157,15 @@ BinaryMessage AACDecoder::Decode(const BinaryMessage& request) {
 
     // Set the output frame info.
     response.decode_aac_response.num_samples = static_cast<u32_le>(out_streams[0].size());
+#else
+    LOG_DEBUG(Audio_DSP, "AAC decoder stubbed.");
+#endif
 
     return response;
 }
 
 bool AACDecoder::OpenNewDecoder() {
+#ifdef ENABLE_FAAD
     if (decoder) {
         NeAACDecClose(decoder);
     }
@@ -176,6 +186,7 @@ bool AACDecoder::OpenNewDecoder() {
         decoder = nullptr;
         return false;
     }
+#endif
 
     return true;
 }

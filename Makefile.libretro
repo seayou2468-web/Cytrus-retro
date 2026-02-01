@@ -2,6 +2,7 @@
 
 TARGET_NAME := cytrus
 EXTERNAL_BASE := libretro/azahar/externals
+AR ?= ar
 
 SOURCES_CXX :=
 SOURCES_C   :=
@@ -24,28 +25,41 @@ SOURCES_C   += $(EXTERNAL_BASE)/inih/inih/ini.c
 SOURCES_C   += $(shell find $(EXTERNAL_BASE)/zstd/lib/common -name "*.c")
 SOURCES_C   += $(shell find $(EXTERNAL_BASE)/zstd/lib/compress -name "*.c")
 SOURCES_C   += $(shell find $(EXTERNAL_BASE)/zstd/lib/decompress -name "*.c")
+SOURCES_C   += $(EXTERNAL_BASE)/zstd/contrib/seekable_format/zstdseek_compress.c
+SOURCES_C   += $(EXTERNAL_BASE)/zstd/contrib/seekable_format/zstdseek_decompress.c
 SOURCES_C   += $(shell find $(EXTERNAL_BASE)/enet -name "*.c")
 SOURCES_CXX += $(shell find $(EXTERNAL_BASE)/xxHash -name "*.cpp")
 SOURCES_CXX += $(shell find $(EXTERNAL_BASE)/sirit/sirit/src -name "*.cpp")
 SOURCES_CXX += $(shell find $(EXTERNAL_BASE)/soundtouch/source/SoundTouch -name "*.cpp")
+SOURCES_CXX += $(shell find $(EXTERNAL_BASE)/teakra/src -name "*.cpp")
 
-# Remove problematic or excluded files
+# Crypto++ Sources (handled separately as libcryptopp.a)
+CRYPTOPP_DIR := $(EXTERNAL_BASE)/cryptopp
+CRYPTOPP_SOURCES := $(shell find $(CRYPTOPP_DIR) -name "*.cpp")
+CRYPTOPP_SOURCES := $(filter-out %test.cpp %bench.cpp %validat%.cpp %adhoc.cpp %dlltest.cpp %cryptest.cpp %regtest%.cpp,$(CRYPTOPP_SOURCES))
+CRYPTOPP_SOURCES := $(filter-out $(CRYPTOPP_DIR)/TestPrograms/% $(CRYPTOPP_DIR)/TestScripts/%,$(CRYPTOPP_SOURCES))
+
+# Remove problematic or excluded files from main lists
 SOURCES_CXX := $(filter-out %/main.cpp %/ffmpeg.cpp %/ffmpeg_backend.cpp,$(SOURCES_CXX))
-SOURCES_CXX := $(filter-out %_sink.cpp %_input.cpp %/aac_decoder.cpp,$(SOURCES_CXX))
+SOURCES_CXX := $(filter-out %_sink.cpp %_input.cpp,$(SOURCES_CXX))
 SOURCES_CXX := $(filter-out Core/video_core/renderer_vulkan/%,$(SOURCES_CXX))
 SOURCES_CXX := $(filter-out Core/video_core/renderer_opengl/%,$(SOURCES_CXX))
 SOURCES_CXX := $(filter-out Core/video_core/shader/shader_jit%,$(SOURCES_CXX))
 SOURCES_CXX := $(filter-out %/cubeb/% %/dumping/%,$(SOURCES_CXX))
 SOURCES_CXX := $(filter-out %/mmx_optimized.cpp %/sse_optimized.cpp %/cpu_detect_x86.cpp,$(SOURCES_CXX))
-SOURCES_CXX := $(filter-out Core/audio_core/lle/% Core/audio_core/sink_details.cpp,$(SOURCES_CXX))
+SOURCES_CXX := $(filter-out Core/audio_core/lle/%,$(SOURCES_CXX))
 SOURCES_CXX := $(filter-out Core/network/artic_base/% Core/network/announce_multiplayer_session.cpp,$(SOURCES_CXX))
 SOURCES_CXX := $(filter-out Core/input_common/sdl/%,$(SOURCES_CXX))
+
+# ENet filters (only unix.c for our targets)
+SOURCES_C := $(filter-out %/win32.c,$(SOURCES_C))
+
+# Teakra filters
+SOURCES_CXX := $(filter-out %/main.cpp %/test%.cpp,$(SOURCES_CXX))
 
 # Include paths
 INCFLAGS += -ICore/include -ICore -Ilibretro -Ilibretro/libretro-common/include
 INCFLAGS += -Ilibretro/azahar/src
-INCFLAGS += -ICore/include/video_core -ICore/include/audio_core -ICore/include/common
-INCFLAGS += -ICore/video_core -ICore/audio_core -ICore/network -ICore/input_common
 INCFLAGS += -I$(EXTERNAL_BASE)/boost
 INCFLAGS += -I$(EXTERNAL_BASE)/fmt/include
 INCFLAGS += -I$(EXTERNAL_BASE)/dynarmic/src
@@ -55,6 +69,9 @@ INCFLAGS += -I$(EXTERNAL_BASE)/microprofile
 INCFLAGS += -I$(EXTERNAL_BASE)/nihstro/include
 INCFLAGS += -I$(EXTERNAL_BASE)/xxHash
 INCFLAGS += -I$(EXTERNAL_BASE)/zstd/lib
+INCFLAGS += -I$(EXTERNAL_BASE)/zstd/lib/common
+INCFLAGS += -I$(EXTERNAL_BASE)/zstd/lib/compress
+INCFLAGS += -I$(EXTERNAL_BASE)/zstd/lib/decompress
 INCFLAGS += -I$(EXTERNAL_BASE)/zstd/contrib
 INCFLAGS += -I$(EXTERNAL_BASE)/json
 INCFLAGS += -I$(EXTERNAL_BASE)/lodepng/lodepng
@@ -66,28 +83,34 @@ INCFLAGS += -I$(EXTERNAL_BASE)/spirv-headers/include
 INCFLAGS += -I$(EXTERNAL_BASE)/xbyak
 INCFLAGS += -I$(EXTERNAL_BASE)/dds-ktx
 INCFLAGS += -I$(EXTERNAL_BASE)/httplib
-INCFLAGS += -I$(EXTERNAL_BASE)/libressl/include
+INCFLAGS += -I$(EXTERNAL_BASE)/zstd/contrib/seekable_format
 INCFLAGS += -I$(EXTERNAL_BASE)/soundtouch/include
 INCFLAGS += -I$(EXTERNAL_BASE)/teakra/include
+INCFLAGS += -I$(EXTERNAL_BASE)/teakra/include/teakra/impl
 INCFLAGS += -ICore/include/network
 
 # Compiler flags
-CXXFLAGS += -fPIC -O3 -ffast-math -fno-strict-aliasing -flto -std=c++20 -include Core/include/common/assert.h $(INCFLAGS)
+CXXFLAGS += -fPIC -O3 -ffast-math -fno-strict-aliasing -flto -std=c++20 $(INCFLAGS)
 CFLAGS   += -fPIC -O3 -ffast-math -fno-strict-aliasing -flto $(INCFLAGS)
 
 # Libretro defines
-CXXFLAGS += -DENABLE_SOFTWARE_RENDERER -D__LIBRETRO__ -DCPPHTTPLIB_OPENSSL_SUPPORT -DZSTD_DISABLE_ASM
-CFLAGS   += -DENABLE_SOFTWARE_RENDERER -D__LIBRETRO__ -DCPPHTTPLIB_OPENSSL_SUPPORT -DZSTD_DISABLE_ASM
+CXXFLAGS += -DENABLE_SOFTWARE_RENDERER -D__LIBRETRO__ -DZSTD_DISABLE_ASM
+CFLAGS   += -DENABLE_SOFTWARE_RENDERER -D__LIBRETRO__ -DZSTD_DISABLE_ASM
+
+# Crypto++ defines
+CXXFLAGS += -DCRYPTOPP_DISABLE_ASM -DCRYPTOPP_DISABLE_SSSE3 -DCRYPTOPP_DISABLE_AESNI
 
 # OS detection
 ifeq ($(shell uname -s),Darwin)
     CXXFLAGS += -stdlib=libc++
-    LDFLAGS += -stdlib=libc++
+    LDFLAGS += -stdlib=libc++ -framework CoreFoundation -framework AudioToolbox -framework Security
     # Target iOS if requested, else macOS
     ifeq ($(PLATFORM),ios)
         IPHONEOS_SDK := $(shell xcrun --sdk iphoneos --show-sdk-path)
         CC := $(shell xcrun --sdk iphoneos --find clang)
         CXX := $(shell xcrun --sdk iphoneos --find clang++)
+        AR := $(shell xcrun --sdk iphoneos --find ar)
+        STRIP := $(shell xcrun --sdk iphoneos --find strip)
         CXXFLAGS += -isysroot $(IPHONEOS_SDK) -miphoneos-version-min=15.0 -arch arm64 -fembed-bitcode
         CFLAGS += -isysroot $(IPHONEOS_SDK) -miphoneos-version-min=15.0 -arch arm64 -fembed-bitcode
         LDFLAGS += -isysroot $(IPHONEOS_SDK) -miphoneos-version-min=15.0 -arch arm64 -dynamiclib -fembed-bitcode
@@ -97,18 +120,25 @@ ifeq ($(shell uname -s),Darwin)
         TARGET := $(TARGET_NAME)_libretro.dylib
     endif
 else
-    LDFLAGS += -shared -Wl,--version-script=libretro/link.T
+    LDFLAGS += -shared -Wl,--version-script=libretro/link.T -lssl -lcrypto
     TARGET := $(TARGET_NAME)_libretro.so
 endif
+
+CXXFLAGS += -include Core/include/common/assert.h
 
 OBJECTS := $(patsubst %.cpp,%.o,$(filter %.cpp,$(SOURCES_CXX)))
 OBJECTS += $(patsubst %.cc,%.o,$(filter %.cc,$(SOURCES_CXX)))
 OBJECTS += $(SOURCES_C:.c=.o)
 
+CRYPTOPP_OBJECTS := $(CRYPTOPP_SOURCES:.cpp=.o)
+
 all: $(TARGET)
 
-$(TARGET): $(OBJECTS)
-	$(CXX) $(CXXFLAGS) $(OBJECTS) -o $@ $(LDFLAGS)
+$(CRYPTOPP_DIR)/libcryptopp.a: $(CRYPTOPP_OBJECTS)
+	$(AR) rcs $@ $(CRYPTOPP_OBJECTS)
+
+$(TARGET): $(CRYPTOPP_DIR)/libcryptopp.a $(OBJECTS)
+	$(CXX) $(CXXFLAGS) $(OBJECTS) $(CRYPTOPP_DIR)/libcryptopp.a -o $@ $(LDFLAGS)
 
 %.o: %.cpp
 	$(CXX) $(CXXFLAGS) -c -o $@ $<

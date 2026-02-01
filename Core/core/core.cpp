@@ -7,7 +7,9 @@
 #include <boost/serialization/array.hpp>
 #include "audio_core/dsp_interface.h"
 #include "audio_core/hle/hle.h"
+#ifndef __LIBRETRO__
 #include "audio_core/lle/lle.h"
+#endif
 #include "common/arch.h"
 #include "common/logging/log.h"
 #include "common/settings.h"
@@ -505,12 +507,17 @@ System::ResultStatus System::Init(Frontend::EmuWindow& emu_window,
     kernel->SetRunningCPU(cpu_cores[0].get());
 
     const auto audio_emulation = Settings::values.audio_emulation.GetValue();
+#ifndef __LIBRETRO__
     if (audio_emulation == Settings::AudioEmulation::HLE) {
         dsp_core = std::make_unique<AudioCore::DspHle>(*this);
     } else {
         const bool multithread = audio_emulation == Settings::AudioEmulation::LLEMultithreaded;
         dsp_core = std::make_unique<AudioCore::DspLle>(*this, multithread);
     }
+#else
+    // Force HLE for Libretro build to minimize dependencies
+    dsp_core = std::make_unique<AudioCore::DspHle>(*this);
+#endif
 
     memory->SetDSP(*dsp_core);
 
@@ -822,7 +829,12 @@ void System::serialize(Archive& ar, const unsigned int file_version) {
     if (dsp_hle) {
         ar&* dsp_hle;
     } else {
+#ifndef __LIBRETRO__
         throw std::runtime_error("LLE audio not supported for save states");
+#else
+        // This shouldn't happen in Libretro as we force HLE
+        ASSERT(false);
+#endif
     }
 
     ar&* memory.get();
