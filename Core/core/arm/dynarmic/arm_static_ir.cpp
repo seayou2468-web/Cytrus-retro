@@ -161,9 +161,12 @@ void ARM_StaticIR::LoadContext(const ThreadContext& ctx) {
 void ARM_StaticIR::PrepareReschedule() {}
 void ARM_StaticIR::ClearInstructionCache() { block_cache.clear(); }
 void ARM_StaticIR::InvalidateCacheRange(u32 start_address, std::size_t length) {
-    auto it = block_cache.lower_bound(start_address);
-    while (it != block_cache.end() && it->first < start_address + length) {
-        it = block_cache.erase(it);
+    for (auto it = block_cache.begin(); it != block_cache.end(); ) {
+        if (it->first >= start_address && it->first < start_address + length) {
+            it = block_cache.erase(it);
+        } else {
+            ++it;
+        }
     }
 }
 void ARM_StaticIR::ClearExclusiveState() {}
@@ -187,9 +190,10 @@ const ARM_StaticIR::TranslatedBlock& ARM_StaticIR::GetOrTranslateBlock(u32 pc) {
         Instruction decoded;
         decoded.op = inst.GetOpcode();
         decoded.result_index = next_index;
+        decoded.arg_count = static_cast<u8>(std::min<size_t>(inst.NumArgs(), decoded.args.size()));
         inst_to_index[&inst] = next_index++;
 
-        for (size_t i = 0; i < inst.NumArgs(); ++i) {
+        for (size_t i = 0; i < decoded.arg_count; ++i) {
             IR::Value arg = inst.GetArg(i);
             Operand op;
             if (arg.IsImmediate()) {
@@ -214,7 +218,7 @@ const ARM_StaticIR::TranslatedBlock& ARM_StaticIR::GetOrTranslateBlock(u32 pc) {
                 op.kind = Operand::Immediate;
                 op.value = 0;
             }
-            decoded.args.push_back(op);
+            decoded.args[i] = op;
         }
         tb.instructions.push_back(decoded);
     }
@@ -546,17 +550,11 @@ static const auto op_handlers = []() {
 } // namespace
 
 void ARM_StaticIR::ExecuteBlock(const TranslatedBlock& block) {
-    u64 results_stack[256];
-    std::vector<u64> results_heap;
-    u64* results_ptr;
-
     size_t num_insts = block.instructions.size();
-    if (num_insts <= 256) {
-        results_ptr = results_stack;
-    } else {
-        results_heap.resize(num_insts);
-        results_ptr = results_heap.data();
+    if (results_buffer.size() < num_insts) {
+        results_buffer.resize(std::max<size_t>(num_insts, 512));
     }
+    u64* results_ptr = results_buffer.data();
 
     u32 next_pc = block.guest_end_pc;
     bool branched = false;
