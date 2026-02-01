@@ -1,6 +1,7 @@
 # Libretro Core Makefile for Cytrus
 
 TARGET_NAME := cytrus
+EXTERNAL_BASE := libretro/azahar/externals
 
 SOURCES_CXX :=
 SOURCES_C   :=
@@ -8,25 +9,43 @@ SOURCES_C   :=
 # Core source files
 SOURCES_CXX += $(shell find Core/core -name "*.cpp")
 SOURCES_CXX += $(shell find Core/common -name "*.cpp")
+SOURCES_CXX += $(shell find Core/video_core -name "*.cpp")
+SOURCES_CXX += $(shell find Core/audio_core -name "*.cpp")
+SOURCES_CXX += $(shell find Core/network -name "*.cpp")
+SOURCES_CXX += $(shell find Core/input_common -name "*.cpp")
 SOURCES_CXX += libretro/libretro.cpp
 SOURCES_CXX += libretro/libretro_emu_window.cpp
 
+# Externals
+SOURCES_CXX += $(EXTERNAL_BASE)/fmt/src/format.cc
+SOURCES_CXX += $(EXTERNAL_BASE)/fmt/src/os.cc
+SOURCES_CXX += $(EXTERNAL_BASE)/lodepng/lodepng/lodepng.cpp
+SOURCES_C   += $(EXTERNAL_BASE)/inih/inih/ini.c
+SOURCES_C   += $(shell find $(EXTERNAL_BASE)/zstd/lib/common -name "*.c")
+SOURCES_C   += $(shell find $(EXTERNAL_BASE)/zstd/lib/compress -name "*.c")
+SOURCES_C   += $(shell find $(EXTERNAL_BASE)/zstd/lib/decompress -name "*.c")
+SOURCES_C   += $(shell find $(EXTERNAL_BASE)/enet -name "*.c")
+SOURCES_CXX += $(shell find $(EXTERNAL_BASE)/xxHash -name "*.cpp")
+SOURCES_CXX += $(shell find $(EXTERNAL_BASE)/sirit/sirit/src -name "*.cpp")
+SOURCES_CXX += $(shell find $(EXTERNAL_BASE)/soundtouch/source/SoundTouch -name "*.cpp")
+
 # Remove problematic or excluded files
-SOURCES_CXX := $(filter-out %/main.cpp,$(SOURCES_CXX))
-SOURCES_CXX := $(filter-out %/ffmpeg.cpp,$(SOURCES_CXX))
-SOURCES_CXX := $(filter-out %/ffmpeg_backend.cpp,$(SOURCES_CXX))
-SOURCES_CXX := $(filter-out %/coreaudio.cpp,$(SOURCES_CXX))
-SOURCES_CXX := $(filter-out %/sdl%.cpp,$(SOURCES_CXX))
-SOURCES_CXX := $(filter-out %/openal.cpp,$(SOURCES_CXX))
-SOURCES_CXX := $(filter-out %/renderer_vulkan/%,$(SOURCES_CXX))
-SOURCES_CXX := $(filter-out %/renderer_opengl/%,$(SOURCES_CXX))
-SOURCES_CXX := $(filter-out %/teakra/%,$(SOURCES_CXX))
-SOURCES_CXX := $(filter-out %/cubeb/%,$(SOURCES_CXX))
-SOURCES_CXX := $(filter-out %/dumping/%,$(SOURCES_CXX))
+SOURCES_CXX := $(filter-out %/main.cpp %/ffmpeg.cpp %/ffmpeg_backend.cpp,$(SOURCES_CXX))
+SOURCES_CXX := $(filter-out %_sink.cpp %_input.cpp %/aac_decoder.cpp,$(SOURCES_CXX))
+SOURCES_CXX := $(filter-out Core/video_core/renderer_vulkan/%,$(SOURCES_CXX))
+SOURCES_CXX := $(filter-out Core/video_core/renderer_opengl/%,$(SOURCES_CXX))
+SOURCES_CXX := $(filter-out Core/video_core/shader/shader_jit%,$(SOURCES_CXX))
+SOURCES_CXX := $(filter-out %/cubeb/% %/dumping/%,$(SOURCES_CXX))
+SOURCES_CXX := $(filter-out %/mmx_optimized.cpp %/sse_optimized.cpp %/cpu_detect_x86.cpp,$(SOURCES_CXX))
+SOURCES_CXX := $(filter-out Core/audio_core/lle/% Core/audio_core/sink_details.cpp,$(SOURCES_CXX))
+SOURCES_CXX := $(filter-out Core/network/artic_base/% Core/network/announce_multiplayer_session.cpp,$(SOURCES_CXX))
+SOURCES_CXX := $(filter-out Core/input_common/sdl/%,$(SOURCES_CXX))
 
 # Include paths
-EXTERNAL_BASE := libretro/azahar/externals
 INCFLAGS += -ICore/include -ICore -Ilibretro -Ilibretro/libretro-common/include
+INCFLAGS += -Ilibretro/azahar/src
+INCFLAGS += -ICore/include/video_core -ICore/include/audio_core -ICore/include/common
+INCFLAGS += -ICore/video_core -ICore/audio_core -ICore/network -ICore/input_common
 INCFLAGS += -I$(EXTERNAL_BASE)/boost
 INCFLAGS += -I$(EXTERNAL_BASE)/fmt/include
 INCFLAGS += -I$(EXTERNAL_BASE)/dynarmic/src
@@ -37,21 +56,28 @@ INCFLAGS += -I$(EXTERNAL_BASE)/nihstro/include
 INCFLAGS += -I$(EXTERNAL_BASE)/xxHash
 INCFLAGS += -I$(EXTERNAL_BASE)/zstd/lib
 INCFLAGS += -I$(EXTERNAL_BASE)/zstd/contrib
-INCFLAGS += -I$(EXTERNAL_BASE)/json/include
+INCFLAGS += -I$(EXTERNAL_BASE)/json
 INCFLAGS += -I$(EXTERNAL_BASE)/lodepng/lodepng
 INCFLAGS += -I$(EXTERNAL_BASE)/inih
 INCFLAGS += -I$(EXTERNAL_BASE)/enet/include
+INCFLAGS += -I$(EXTERNAL_BASE)/sirit/sirit/include
+INCFLAGS += -I$(EXTERNAL_BASE)/sirit/sirit/src
+INCFLAGS += -I$(EXTERNAL_BASE)/spirv-headers/include
+INCFLAGS += -I$(EXTERNAL_BASE)/xbyak
 INCFLAGS += -I$(EXTERNAL_BASE)/dds-ktx
 INCFLAGS += -I$(EXTERNAL_BASE)/httplib
 INCFLAGS += -I$(EXTERNAL_BASE)/libressl/include
+INCFLAGS += -I$(EXTERNAL_BASE)/soundtouch/include
+INCFLAGS += -I$(EXTERNAL_BASE)/teakra/include
+INCFLAGS += -ICore/include/network
 
 # Compiler flags
-CXXFLAGS += -fPIC -O3 -ffast-math -flto -std=c++20 $(INCFLAGS)
+CXXFLAGS += -fPIC -O3 -ffast-math -flto -std=c++20 -include Core/include/common/assert.h $(INCFLAGS)
 CFLAGS   += -fPIC -O3 -ffast-math -flto $(INCFLAGS)
 
 # Libretro defines
-CXXFLAGS += -DENABLE_SOFTWARE_RENDERER -D__LIBRETRO__ -DCPPHTTPLIB_OPENSSL_SUPPORT
-CFLAGS   += -DENABLE_SOFTWARE_RENDERER -D__LIBRETRO__ -DCPPHTTPLIB_OPENSSL_SUPPORT
+CXXFLAGS += -DENABLE_SOFTWARE_RENDERER -D__LIBRETRO__ -DCPPHTTPLIB_OPENSSL_SUPPORT -DZSTD_DISABLE_ASM
+CFLAGS   += -DENABLE_SOFTWARE_RENDERER -D__LIBRETRO__ -DCPPHTTPLIB_OPENSSL_SUPPORT -DZSTD_DISABLE_ASM
 
 # OS detection
 ifeq ($(shell uname -s),Darwin)
@@ -73,7 +99,9 @@ else
     TARGET := $(TARGET_NAME)_libretro.so
 endif
 
-OBJECTS := $(SOURCES_CXX:.cpp=.o) $(SOURCES_C:.c=.o)
+OBJECTS := $(patsubst %.cpp,%.o,$(filter %.cpp,$(SOURCES_CXX)))
+OBJECTS += $(patsubst %.cc,%.o,$(filter %.cc,$(SOURCES_CXX)))
+OBJECTS += $(SOURCES_C:.c=.o)
 
 all: $(TARGET)
 
@@ -81,6 +109,9 @@ $(TARGET): $(OBJECTS)
 	$(CXX) $(CXXFLAGS) $(OBJECTS) -o $@ $(LDFLAGS)
 
 %.o: %.cpp
+	$(CXX) $(CXXFLAGS) -c -o $@ $<
+
+%.o: %.cc
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
 %.o: %.c

@@ -18,7 +18,7 @@ class MemorySystem;
 
 namespace Core {
 
-class DynarmicUserCallbacks;
+class ARM_Jit_Callbacks;
 class DynarmicExclusiveMonitor;
 class ExclusiveMonitor;
 class System;
@@ -62,10 +62,10 @@ protected:
 private:
     void ServeBreak();
 
-    friend class DynarmicUserCallbacks;
+    friend class ARM_Jit_Callbacks;
     Core::System& system;
     Memory::MemorySystem& memory;
-    std::unique_ptr<DynarmicUserCallbacks> cb;
+    std::unique_ptr<ARM_Jit_Callbacks> cb;
     std::unique_ptr<Dynarmic::A32::Jit> MakeJit();
 
     u32 fpexc = 0;

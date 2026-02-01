@@ -25,7 +25,7 @@ class Inst;
 
 namespace Core {
 
-class DynarmicUserCallbacks;
+class ARM_StaticIR_Callbacks;
 class DynarmicExclusiveMonitor;
 class ExclusiveMonitor;
 class System;
@@ -74,13 +74,13 @@ public:
         u16 result_index;
     };
 
-    DynarmicUserCallbacks& GetCallbacks();
+    ARM_StaticIR_Callbacks& GetCallbacks();
 
 protected:
     std::shared_ptr<Memory::PageTable> GetPageTable() const override;
 
 private:
-    friend class DynarmicUserCallbacks;
+    friend class ARM_StaticIR_Callbacks;
 
     struct TranslatedBlock {
         std::vector<Instruction> instructions;
@@ -92,7 +92,7 @@ private:
 
     Core::System& system;
     Memory::MemorySystem& memory;
-    std::unique_ptr<DynarmicUserCallbacks> cb;
+    std::unique_ptr<ARM_StaticIR_Callbacks> cb;
 
     u32 regs[16] = {0};
     u32 vfp_regs[64] = {0};
