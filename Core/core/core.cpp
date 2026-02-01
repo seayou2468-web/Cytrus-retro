@@ -468,33 +468,37 @@ System::ResultStatus System::Init(Frontend::EmuWindow& emu_window,
 
     exclusive_monitor = MakeExclusiveMonitor(*memory, num_cores);
     cpu_cores.reserve(num_cores);
-    if (Settings::values.use_cpu_jit) {
+
 #if CITRA_ARCH(x86_64) || CITRA_ARCH(arm64)
 #if defined(__APPLE__) && TARGET_OS_IPHONE
-        // Force Static IR on iOS platforms to bypass JIT restrictions
-        for (u32 i = 0; i < num_cores; ++i) {
-            cpu_cores.push_back(std::make_shared<ARM_StaticIR>(
-                *this, *memory, i, timing->GetTimer(i), *exclusive_monitor));
-        }
+    // Strictly No-JIT for iOS: Use Static IR regardless of settings for maximum non-JIT performance
+    for (u32 i = 0; i < num_cores; ++i) {
+        cpu_cores.push_back(std::make_shared<ARM_StaticIR>(
+            *this, *memory, i, timing->GetTimer(i), *exclusive_monitor));
+    }
 #else
+    if (Settings::values.use_cpu_jit) {
         for (u32 i = 0; i < num_cores; ++i) {
             cpu_cores.push_back(std::make_shared<ARM_Dynarmic>(
                 *this, *memory, i, timing->GetTimer(i), *exclusive_monitor));
         }
-#endif
-#else
-        for (u32 i = 0; i < num_cores; ++i) {
-            cpu_cores.push_back(
-                std::make_shared<ARM_DynCom>(*this, *memory, USER32MODE, i, timing->GetTimer(i)));
-        }
-        LOG_WARNING(Core, "CPU JIT requested, but Dynarmic not available");
-#endif
     } else {
+        // High-speed non-JIT path using IR interpretation
         for (u32 i = 0; i < num_cores; ++i) {
-            cpu_cores.push_back(
-                std::make_shared<ARM_DynCom>(*this, *memory, USER32MODE, i, timing->GetTimer(i)));
+            cpu_cores.push_back(std::make_shared<ARM_StaticIR>(
+                *this, *memory, i, timing->GetTimer(i), *exclusive_monitor));
         }
     }
+#endif
+#else
+    for (u32 i = 0; i < num_cores; ++i) {
+        cpu_cores.push_back(
+            std::make_shared<ARM_DynCom>(*this, *memory, USER32MODE, i, timing->GetTimer(i)));
+    }
+    if (Settings::values.use_cpu_jit) {
+        LOG_WARNING(Core, "CPU JIT requested, but Dynarmic not available");
+    }
+#endif
     running_core = cpu_cores[0].get();
 
     kernel->SetCPUs(cpu_cores);

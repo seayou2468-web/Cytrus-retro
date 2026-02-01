@@ -3,8 +3,9 @@
 
 #pragma once
 
-#include <map>
+#include <array>
 #include <memory>
+#include <unordered_map>
 #include <vector>
 #include <dynarmic/interface/A32/a32.h>
 #include <dynarmic/ir/opcodes.h>
@@ -70,7 +71,8 @@ public:
 
     struct Instruction {
         Dynarmic::IR::Opcode op;
-        std::vector<Operand> args;
+        std::array<Operand, 5> args;
+        u8 arg_count;
         u16 result_index;
     };
 
@@ -103,7 +105,8 @@ private:
     Core::DynarmicExclusiveMonitor& exclusive_monitor;
 
     std::shared_ptr<Memory::PageTable> current_page_table = nullptr;
-    std::map<u32, TranslatedBlock> block_cache;
+    std::unordered_map<u32, TranslatedBlock> block_cache;
+    std::vector<u64> results_buffer;
 
     Dynarmic::A32::UserConfig config;
 };
