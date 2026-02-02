@@ -3,6 +3,7 @@
 // Refer to the license.txt file included.
 
 #include <openssl/rand.h>
+
 #include "common/archives.h"
 #include "common/common_types.h"
 #include "core/core.h"
@@ -11,6 +12,7 @@
 #include "core/hle/service/ssl/ssl_c.h"
 
 SERIALIZE_EXPORT_IMPL(Service::SSL::SSL_C)
+
 namespace Service::SSL {
 
 void SSL_C::Initialize(Kernel::HLERequestContext& ctx) {
@@ -27,8 +29,22 @@ void SSL_C::GenerateRandomData(Kernel::HLERequestContext& ctx) {
     const u32 size = rp.Pop<u32>();
     auto buffer = rp.PopMappedBuffer();
 
+    // サイズ0は成功扱い
+    if (size == 0) {
+        IPC::RequestBuilder rb = rp.MakeBuilder(1, 2);
+        rb.Push(ResultSuccess);
+        rb.PushMappedBuffer(buffer);
+        return;
+    }
+
     std::vector<u8> out_data(size);
-    SSL::GenerateRandomData(out_data);
+
+    if (!SSL::GenerateRandomData(out_data)) {
+        IPC::RequestBuilder rb = rp.MakeBuilder(1, 0);
+        rb.Push(ResultFailure);
+        return;
+    }
+
     buffer.Write(out_data.data(), 0, size);
 
     IPC::RequestBuilder rb = rp.MakeBuilder(1, 2);
@@ -73,9 +89,12 @@ void InstallInterfaces(Core::System& system) {
     std::make_shared<SSL_C>()->InstallAsService(service_manager);
 }
 
-void GenerateRandomData(std::vector<u8>& out) {
-    // Fill the output buffer with random data.
-    RAND_bytes(out.data(), static_cast<int>(out.size()));
+bool GenerateRandomData(std::vector<u8>& out) {
+    if (out.empty())
+        return true;
+
+    // RAND_bytes は成功時に 1 を返す
+    return RAND_bytes(out.data(), static_cast<int>(out.size())) == 1;
 }
 
 } // namespace Service::SSL
