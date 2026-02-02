@@ -19,12 +19,8 @@
 #include "core/hle/service/hid/hid.h"
 #include "core/hle/service/ir/ir_user.h"
 #if CITRA_ARCH(x86_64) || CITRA_ARCH(arm64)
-#include "core/arm/dynarmic/arm_dynarmic.h"
 #include "core/arm/dynarmic/arm_static_ir.h"
- #ifdef __APPLE__
- #include <TargetConditionals.h>
 #endif
- #endif
 #include "core/arm/dyncom/arm_dyncom.h"
 #include "core/cheats/cheats.h"
 #include "core/core.h"
@@ -213,7 +209,7 @@ System::ResultStatus System::RunLoop(bool tight_loop) {
         }
     }
 
-    // jit sometimes overshoot by a few ticks which might lead to a minimal desync in the cores.
+    // Some CPU executors sometimes overshoot by a few ticks which might lead to a minimal desync in the cores.
     // This small difference shouldn't make it necessary to sync the cores and would only cost
     // performance. Thus we don't sync delays below min_delay
     static constexpr s64 min_delay = 100;
@@ -472,33 +468,15 @@ System::ResultStatus System::Init(Frontend::EmuWindow& emu_window,
     cpu_cores.reserve(num_cores);
 
 #if CITRA_ARCH(x86_64) || CITRA_ARCH(arm64)
-#if defined(__APPLE__) && TARGET_OS_IPHONE
-    // Strictly No-JIT for iOS: Use Static IR regardless of settings for maximum non-JIT performance
+    // Strictly No-JIT: Use Static IR for maximum performance without native code generation
     for (u32 i = 0; i < num_cores; ++i) {
         cpu_cores.push_back(std::make_shared<ARM_StaticIR>(
             *this, *memory, i, timing->GetTimer(i), *exclusive_monitor));
     }
 #else
-    if (Settings::values.use_cpu_jit) {
-        for (u32 i = 0; i < num_cores; ++i) {
-            cpu_cores.push_back(std::make_shared<ARM_Dynarmic>(
-                *this, *memory, i, timing->GetTimer(i), *exclusive_monitor));
-        }
-    } else {
-        // High-speed non-JIT path using IR interpretation
-        for (u32 i = 0; i < num_cores; ++i) {
-            cpu_cores.push_back(std::make_shared<ARM_StaticIR>(
-                *this, *memory, i, timing->GetTimer(i), *exclusive_monitor));
-        }
-    }
-#endif
-#else
     for (u32 i = 0; i < num_cores; ++i) {
         cpu_cores.push_back(
             std::make_shared<ARM_DynCom>(*this, *memory, USER32MODE, i, timing->GetTimer(i)));
-    }
-    if (Settings::values.use_cpu_jit) {
-        LOG_WARNING(Core, "CPU JIT requested, but Dynarmic not available");
     }
 #endif
     running_core = cpu_cores[0].get();

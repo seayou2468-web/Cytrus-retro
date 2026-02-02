@@ -3,8 +3,9 @@
 // Refer to the license.txt file included.
 
 #include <chrono>
+#include <optional>
+#include <regex>
 #include <boost/algorithm/string/replace.hpp>
-#include <boost/regex.hpp>
 
 #include <fmt/format.h>
 
@@ -285,12 +286,13 @@ public:
 
     bool SetRegexFilter(const std::string& regex) {
         if (regex.empty()) {
-            regex_filter = boost::regex();
+            regex_filter = std::optional<std::regex>();
             return true;
         }
-        regex_filter = boost::regex(regex, boost::regex_constants::no_except);
-        if (regex_filter.status() != 0) {
-            regex_filter = boost::regex();
+        try {
+            regex_filter = std::regex(regex, std::regex_constants::nosubs | std::regex_constants::optimize);
+        } catch (const std::regex_error&) {
+            regex_filter = std::nullopt;
             return false;
         }
         return true;
@@ -311,8 +313,8 @@ public:
         }
         Entry new_entry =
             CreateEntry(log_class, log_level, filename, line_num, function, std::move(message));
-        if (!regex_filter.empty() &&
-            !boost::regex_search(FormatLogMessage(new_entry), regex_filter)) {
+        if (regex_filter.has_value() &&
+            !std::regex_search(FormatLogMessage(new_entry), *regex_filter)) {
             return;
         }
         if (Settings::values.instant_debug_log.GetValue()) {
@@ -485,7 +487,7 @@ private:
     static inline std::unique_ptr<Impl, decltype(&Deleter)> instance{nullptr, Deleter};
 
     Filter filter;
-    boost::regex regex_filter;
+    std::optional<std::regex> regex_filter;
     DebuggerBackend debugger_backend{};
     ColorConsoleBackend color_console_backend{};
     FileBackend file_backend;
