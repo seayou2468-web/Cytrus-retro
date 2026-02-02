@@ -129,7 +129,7 @@ INCFLAGS += -I$(EXTERNAL_BASE)/teakra/include/teakra/impl
 INCFLAGS += -I$(EXTERNAL_BASE)/cpp-jwt/include
 INCFLAGS += -Ilibretro/externals/openssl/include
 INCFLAGS += -ICore/include/network
-
+INCFLAGS += -ICore/network/artic_base
 # Compiler flags
 CXXFLAGS += -fPIC -O3 -ffast-math -fno-strict-aliasing -flto -std=c++20 $(INCFLAGS)
 CFLAGS   += -fPIC -O3 -ffast-math -fno-strict-aliasing -flto $(INCFLAGS)
