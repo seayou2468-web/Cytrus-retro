@@ -18,9 +18,8 @@ SOURCES_CXX += $(shell find Core/video_core -name "*.cpp")
 SOURCES_CXX += $(shell find libretro/azahar/src/video_core/renderer_software -name "*.cpp")
 SOURCES_CXX += $(shell find Core/audio_core -name "*.cpp")
 SOURCES_CXX += $(shell find Core/network -name "*.cpp")
-SOURCES_CXX += $(shell find Core/input_common -name "*.cpp")
-# Web service and boost serialization are required for core functionality
 SOURCES_CXX += $(shell find Core/web_service -name "*.cpp")
+SOURCES_CXX += $(shell find Core/input_common -name "*.cpp")
 SOURCES_CXX += libretro/src/libretro.cpp
 SOURCES_CXX += libretro/src/libretro_emu_window.cpp
 SOURCES_CXX += libretro/src/libretro_sink.cpp
@@ -126,16 +125,17 @@ INCFLAGS += -I$(EXTERNAL_BASE)/zstd/contrib/seekable_format
 INCFLAGS += -I$(EXTERNAL_BASE)/soundtouch/include
 INCFLAGS += -I$(EXTERNAL_BASE)/teakra/include
 INCFLAGS += -I$(EXTERNAL_BASE)/teakra/include/teakra/impl
-INCFLAGS += -I$(EXTERNAL_BASE)/cpp-jwt/include
 INCFLAGS += -Ilibretro/externals/openssl/include
 INCFLAGS += -ICore/include/network
+INCFLAGS += -ICore/include/network/artic_base
+INCFLAGS += -I$(EXTERNAL_BASE)/cpp-jwt/include
 
 # Compiler flags
 CXXFLAGS += -fPIC -O3 -ffast-math -fno-strict-aliasing -flto -std=c++20 $(INCFLAGS)
 CFLAGS   += -fPIC -O3 -ffast-math -fno-strict-aliasing -flto $(INCFLAGS)
 
 # Libretro defines
-CXXFLAGS += -DENABLE_SOFTWARE_RENDERER -D__LIBRETRO__ -DZSTD_DISABLE_ASM -DCPPHTTPLIB_OPENSSL_SUPPORT -DCPP_JWT_USE_VENDORED_NLOHMANN_JSON
+CXXFLAGS += -DENABLE_SOFTWARE_RENDERER -D__LIBRETRO__ -DZSTD_DISABLE_ASM -DCPPHTTPLIB_OPENSSL_SUPPORT
 CFLAGS   += -DENABLE_SOFTWARE_RENDERER -D__LIBRETRO__ -DZSTD_DISABLE_ASM -DCPPHTTPLIB_OPENSSL_SUPPORT
 
 # Crypto++ defines
@@ -165,6 +165,9 @@ ifeq ($(PLATFORM),ios)
 
     TARGET := $(TARGET_NAME)_libretro_ios.dylib
     OPENSSL_CONFIGURE := IPHONEOS_DEPLOYMENT_TARGET=$(MIN_VER) ./Configure ios64-xcrun no-shared no-tests no-unit-test
+else
+    TARGET := $(TARGET_NAME)_libretro.so
+    OPENSSL_CONFIGURE := ./config no-shared no-tests no-unit-test
 endif
 
 
@@ -225,4 +228,7 @@ $(TARGET): $(OPENSSL_LIBS) $(CRYPTOPP_DIR)/libcryptopp.a $(OBJECTS)
 clean:
 	rm -f $(OBJECTS) $(TARGET)
 
-.PHONY: all clean
+print-sources:
+	@echo $(SOURCES_CXX)
+
+.PHONY: all clean print-sources
