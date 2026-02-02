@@ -165,6 +165,9 @@ $(OPENSSL_DIR)/libssl.a: $(OPENSSL_DIR)/configdata.pm
 $(OPENSSL_DIR)/libcrypto.a: $(OPENSSL_DIR)/libssl.a
 	@:
 
+# Fix dependency for objects that need OpenSSL headers
+$(OBJECTS): $(OPENSSL_LIBS)
+
 $(CRYPTOPP_DIR)/libcryptopp.a: $(CRYPTOPP_OBJECTS)
 	$(AR) rcs $@ $(CRYPTOPP_OBJECTS)
 
