@@ -87,6 +87,14 @@ struct PageInfo {
     u32 flags;
 };
 
+struct StartupInfo {
+    s32 priority;
+    u32 stack_size;
+    s32 argc;
+    u32 argv;
+    u32 envp;
+};
+
 // Values accepted by svcGetHandleInfo.
 enum class HandleInfoType {
     /**
@@ -484,6 +492,7 @@ private:
     Result GetThreadAffinityMask(VAddr affinity_mask, Handle thread_handle, s32 processor_count);
     Result SetThreadAffinityMask(Handle thread_handle, VAddr affinity_mask, s32 processor_count);
     Result SetThreadIdealProcessor(Handle thread_handle, s32 ideal_cpu);
+    Result Run(Handle process_handle, VAddr startup_info);
     Result GetProcessList(s32* process_count, VAddr out_process_array, s32 out_process_array_count);
     Result InvalidateInstructionCacheRange(u32 addr, u32 size);
     Result InvalidateEntireInstructionCache();
@@ -590,6 +599,24 @@ Result SVC::SetProcessAffinityMask(Handle process_handle, VAddr affinity_mask, s
 Result SVC::SetProcessIdealProcessor(Handle process_handle, s32 ideal_cpu) {
     LOG_WARNING(Kernel_SVC, "(STUBBED) called process=0x{:08X} ideal_cpu={}", process_handle,
                 ideal_cpu);
+    return ResultSuccess;
+}
+
+Result SVC::Run(Handle process_handle, VAddr startup_info_address) {
+    auto process = kernel.GetCurrentProcess()->handle_table.Get<Process>(process_handle);
+    R_UNLESS(process, ResultInvalidHandle);
+    R_UNLESS(memory.IsValidVirtualAddress(*kernel.GetCurrentProcess(), startup_info_address),
+             ResultInvalidPointer);
+
+    StartupInfo startup_info;
+    memory.ReadBlock(*kernel.GetCurrentProcess(), startup_info_address, &startup_info,
+                     sizeof(StartupInfo));
+
+    LOG_DEBUG(Kernel_SVC, "called process=0x{:08X}, priority={}, stack_size=0x{:X}", process_handle,
+              startup_info.priority, startup_info.stack_size);
+
+    process->Run(startup_info.priority, startup_info.stack_size);
+
     return ResultSuccess;
 }
 
@@ -1985,12 +2012,28 @@ Result SVC::GetProcessInfo(s64* out, Handle process_handle, u32 type) {
     case ProcessInfoType::SUPERVISOR_AND_HANDLE_USED_MEMORY:
     case ProcessInfoType::SUPERVISOR_AND_HANDLE_USED_MEMORY2:
     case ProcessInfoType::USED_HANDLE_COUNT:
+        *out = process->handle_table.GetCount();
+        break;
     case ProcessInfoType::HIGHEST_HANDLE_COUNT:
+        *out = process->handle_table_size; // Placeholder
+        break;
+    case ProcessInfoType::THREAD_COUNT: {
+        s64 count = 0;
+        for (u32 i = 0; i < system.GetNumCores(); i++) {
+            for (auto& thread : kernel.GetThreadManager(i).GetThreadList()) {
+                if (thread->owner_process.lock() == process) {
+                    count++;
+                }
+            }
+        }
+        *out = count;
+        break;
+    }
     case ProcessInfoType::KPROCESS_0X234:
-    case ProcessInfoType::THREAD_COUNT:
+        *out = 0;
+        break;
     case ProcessInfoType::MAX_THREAD_AMOUNT:
-        // These are valid, but not implemented yet
-        LOG_ERROR(Kernel_SVC, "unimplemented GetProcessInfo type={}", type);
+        *out = 0;
         break;
     case ProcessInfoType::LINEAR_BASE_ADDR_OFFSET:
         *out = Memory::FCRAM_PADDR - process->GetLinearHeapAreaAddress();
@@ -2298,7 +2341,7 @@ const std::array<SVC::FunctionDef, 180> SVC::SVC_Table{{
     {0x0F, &SVC::Wrap<&SVC::GetThreadIdealProcessor>, "GetThreadIdealProcessor", 1000},
     {0x10, &SVC::Wrap<&SVC::SetThreadIdealProcessor>, "SetThreadIdealProcessor", 1000},
     {0x11, &SVC::Wrap<&SVC::GetCurrentProcessorNumber>, "GetCurrentProcessorNumber", 1000},
-    {0x12, nullptr, "Run", 1000},
+    {0x12, &SVC::Wrap<&SVC::Run>, "Run", 1000},
     {0x13, &SVC::Wrap<&SVC::CreateMutex>, "CreateMutex", 1000},
     {0x14, &SVC::Wrap<&SVC::ReleaseMutex>, "ReleaseMutex", 1324},
     {0x15, &SVC::Wrap<&SVC::CreateSemaphore>, "CreateSemaphore", 1000},

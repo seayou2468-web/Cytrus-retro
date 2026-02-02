@@ -15,6 +15,8 @@
 #include "audio_core/hle/hle.h"
 #include "libretro_sink.h"
 #include "libretro_input.h"
+#include "common/logging/backend.h"
+#include "common/file_util.h"
 
 static retro_environment_t environ_cb;
 static retro_video_refresh_t video_cb;
@@ -22,6 +24,21 @@ static retro_audio_sample_t audio_cb;
 static retro_audio_sample_batch_t audio_batch_cb;
 static retro_input_poll_t input_poll_cb;
 static retro_input_state_t input_state_cb;
+static retro_log_printf_t log_cb;
+
+static void libretro_log_callback(int level, const char* fmt, ...) {
+    char buffer[4096];
+    va_list v;
+    va_start(v, fmt);
+    vsnprintf(buffer, sizeof(buffer), fmt, v);
+    va_end(v);
+
+    if (log_cb) {
+        log_cb((enum retro_log_level)level, "%s", buffer);
+    } else {
+        fprintf(stderr, "%s", buffer);
+    }
+}
 
 static Core::System* system_instance = nullptr;
 static LibretroEmuWindow* emu_window = nullptr;
@@ -98,6 +115,13 @@ void retro_get_system_av_info(struct retro_system_av_info *info) {
 
 void retro_set_environment(retro_environment_t cb) {
     environ_cb = cb;
+
+    struct retro_log_callback log;
+    if (environ_cb(RETRO_ENVIRONMENT_GET_LOG_INTERFACE, &log)) {
+        log_cb = log.log;
+        Common::Log::SetLibretroLogCallback(libretro_log_callback);
+    }
+
     static const struct retro_variable vars[] = {
         { "cytrus_model", "Console Model; Old 3DS|New 3DS" },
         { "cytrus_layout", "Screen Layout; Vertical|Side-by-Side" },
@@ -114,6 +138,11 @@ void retro_set_input_state(retro_input_state_t cb) { input_state_cb = cb; }
 
 bool retro_load_game(const struct retro_game_info *game) {
     if (!game) return false;
+
+    const char* system_dir = nullptr;
+    if (environ_cb(RETRO_ENVIRONMENT_GET_SYSTEM_DIRECTORY, &system_dir) && system_dir) {
+        FileUtil::SetUserPath(std::string(system_dir) + "/citra-emu/");
+    }
 
     // Set pixel format
     enum retro_pixel_format fmt = RETRO_PIXEL_FORMAT_XRGB8888;
@@ -140,6 +169,25 @@ bool retro_load_game(const struct retro_game_info *game) {
     p.analogs[Settings::NativeAnalog::CirclePad] = "engine:libretro,axis_x:0,axis_y:1";
     p.analogs[Settings::NativeAnalog::CStick] = "engine:libretro,axis_x:2,axis_y:3";
     p.touch_device = "engine:libretro";
+
+    static const struct retro_input_descriptor desc[] = {
+        { 0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_LEFT,  "D-Pad Left" },
+        { 0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_UP,    "D-Pad Up" },
+        { 0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_DOWN,  "D-Pad Down" },
+        { 0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_RIGHT, "D-Pad Right" },
+        { 0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_B,     "B" },
+        { 0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_A,     "A" },
+        { 0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_X,     "X" },
+        { 0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_Y,     "Y" },
+        { 0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_L,     "L" },
+        { 0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R,     "R" },
+        { 0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_L2,    "ZL" },
+        { 0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R2,    "ZR" },
+        { 0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_SELECT, "Select" },
+        { 0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_START,  "Start" },
+        { 0, 0, 0, 0, nullptr }
+    };
+    environ_cb(RETRO_ENVIRONMENT_SET_INPUT_DESCRIPTORS, (void*)desc);
 
     Settings::values.graphics_api.SetValue(Settings::GraphicsAPI::Software);
 
@@ -178,10 +226,26 @@ void retro_run(void) {
 
     input_poll_cb();
 
+    static bool supports_bitmask = false;
+    static bool supports_bitmask_init = false;
+    if (!supports_bitmask_init) {
+        if (environ_cb(RETRO_ENVIRONMENT_GET_INPUT_BITMASKS, nullptr)) {
+            supports_bitmask = true;
+        }
+        supports_bitmask_init = true;
+    }
+
     // Update Joypad
-    for (auto& mapping : button_map) {
-        bool pressed = input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, mapping.retro);
-        Input::LibretroSetButton(mapping.native, pressed);
+    if (supports_bitmask) {
+        int16_t mask = input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_MASK);
+        for (auto& mapping : button_map) {
+            Input::LibretroSetButton(mapping.native, (mask & (1 << mapping.retro)) != 0);
+        }
+    } else {
+        for (auto& mapping : button_map) {
+            bool pressed = input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, mapping.retro);
+            Input::LibretroSetButton(mapping.native, pressed);
+        }
     }
 
     // Update Analogs

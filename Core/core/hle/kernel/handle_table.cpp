@@ -99,6 +99,16 @@ void HandleTable::Clear() {
     next_free_slot = 0;
 }
 
+u32 HandleTable::GetCount() const {
+    u32 count = 0;
+    for (const auto& obj : objects) {
+        if (obj != nullptr) {
+            count++;
+        }
+    }
+    return count;
+}
+
 template <class Archive>
 void HandleTable::serialize(Archive& ar, const unsigned int) {
     ar & objects;

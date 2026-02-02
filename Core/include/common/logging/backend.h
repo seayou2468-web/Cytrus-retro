@@ -33,4 +33,7 @@ void SetGlobalFilter(const Filter& filter);
 bool SetRegexFilter(const std::string& regex);
 
 void SetColorConsoleBackendEnabled(bool enabled);
+
+typedef void (*LibretroLogCallback)(int level, const char* fmt, ...);
+void SetLibretroLogCallback(LibretroLogCallback callback);
 } // namespace Common::Log
