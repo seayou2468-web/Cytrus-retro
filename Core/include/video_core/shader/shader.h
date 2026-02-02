@@ -31,6 +31,6 @@ public:
     virtual void Run(const ShaderSetup& setup, ShaderUnit& state) const = 0;
 };
 
-std::unique_ptr<ShaderEngine> CreateEngine(bool use_jit);
+std::unique_ptr<ShaderEngine> CreateEngine();
 
 } // namespace Pica

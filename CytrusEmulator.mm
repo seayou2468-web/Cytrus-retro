@@ -409,11 +409,6 @@ static void TryShutdown() {
     Settings::values.camera_name[Service::CAM::OuterRightCamera] = "av_right_rear";
     
     // Core
-    if (@available(iOS 26, *)) {
-        Settings::values.use_cpu_jit.SetValue(false);
-    } else {
-        Settings::values.use_cpu_jit.SetValue(boolean(@"cytrus.v1.35.cpuJIT"));
-    }
     Settings::values.cpu_clock_percentage.SetValue(signed32(@"cytrus.v1.35.cpuClockPercentage"));
     Settings::values.is_new_3ds.SetValue(boolean(@"cytrus.v1.35.new3DS"));
     Settings::values.lle_applets.SetValue(boolean(@"cytrus.v1.35.lleApplets"));
@@ -434,12 +429,6 @@ static void TryShutdown() {
     Settings::values.use_hw_shader.SetValue(boolean(@"cytrus.v1.35.useHardwareShaders"));
     Settings::values.use_disk_shader_cache.SetValue(boolean(@"cytrus.v1.35.useDiskShaderCache"));
     Settings::values.shaders_accurate_mul.SetValue(boolean(@"cytrus.v1.35.useShadersAccurateMul"));
-    Settings::values.use_vsync_new.SetValue(boolean(@"cytrus.v1.35.useNewVSync"));
-    if (@available(iOS 26, *)) {
-        Settings::values.use_shader_jit.SetValue(false);
-    } else {
-        Settings::values.use_shader_jit.SetValue(boolean(@"cytrus.v1.35.useShaderJIT"));
-    }
     Settings::values.resolution_factor.SetValue(unsigned32(@"cytrus.v1.35.resolutionFactor"));
     Settings::values.texture_filter.SetValue(static_cast<Settings::TextureFilter>(unsigned32(@"cytrus.v1.35.textureFilter")));
     Settings::values.texture_sampling.SetValue(static_cast<Settings::TextureSampling>(unsigned32(@"cytrus.v1.35.textureSampling")));

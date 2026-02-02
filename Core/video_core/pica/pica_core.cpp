@@ -33,7 +33,7 @@ static_assert(sizeof(CommandHeader) == sizeof(u32), "CommandHeader has incorrect
 PicaCore::PicaCore(Memory::MemorySystem& memory_, std::shared_ptr<DebugContext> debug_context_)
     : memory{memory_}, debug_context{std::move(debug_context_)},
       geometry_pipeline{regs.internal, gs_unit, gs_setup},
-      shader_engine{CreateEngine(Settings::values.use_shader_jit.GetValue())} {
+      shader_engine{CreateEngine()} {
     InitializeRegs();
 
     const auto submit_vertex = [this](const AttributeBuffer& buffer) {

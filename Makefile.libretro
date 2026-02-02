@@ -9,6 +9,10 @@ SOURCES_C   :=
 
 # Core source files
 SOURCES_CXX += $(shell find Core/core -name "*.cpp")
+# Filter out JIT implementation from core
+SOURCES_CXX := $(filter-out Core/core/arm/dynarmic/arm_dynarmic.cpp,$(SOURCES_CXX))
+SOURCES_CXX := $(filter-out Core/core/arm/dynarmic/arm_dynarmic_cp15.cpp,$(SOURCES_CXX))
+
 SOURCES_CXX += $(shell find Core/common -name "*.cpp")
 SOURCES_CXX += $(shell find Core/video_core -name "*.cpp")
 SOURCES_CXX += $(shell find libretro/azahar/src/video_core/renderer_software -name "*.cpp")
@@ -39,7 +43,11 @@ SOURCES_C   += libretro/libretro-common/streams/file_stream.c \
                libretro/libretro-common/compat/compat_snprintf.c \
                libretro/libretro-common/compat/compat_posix_string.c \
                libretro/libretro-common/compat/fopen_utf8.c \
-               libretro/libretro-common/encodings/encoding_utf.c
+               libretro/libretro-common/compat/compat_strcasestr.c \
+               libretro/libretro-common/compat/compat_strldup.c \
+               libretro/libretro-common/encodings/encoding_utf.c \
+               libretro/libretro-common/file/file_path_io.c \
+               libretro/libretro-common/time/rtime.c
 
 SOURCES_C   += $(shell find $(EXTERNAL_BASE)/zstd/lib/common -name "*.c")
 SOURCES_C   += $(shell find $(EXTERNAL_BASE)/zstd/lib/compress -name "*.c")
@@ -58,6 +66,12 @@ SOURCES_CXX += $(EXTERNAL_BASE)/boost/libs/iostreams/src/file_descriptor.cpp
 # MCL externals for dynarmic
 SOURCES_CXX += $(EXTERNAL_BASE)/dynarmic/externals/mcl/src/assert.cpp
 
+# Dynarmic (IR and Frontend only, No JIT)
+DYNARMIC_DIR := $(EXTERNAL_BASE)/dynarmic/src/dynarmic
+SOURCES_CXX += $(shell find $(DYNARMIC_DIR)/common -name "*.cpp")
+SOURCES_CXX += $(shell find $(DYNARMIC_DIR)/frontend/A32 -name "*.cpp")
+SOURCES_CXX += $(shell find $(DYNARMIC_DIR)/ir -name "*.cpp")
+
 # Crypto++ Sources (handled separately as libcryptopp.a)
 CRYPTOPP_DIR := $(EXTERNAL_BASE)/cryptopp
 CRYPTOPP_SOURCES := $(shell find $(CRYPTOPP_DIR) -name "*.cpp")
@@ -66,14 +80,14 @@ CRYPTOPP_SOURCES := $(filter-out $(CRYPTOPP_DIR)/TestPrograms/% $(CRYPTOPP_DIR)/
 
 # Remove problematic or excluded files from main lists
 SOURCES_CXX := $(filter-out %/main.cpp %/ffmpeg.cpp %/ffmpeg_backend.cpp,$(SOURCES_CXX))
-SOURCES_CXX := $(filter-out Core/%_sink.cpp Core/%_input.cpp,$(SOURCES_CXX))
+SOURCES_CXX := $(filter-out Core/%_sink.cpp %openal_input.cpp,$(SOURCES_CXX))
 SOURCES_CXX := $(filter-out Core/video_core/renderer_vulkan/%,$(SOURCES_CXX))
 SOURCES_CXX := $(filter-out Core/video_core/renderer_opengl/%,$(SOURCES_CXX))
 SOURCES_CXX := $(filter-out Core/video_core/shader/shader_jit%,$(SOURCES_CXX))
 SOURCES_CXX := $(filter-out %/cubeb/% %/dumping/%,$(SOURCES_CXX))
 SOURCES_CXX := $(filter-out %/mmx_optimized.cpp %/sse_optimized.cpp %/cpu_detect_x86.cpp,$(SOURCES_CXX))
 SOURCES_CXX := $(filter-out Core/audio_core/lle/%,$(SOURCES_CXX))
-SOURCES_CXX := $(filter-out Core/network/artic_base/% Core/network/announce_multiplayer_session.cpp,$(SOURCES_CXX))
+SOURCES_CXX := $(filter-out Core/network/announce_multiplayer_session.cpp,$(SOURCES_CXX))
 SOURCES_CXX := $(filter-out Core/input_common/sdl/%,$(SOURCES_CXX))
 
 # ENet filters (only unix.c for our targets)
@@ -169,15 +183,16 @@ patch-version:
 ifeq ($(PLATFORM),ios)
 	@echo "Patching minimum OS version to $(MIN_VER)..."
 	@perl -i -pe 's/-(mios|miphoneos|mtvos|mwatchos|mappletvos|mmacosx)-version-min=[0-9.]*/-miphoneos-version-min=$(MIN_VER)/g' libretro/externals/openssl/Configurations/15-ios.conf 2>/dev/null || true
-	@for f in $$(grep -rlE "\-(mios|miphoneos|mtvos|mwatchos|mappletvos|mmacosx)-version-min=" libretro/azahar/externals/cryptopp libretro/libretro-super libretro/libretro-common 2>/dev/null); do \
-		sed -i -E 's/-(mios|miphoneos|mtvos|mwatchos|mappletvos|mmacosx)-version-min=[0-9.]*/-miphoneos-version-min=$(MIN_VER)/g' $$f; \
+	@for f in $$(grep -rlE "\-(mios|miphoneos|mtvos|mwatchos|mappletvos|mmacosx)-version-min=" libretro/azahar/externals libretro/libretro-super libretro/libretro-common 2>/dev/null); do \
+		perl -i -pe 's/-(mios|miphoneos|mtvos|mwatchos|mappletvos|mmacosx)-version-min=[0-9.]*/-miphoneos-version-min=$(MIN_VER)/g' $$f; \
 	done || true
-	@find . -name "project.pbxproj" -exec sed -i -E 's/(IPHONEOS|MACOSX|TVOS|WATCHOS)_DEPLOYMENT_TARGET = [0-9.]*;/ \1_DEPLOYMENT_TARGET = $(MIN_VER);/g' {} + 2>/dev/null || true
-	@find . -name "*.xcconfig" -exec sed -i -E 's/(IPHONEOS|MACOSX|TVOS|WATCHOS)_DEPLOYMENT_TARGET = [0-9.]*/\1_DEPLOYMENT_TARGET = $(MIN_VER)/g' {} + 2>/dev/null || true
+	@find . -name "project.pbxproj" -exec perl -i -pe 's/(IPHONEOS|MACOSX|TVOS|WATCHOS)_DEPLOYMENT_TARGET = [0-9.]*;/ $$1_DEPLOYMENT_TARGET = $(MIN_VER);/g' {} + 2>/dev/null || true
+	@find . -name "*.xcconfig" -exec perl -i -pe 's/(IPHONEOS|MACOSX|TVOS|WATCHOS)_DEPLOYMENT_TARGET = [0-9.]*/$$1_DEPLOYMENT_TARGET = $(MIN_VER)/g' {} + 2>/dev/null || true
+	@find . -name "CMakeLists.txt" -exec perl -i -pe 's/set\(CMAKE_OSX_DEPLOYMENT_TARGET "[0-9.]*"\)/set(CMAKE_OSX_DEPLOYMENT_TARGET "$(MIN_VER)")/g' {} + 2>/dev/null || true
 	@echo "Fixing cpp-jwt template and include issues..."
 	@mkdir -p libretro/azahar/externals/json/nlohmann 2>/dev/null || true
-	@ln -sf ../json.hpp libretro/azahar/externals/json/nlohmann/json.hpp 2>/dev/null || true
-	@sed -i 's/decltype(auto) get_claim_value/T get_claim_value/g' libretro/azahar/externals/cpp-jwt/include/jwt/jwt.hpp 2>/dev/null || true
+	@if [ ! -L libretro/azahar/externals/json/nlohmann/json.hpp ]; then ln -sf ../json.hpp libretro/azahar/externals/json/nlohmann/json.hpp 2>/dev/null || true; fi
+	@perl -i -pe 's/decltype\(auto\) get_claim_value/T get_claim_value/g' libretro/azahar/externals/cpp-jwt/include/jwt/jwt.hpp 2>/dev/null || true
 endif
 
 $(OPENSSL_DIR)/configdata.pm: patch-version
