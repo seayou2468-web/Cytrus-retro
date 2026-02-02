@@ -15,6 +15,8 @@ SOURCES_CXX += $(shell find libretro/azahar/src/video_core/renderer_software -na
 SOURCES_CXX += $(shell find Core/audio_core -name "*.cpp")
 SOURCES_CXX += $(shell find Core/network -name "*.cpp")
 SOURCES_CXX += $(shell find Core/input_common -name "*.cpp")
+# Web service and boost serialization are required for core functionality
+SOURCES_CXX += $(shell find Core/web_service -name "*.cpp")
 SOURCES_CXX += libretro/libretro.cpp
 SOURCES_CXX += libretro/libretro_emu_window.cpp
 SOURCES_CXX += libretro/libretro_sink.cpp
@@ -49,6 +51,8 @@ SOURCES_CXX += $(shell find $(EXTERNAL_BASE)/xxHash -name "*.cpp")
 SOURCES_CXX += $(shell find $(EXTERNAL_BASE)/sirit/sirit/src -name "*.cpp")
 SOURCES_CXX += $(shell find $(EXTERNAL_BASE)/soundtouch/source/SoundTouch -name "*.cpp")
 SOURCES_CXX += $(shell find $(EXTERNAL_BASE)/teakra/src -name "*.cpp")
+# Statically compile boost serialization into the core
+SOURCES_CXX += $(shell find $(EXTERNAL_BASE)/boost/libs/serialization/src -name "*.cpp")
 
 # Crypto++ Sources (handled separately as libcryptopp.a)
 CRYPTOPP_DIR := $(EXTERNAL_BASE)/cryptopp
@@ -155,8 +159,19 @@ CRYPTOPP_OBJECTS := $(CRYPTOPP_SOURCES:.cpp=.o)
 
 all: $(TARGET)
 
-$(OPENSSL_DIR)/configdata.pm:
-	perl -i -pe 's/-(mios|miphoneos)-version-min=[0-9.]*/-miphoneos-version-min=$(MIN_VER)/g' $(OPENSSL_DIR)/Configurations/15-ios.conf
+.PHONY: patch-version
+patch-version:
+ifeq ($(PLATFORM),ios)
+	@echo "Patching minimum OS version to $(MIN_VER)..."
+	@perl -i -pe 's/-(mios|miphoneos|mtvos|mwatchos|mappletvos|mmacosx)-version-min=[0-9.]*/-miphoneos-version-min=$(MIN_VER)/g' libretro/externals/openssl/Configurations/15-ios.conf 2>/dev/null || true
+	@for f in $$(grep -rlE "\-(mios|miphoneos|mtvos|mwatchos|mappletvos|mmacosx)-version-min=" libretro/azahar/externals/cryptopp libretro/libretro-super libretro/libretro-common 2>/dev/null); do \
+		sed -i -E 's/-(mios|miphoneos|mtvos|mwatchos|mappletvos|mmacosx)-version-min=[0-9.]*/-miphoneos-version-min=$(MIN_VER)/g' $$f; \
+	done || true
+	@find . -name "project.pbxproj" -exec sed -i -E 's/(IPHONEOS|MACOSX|TVOS|WATCHOS)_DEPLOYMENT_TARGET = [0-9.]*;/ \1_DEPLOYMENT_TARGET = $(MIN_VER);/g' {} + 2>/dev/null || true
+	@find . -name "*.xcconfig" -exec sed -i -E 's/(IPHONEOS|MACOSX|TVOS|WATCHOS)_DEPLOYMENT_TARGET = [0-9.]*/\1_DEPLOYMENT_TARGET = $(MIN_VER)/g' {} + 2>/dev/null || true
+endif
+
+$(OPENSSL_DIR)/configdata.pm: patch-version
 	cd $(OPENSSL_DIR) && $(OPENSSL_CONFIGURE)
 
 $(OPENSSL_DIR)/libssl.a: $(OPENSSL_DIR)/configdata.pm
@@ -165,7 +180,7 @@ $(OPENSSL_DIR)/libssl.a: $(OPENSSL_DIR)/configdata.pm
 $(OPENSSL_DIR)/libcrypto.a: $(OPENSSL_DIR)/libssl.a
 	@:
 
-# Fix dependency for objects that need OpenSSL headers
+# Ensure OpenSSL is built before anything that might need its headers
 $(OBJECTS): $(OPENSSL_LIBS)
 
 $(CRYPTOPP_DIR)/libcryptopp.a: $(CRYPTOPP_OBJECTS)
