@@ -1,0 +1,9 @@
+[33m98f04d1[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m Stop tracking PDF files with Git LFS
+[33maea6387[m Remove ARM architecture reference manual PDF (link instead)
+[33m320b48e[m Move ARM architecture PDF to Git LFS
+[33m3cc71cd[m Track PDF files with Git LFS
+[33m9245093[m add pdfs
+[33mdc22b60[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m Add files via upload
+[33m3c0222f[m Create info original-core-reference.txt
+[33m03146a5[m add original-core-reference
+[33m057d0a7[m[33m ([m[1;34mgrafted[m[33m)[m Update build.yml
