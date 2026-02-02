@@ -13,3 +13,6 @@
 [submodule "libretro/dynarmic"]
 	path = libretro/dynarmic
 	url = https://github.com/lioncash/dynarmic.git
+[submodule "libretro/original-core-reference"]
+	path = libretro/original-core-reference
+	url = https://github.com/folium-app/Cytrus.git
