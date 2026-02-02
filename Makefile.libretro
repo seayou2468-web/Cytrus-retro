@@ -25,6 +25,20 @@ SOURCES_CXX += $(EXTERNAL_BASE)/fmt/src/format.cc
 SOURCES_CXX += $(EXTERNAL_BASE)/fmt/src/os.cc
 SOURCES_CXX += $(EXTERNAL_BASE)/lodepng/lodepng/lodepng.cpp
 SOURCES_C   += $(EXTERNAL_BASE)/inih/inih/ini.c
+
+# libretro-common
+SOURCES_C   += libretro/libretro-common/streams/file_stream.c \
+               libretro/libretro-common/vfs/vfs_implementation.c \
+               libretro/libretro-common/rthreads/rthreads.c \
+               libretro/libretro-common/string/stdstring.c \
+               libretro/libretro-common/file/file_path.c \
+               libretro/libretro-common/file/retro_dirent.c \
+               libretro/libretro-common/compat/compat_strl.c \
+               libretro/libretro-common/compat/compat_snprintf.c \
+               libretro/libretro-common/compat/compat_posix_string.c \
+               libretro/libretro-common/compat/fopen_utf8.c \
+               libretro/libretro-common/encodings/encoding_utf.c
+
 SOURCES_C   += $(shell find $(EXTERNAL_BASE)/zstd/lib/common -name "*.c")
 SOURCES_C   += $(shell find $(EXTERNAL_BASE)/zstd/lib/compress -name "*.c")
 SOURCES_C   += $(shell find $(EXTERNAL_BASE)/zstd/lib/decompress -name "*.c")
@@ -90,6 +104,7 @@ INCFLAGS += -I$(EXTERNAL_BASE)/zstd/contrib/seekable_format
 INCFLAGS += -I$(EXTERNAL_BASE)/soundtouch/include
 INCFLAGS += -I$(EXTERNAL_BASE)/teakra/include
 INCFLAGS += -I$(EXTERNAL_BASE)/teakra/include/teakra/impl
+INCFLAGS += -Ilibretro/externals/openssl/include
 INCFLAGS += -ICore/include/network
 
 # Compiler flags
@@ -102,6 +117,10 @@ CFLAGS   += -DENABLE_SOFTWARE_RENDERER -D__LIBRETRO__ -DZSTD_DISABLE_ASM -DCPPHT
 
 # Crypto++ defines
 CXXFLAGS += -DCRYPTOPP_DISABLE_ASM -DCRYPTOPP_DISABLE_SSSE3 -DCRYPTOPP_DISABLE_AESNI
+
+# OpenSSL configuration
+OPENSSL_DIR := libretro/externals/openssl
+OPENSSL_LIBS := $(OPENSSL_DIR)/libssl.a $(OPENSSL_DIR)/libcrypto.a
 
 # OS detection
 ifeq ($(shell uname -s),Darwin)
@@ -118,13 +137,16 @@ ifeq ($(shell uname -s),Darwin)
         CFLAGS += -isysroot $(IPHONEOS_SDK) -miphoneos-version-min=15.0 -arch arm64 -fembed-bitcode
         LDFLAGS += -isysroot $(IPHONEOS_SDK) -miphoneos-version-min=15.0 -arch arm64 -dynamiclib -fembed-bitcode
         TARGET := $(TARGET_NAME)_libretro_ios.dylib
+        OPENSSL_CONFIGURE := ./Configure ios64-xcrun no-shared no-tests no-unit-test
     else
         LDFLAGS += -dynamiclib
         TARGET := $(TARGET_NAME)_libretro.dylib
+        OPENSSL_CONFIGURE := ./config no-shared no-tests no-unit-test
     endif
 else
-    LDFLAGS += -shared -Wl,--version-script=$(CURDIR)/libretro/link.T -lssl -lcrypto
+    LDFLAGS += -shared -Wl,--version-script=$(CURDIR)/libretro/link.T
     TARGET := $(TARGET_NAME)_libretro.so
+    OPENSSL_CONFIGURE := ./config no-shared no-tests no-unit-test
 endif
 
 CXXFLAGS += -include Core/include/common/assert.h -include Core/include/common/logging/log.h
@@ -137,11 +159,14 @@ CRYPTOPP_OBJECTS := $(CRYPTOPP_SOURCES:.cpp=.o)
 
 all: $(TARGET)
 
+$(OPENSSL_LIBS):
+	cd $(OPENSSL_DIR) && $(OPENSSL_CONFIGURE) && make -j$(shell nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 1)
+
 $(CRYPTOPP_DIR)/libcryptopp.a: $(CRYPTOPP_OBJECTS)
 	$(AR) rcs $@ $(CRYPTOPP_OBJECTS)
 
-$(TARGET): $(CRYPTOPP_DIR)/libcryptopp.a $(OBJECTS)
-	$(CXX) $(CXXFLAGS) $(OBJECTS) $(CRYPTOPP_DIR)/libcryptopp.a -o $@ $(LDFLAGS)
+$(TARGET): $(OPENSSL_LIBS) $(CRYPTOPP_DIR)/libcryptopp.a $(OBJECTS)
+	$(CXX) $(CXXFLAGS) $(OBJECTS) $(CRYPTOPP_DIR)/libcryptopp.a $(OPENSSL_LIBS) -o $@ $(LDFLAGS)
 
 %.o: %.cpp
 	$(CXX) $(CXXFLAGS) -c -o $@ $<

@@ -17,6 +17,10 @@
 #include "libretro_input.h"
 #include "common/logging/backend.h"
 #include "common/file_util.h"
+#include <streams/file_stream.h>
+#include <file/file_path.h>
+#include <retro_dirent.h>
+#include <string/stdstring.h>
 
 static retro_environment_t environ_cb;
 static retro_video_refresh_t video_cb;
@@ -66,6 +70,13 @@ static const ButtonMapping button_map[] = {
 };
 
 void retro_init(void) {
+    struct retro_vfs_interface_info vfs_info = { 3, nullptr };
+    if (environ_cb(RETRO_ENVIRONMENT_GET_VFS_INTERFACE, &vfs_info)) {
+        filestream_vfs_init(&vfs_info);
+        path_vfs_init(&vfs_info);
+        dirent_vfs_init(&vfs_info);
+    }
+
     system_instance = &Core::System::GetInstance();
     emu_window = new LibretroEmuWindow();
     Input::RegisterLibretroInput();
@@ -93,7 +104,7 @@ void retro_get_system_av_info(struct retro_system_av_info *info) {
     struct retro_variable var = { "cytrus_layout", nullptr };
     bool side_by_side = false;
     if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value) {
-        if (strcmp(var.value, "Side-by-Side") == 0) {
+        if (string_is_equal(var.value, "Side-by-Side")) {
             side_by_side = true;
         }
     }
@@ -155,7 +166,7 @@ bool retro_load_game(const struct retro_game_info *game) {
     Settings::values.is_new_3ds = false;
     Settings::values.cpu_clock_percentage.SetValue(100);
     if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value) {
-        if (strcmp(var.value, "New 3DS") == 0) {
+        if (string_is_equal(var.value, "New 3DS")) {
             Settings::values.is_new_3ds = true;
             Settings::values.cpu_clock_percentage.SetValue(400);
         }
@@ -207,7 +218,7 @@ void retro_run(void) {
     if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE, &updated) && updated) {
         struct retro_variable var = { "cytrus_layout", nullptr };
         if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value) {
-            bool side_by_side = (strcmp(var.value, "Side-by-Side") == 0);
+            bool side_by_side = string_is_equal(var.value, "Side-by-Side");
             struct retro_game_geometry geometry;
             if (side_by_side) {
                 geometry.base_width = 720;
@@ -286,10 +297,10 @@ void retro_run(void) {
     const auto& top_screen = renderer.Screen(VideoCore::ScreenId::TopLeft);
     const auto& bottom_screen = renderer.Screen(VideoCore::ScreenId::Bottom);
 
-    struct retro_variable var = { "cytrus_layout", nullptr };
+    struct retro_variable var_layout = { "cytrus_layout", nullptr };
     bool side_by_side = false;
-    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value) {
-        if (strcmp(var.value, "Side-by-Side") == 0) {
+    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var_layout) && var_layout.value) {
+        if (string_is_equal(var_layout.value, "Side-by-Side")) {
             side_by_side = true;
         }
     }

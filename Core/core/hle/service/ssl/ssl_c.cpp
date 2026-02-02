@@ -25,10 +25,10 @@ void SSL_C::Initialize(Kernel::HLERequestContext& ctx) {
 void SSL_C::GenerateRandomData(Kernel::HLERequestContext& ctx) {
     IPC::RequestParser rp(ctx);
     const u32 size = rp.Pop<u32>();
-    auto buffer = rp.PopMappedBuffer();
+    auto& buffer = rp.PopMappedBuffer();
 
     std::vector<u8> out_data(size);
-    SSL::GenerateRandomData(out_data);
+    Service::SSL::GenerateRandomData(out_data);
     buffer.Write(out_data.data(), 0, size);
 
     IPC::RequestBuilder rb = rp.MakeBuilder(1, 2);
