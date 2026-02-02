@@ -9,6 +9,8 @@ on:
 jobs:
   build-ios:
     runs-on: macos-latest
+    env:
+      IOS_MIN_VERSION: 13.0  # ←ここで指定
     steps:
     - uses: actions/checkout@v4
       with:
@@ -22,7 +24,7 @@ jobs:
     - name: Build
       run: |
         set -x
-        make -f Makefile.libretro PLATFORM=ios V=1 -j$(sysctl -n hw.ncpu)
+        make -f Makefile.libretro PLATFORM=ios IOS_MIN_VERSION=${IOS_MIN_VERSION} V=1 -j$(sysctl -n hw.ncpu)
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4
