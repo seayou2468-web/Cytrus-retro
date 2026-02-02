@@ -10,13 +10,12 @@ jobs:
   build-ios:
     runs-on: macos-latest
     env:
-      IOS_MIN_VERSION: 15.0  # ←ここで指定
+      IOS_MIN_VERSION: "15.0"  # ←ここで指定
     steps:
     - uses: actions/checkout@v4
       with:
         submodules: recursive
         fetch-depth: 1            # メインリポジトリのクローンを浅く（最後のコミットだけ）
-        submodule-fetch-depth: 1
 
     - name: Set up Xcode
       uses: maxim-lobanov/setup-xcode@v1

@@ -141,7 +141,7 @@ ifeq ($(PLATFORM),ios)
     LDFLAGS  += -isysroot $(IPHONEOS_SDK) -miphoneos-version-min=$(MIN_VER) -arch arm64 -dynamiclib -fembed-bitcode
 
     TARGET := $(TARGET_NAME)_libretro_ios.dylib
-    OPENSSL_CONFIGURE := IPHONEOS_DEPLOYMENT_TARGET=$(MIN_VER) ./Configure ios64-xcrun no-shared no-tests no-unit-test -miphoneos-version-min=$(MIN_VER)
+    OPENSSL_CONFIGURE := IPHONEOS_DEPLOYMENT_TARGET=$(MIN_VER) ./Configure ios64-xcrun no-shared no-tests no-unit-test
 endif
 
 
@@ -156,6 +156,7 @@ CRYPTOPP_OBJECTS := $(CRYPTOPP_SOURCES:.cpp=.o)
 all: $(TARGET)
 
 $(OPENSSL_LIBS):
+	sed -i '' 's/-mios-version-min=[0-9.]*/-mios-version-min=$(MIN_VER).0/g' $(OPENSSL_DIR)/Configurations/15-ios.conf
 	cd $(OPENSSL_DIR) && $(OPENSSL_CONFIGURE) && make -j$(shell nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 1)
 
 $(CRYPTOPP_DIR)/libcryptopp.a: $(CRYPTOPP_OBJECTS)
