@@ -11,6 +11,7 @@
 #include <array>
 #include <atomic>
 #include <cstdio>
+#include <streams/file_stream.h>
 #include <functional>
 #include <ios>
 #include <limits>
@@ -120,8 +121,8 @@ private:
 // Overloaded GetSize, accepts file descriptor
 [[nodiscard]] u64 GetSize(int fd);
 
-// Overloaded GetSize, accepts FILE*
-[[nodiscard]] u64 GetSize(FILE* f);
+// Overloaded GetSize, accepts RFILE*
+[[nodiscard]] u64 GetSize(RFILE* f);
 
 // Returns true if successful, or path already exists.
 bool CreateDir(const std::string& filename);
@@ -421,13 +422,7 @@ public:
         return m_good;
     }
     [[nodiscard]] virtual int GetFd() const {
-#ifdef ANDROID
-        return m_fd;
-#else
-        if (m_file == nullptr)
-            return -1;
-        return fileno(m_file);
-#endif
+        return -1; // Libretro VFS doesn't expose file descriptors easily
     }
     [[nodiscard]] explicit operator bool() const {
         return IsGood();
@@ -446,7 +441,7 @@ public:
     // clear error state
     virtual void Clear() {
         m_good = true;
-        std::clearerr(m_file);
+        // No direct equivalent for clearerr in filestream
     }
 
     virtual bool IsCrypto() {
@@ -475,7 +470,7 @@ protected:
     virtual u64 TellImpl() const;
 
 private:
-    std::FILE* m_file = nullptr;
+    RFILE* m_file = nullptr;
     int m_fd = -1;
     bool m_good = true;
 

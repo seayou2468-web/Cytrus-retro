@@ -91,6 +91,9 @@ public:
     /// Closes all handles held in this table.
     void Clear();
 
+    /// Returns the number of open handles.
+    u32 GetCount() const;
+
 private:
     /**
      * This is the maximum limit of handles allowed per process in CTR-OS. It can be further

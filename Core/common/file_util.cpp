@@ -26,6 +26,9 @@
 #include "common/logging/log.h"
 #include "common/scope_exit.h"
 #include "common/string_util.h"
+#include <streams/file_stream.h>
+#include <file/file_path.h>
+#include <retro_dirent.h>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -109,134 +112,21 @@ static void StripTailDirSlashes(std::string& fname) {
 }
 
 bool Exists(const std::string& filename) {
-    std::string copy(filename);
-    StripTailDirSlashes(copy);
-
-#ifdef _WIN32
-    struct _stat64 file_info;
-    // Windows needs a slash to identify a driver root
-    if (copy.size() != 0 && copy.back() == ':')
-        copy += DIR_SEP_CHR;
-
-    int result = _wstat64(Common::UTF8ToUTF16W(copy).c_str(), &file_info);
-#elif ANDROID
-    int result = AndroidStorage::FileExists(filename) ? 0 : -1;
-#else
-    struct stat file_info;
-    int result = stat(copy.c_str(), &file_info);
-#endif
-
-    return (result == 0);
+    return path_is_valid(filename.c_str());
 }
 
 bool IsDirectory(const std::string& filename) {
-#ifdef ANDROID
-    return AndroidStorage::IsDirectory(filename);
-#endif
-
-    std::string copy(filename);
-    StripTailDirSlashes(copy);
-
-#ifdef _WIN32
-    struct _stat64 file_info;
-    // Windows needs a slash to identify a driver root
-    if (copy.size() != 0 && copy.back() == ':')
-        copy += DIR_SEP_CHR;
-
-    int result = _wstat64(Common::UTF8ToUTF16W(copy).c_str(), &file_info);
-#else
-    struct stat file_info;
-    int result = stat(copy.c_str(), &file_info);
-#endif
-
-    if (result < 0) {
-        LOG_DEBUG(Common_Filesystem, "stat failed on {}: {}", filename, GetLastErrorMsg());
-        return false;
-    }
-
-    return S_ISDIR(file_info.st_mode);
+    return path_is_directory(filename.c_str());
 }
 
 bool Delete(const std::string& filename) {
-    LOG_TRACE(Common_Filesystem, "file {}", filename);
-
-    // Return true because we care about the file no
-    // being there, not the actual delete.
-    if (!Exists(filename)) {
-        LOG_DEBUG(Common_Filesystem, "{} does not exist", filename);
-        return true;
-    }
-
-    // We can't delete a directory
-    if (IsDirectory(filename)) {
-        LOG_ERROR(Common_Filesystem, "Failed: {} is a directory", filename);
-        return false;
-    }
-
-#ifdef _WIN32
-    if (!DeleteFileW(Common::UTF8ToUTF16W(filename).c_str())) {
-        LOG_ERROR(Common_Filesystem, "DeleteFile failed on {}: {}", filename, GetLastErrorMsg());
-        return false;
-    }
-#elif ANDROID
-    if (!AndroidStorage::DeleteDocument(filename)) {
-        LOG_ERROR(Common_Filesystem, "unlink failed on {}", filename);
-        return false;
-    }
-#else
-    if (unlink(filename.c_str()) == -1) {
-        LOG_ERROR(Common_Filesystem, "unlink failed on {}: {}", filename, GetLastErrorMsg());
-        return false;
-    }
-#endif
-
-    return true;
+    if (!Exists(filename)) return true;
+    if (IsDirectory(filename)) return false;
+    return filestream_delete(filename.c_str()) == 0;
 }
 
 bool CreateDir(const std::string& path) {
-    LOG_TRACE(Common_Filesystem, "directory {}", path);
-#ifdef _WIN32
-    if (::CreateDirectoryW(Common::UTF8ToUTF16W(path).c_str(), nullptr))
-        return true;
-    DWORD error = GetLastError();
-    if (error == ERROR_ALREADY_EXISTS) {
-        LOG_DEBUG(Common_Filesystem, "CreateDirectory failed on {}: already exists", path);
-        return true;
-    }
-    LOG_ERROR(Common_Filesystem, "CreateDirectory failed on {}: {}", path, error);
-    return false;
-#elif ANDROID
-    std::string directory = path;
-    std::string filename = path;
-    if (Common::EndsWith(path, "/")) {
-        directory = GetParentPath(path);
-        filename = GetParentPath(path);
-    }
-    directory = GetParentPath(directory);
-    filename = GetFilename(filename);
-    // If directory path is empty, set it to root.
-    if (directory.empty()) {
-        directory = "/";
-    }
-    if (!AndroidStorage::CreateDir(directory, filename)) {
-        LOG_ERROR(Common_Filesystem, "mkdir failed on {}", path);
-        return false;
-    };
-    return true;
-#else
-    if (mkdir(path.c_str(), 0755) == 0)
-        return true;
-
-    int err = errno;
-
-    if (err == EEXIST) {
-        LOG_DEBUG(Common_Filesystem, "mkdir failed on {}: already exists", path);
-        return true;
-    }
-
-    LOG_ERROR(Common_Filesystem, "mkdir failed on {}: {}", path, strerror(err));
-    return false;
-#endif
+    return path_mkdir(path.c_str());
 }
 
 bool CreateFullPath(const std::string& fullPath) {
@@ -305,112 +195,19 @@ bool DeleteDir(const std::string& filename) {
 }
 
 bool Rename(const std::string& srcFilename, const std::string& destFilename) {
-    LOG_TRACE(Common_Filesystem, "{} --> {}", srcFilename, destFilename);
-#ifdef _WIN32
-    if (_wrename(Common::UTF8ToUTF16W(srcFilename).c_str(),
-                 Common::UTF8ToUTF16W(destFilename).c_str()) == 0)
-        return true;
-#elif ANDROID
-    if (AndroidStorage::RenameFile(srcFilename, std::string(GetFilename(destFilename))))
-        return true;
-#else
-    if (rename(srcFilename.c_str(), destFilename.c_str()) == 0)
-        return true;
-#endif
-    LOG_ERROR(Common_Filesystem, "failed {} --> {}: {}", srcFilename, destFilename,
-              GetLastErrorMsg());
-    return false;
+    return filestream_rename(srcFilename.c_str(), destFilename.c_str()) == 0;
 }
 
 bool Copy(const std::string& srcFilename, const std::string& destFilename) {
-    LOG_TRACE(Common_Filesystem, "{} --> {}", srcFilename, destFilename);
-#ifdef _WIN32
-    if (CopyFileW(Common::UTF8ToUTF16W(srcFilename).c_str(),
-                  Common::UTF8ToUTF16W(destFilename).c_str(), FALSE))
-        return true;
-
-    LOG_ERROR(Common_Filesystem, "failed {} --> {}: {}", srcFilename, destFilename,
-              GetLastErrorMsg());
-    return false;
-#elif ANDROID
-    return AndroidStorage::CopyFile(srcFilename, std::string(GetParentPath(destFilename)),
-                                    std::string(GetFilename(destFilename)));
-#else
-
-    // Open input file
-    FILE* input = fopen(srcFilename.c_str(), "rb");
-    if (!input) {
-        LOG_ERROR(Common_Filesystem, "opening input failed {} --> {}: {}", srcFilename,
-                  destFilename, GetLastErrorMsg());
-        return false;
-    }
-    SCOPE_EXIT({ fclose(input); });
-
-    // open output file
-    FILE* output = fopen(destFilename.c_str(), "wb");
-    if (!output) {
-        LOG_ERROR(Common_Filesystem, "opening output failed {} --> {}: {}", srcFilename,
-                  destFilename, GetLastErrorMsg());
-        return false;
-    }
-    SCOPE_EXIT({ fclose(output); });
-
-    // copy loop
-    std::array<char, 1024> buffer;
-    while (!feof(input)) {
-        // read input
-        std::size_t rnum = fread(buffer.data(), sizeof(char), buffer.size(), input);
-        if (rnum != buffer.size()) {
-            if (ferror(input) != 0) {
-                LOG_ERROR(Common_Filesystem, "failed reading from source, {} --> {}: {}",
-                          srcFilename, destFilename, GetLastErrorMsg());
-                return false;
-            }
-        }
-
-        // write output
-        std::size_t wnum = fwrite(buffer.data(), sizeof(char), rnum, output);
-        if (wnum != rnum) {
-            LOG_ERROR(Common_Filesystem, "failed writing to output, {} --> {}: {}", srcFilename,
-                      destFilename, GetLastErrorMsg());
-            return false;
-        }
-    }
-
-    return true;
-#endif
+    return filestream_copy(srcFilename.c_str(), destFilename.c_str()) == 0;
 }
 
 u64 GetSize(const std::string& filename) {
-    if (!Exists(filename)) {
-        LOG_ERROR(Common_Filesystem, "failed {}: No such file", filename);
-        return 0;
-    }
-
-    if (IsDirectory(filename)) {
-        LOG_ERROR(Common_Filesystem, "failed {}: is a directory", filename);
-        return 0;
-    }
-#ifndef _WIN32
-    struct stat buf;
-#endif
-#ifdef _WIN32
-    struct _stat64 buf;
-    if (_wstat64(Common::UTF8ToUTF16W(filename).c_str(), &buf) == 0)
-#elif ANDROID
-    u64 result = AndroidStorage::GetSize(filename);
-    LOG_TRACE(Common_Filesystem, "{}: {}", filename, result);
-    return result;
-#else
-    if (stat(filename.c_str(), &buf) == 0)
-#endif
-    {
-        LOG_TRACE(Common_Filesystem, "{}: {}", filename, buf.st_size);
-        return buf.st_size;
-    }
-
-    LOG_ERROR(Common_Filesystem, "Stat failed {}: {}", filename, GetLastErrorMsg());
-    return 0;
+    RFILE* f = filestream_open(filename.c_str(), RETRO_VFS_FILE_ACCESS_READ, RETRO_VFS_FILE_ACCESS_HINT_NONE);
+    if (!f) return 0;
+    u64 size = filestream_get_size(f);
+    filestream_close(f);
+    return size;
 }
 
 u64 GetSize(const int fd) {
@@ -422,19 +219,8 @@ u64 GetSize(const int fd) {
     return buf.st_size;
 }
 
-u64 GetSize(FILE* f) {
-    // can't use off_t here because it can be 32-bit
-    u64 pos = ftello(f);
-    if (fseeko(f, 0, SEEK_END) != 0) {
-        LOG_ERROR(Common_Filesystem, "GetSize: seek failed {}: {}", fmt::ptr(f), GetLastErrorMsg());
-        return 0;
-    }
-    u64 size = ftello(f);
-    if ((size != pos) && (fseeko(f, pos, SEEK_SET) != 0)) {
-        LOG_ERROR(Common_Filesystem, "GetSize: seek failed {}: {}", fmt::ptr(f), GetLastErrorMsg());
-        return 0;
-    }
-    return size;
+u64 GetSize(RFILE* f) {
+    return filestream_get_size(f);
 }
 
 bool CreateEmptyFile(const std::string& filename) {
@@ -452,37 +238,16 @@ bool ForeachDirectoryEntry(u64* num_entries_out, const std::string& directory,
                            DirectoryEntryCallable callback) {
     LOG_TRACE(Common_Filesystem, "directory {}", directory);
 
-    // How many files + directories we found
     u64 found_entries = 0;
-
-    // Save the status of callback function
     bool callback_error = false;
 
-#ifdef _WIN32
-    // Find the first file in the directory.
-    WIN32_FIND_DATAW ffd;
+    struct RDIR* dirp = retro_opendir(directory.c_str());
+    if (!dirp) return false;
 
-    HANDLE handle_find = FindFirstFileW(Common::UTF8ToUTF16W(directory + "\\*").c_str(), &ffd);
-    if (handle_find == INVALID_HANDLE_VALUE) {
-        FindClose(handle_find);
-        return false;
-    }
-    // windows loop
-    do {
-        const std::string virtual_name(Common::UTF16ToUTF8(ffd.cFileName));
-#elif ANDROID
-    // android loop
-    auto result = AndroidStorage::GetFilesName(directory);
-    for (auto virtual_name : result) {
-#else
-    DIR* dirp = opendir(directory.c_str());
-    if (!dirp)
-        return false;
-
-    // non windows loop
-    while (struct dirent* result = readdir(dirp)) {
-        const std::string virtual_name(result->d_name);
-#endif
+    while (retro_readdir(dirp)) {
+        const char* name = retro_dirent_get_name(dirp);
+        if (!name) continue;
+        const std::string virtual_name(name);
 
         if (virtual_name == "." || virtual_name == "..")
             continue;
@@ -493,21 +258,11 @@ bool ForeachDirectoryEntry(u64* num_entries_out, const std::string& directory,
             break;
         }
         found_entries += ret_entries;
-
-#ifdef _WIN32
-    } while (FindNextFileW(handle_find, &ffd) != 0);
-    FindClose(handle_find);
-#elif ANDROID
     }
-#else
-    }
-    closedir(dirp);
-#endif
+    retro_closedir(dirp);
 
-    if (callback_error)
-        return false;
+    if (callback_error) return false;
 
-    // num_entries_out is allowed to be specified nullptr, in which case we shouldn't try to set it
     if (num_entries_out != nullptr)
         *num_entries_out = found_entries;
     return true;
@@ -584,9 +339,8 @@ bool DeleteDirRecursively(const std::string& directory, unsigned int recursion) 
     return true;
 }
 
-void CopyDir([[maybe_unused]] const std::string& source_path,
-             [[maybe_unused]] const std::string& dest_path) {
-#ifndef _WIN32
+void CopyDir(const std::string& source_path,
+             const std::string& dest_path) {
     if (source_path == dest_path)
         return;
     if (!FileUtil::Exists(source_path))
@@ -594,21 +348,17 @@ void CopyDir([[maybe_unused]] const std::string& source_path,
     if (!FileUtil::Exists(dest_path))
         FileUtil::CreateFullPath(dest_path);
 
-#ifdef ANDROID
-    auto result = AndroidStorage::GetFilesName(source_path);
-    for (auto virtualName : result) {
-#else
-    DIR* dirp = opendir(source_path.c_str());
+    struct RDIR* dirp = retro_opendir(source_path.c_str());
     if (!dirp)
         return;
 
-    while (struct dirent* result = readdir(dirp)) {
-        const std::string virtualName(result->d_name);
-#endif // ANDROID
+    while (retro_readdir(dirp)) {
+        const char* name = retro_dirent_get_name(dirp);
+        if (!name) continue;
+        const std::string virtualName(name);
 
         // check for "." and ".."
-        if (((virtualName[0] == '.') && (virtualName[1] == '\0')) ||
-            ((virtualName[0] == '.') && (virtualName[1] == '.') && (virtualName[2] == '\0')))
+        if (virtualName == "." || virtualName == "..")
             continue;
 
         std::string source, dest;
@@ -623,11 +373,7 @@ void CopyDir([[maybe_unused]] const std::string& source_path,
         } else if (!FileUtil::Exists(dest))
             FileUtil::Copy(source, dest);
     }
-
-#ifndef ANDROID
-    closedir(dirp);
-#endif // ANDROID
-#endif // _WIN32
+    retro_closedir(dirp);
 }
 
 std::optional<std::string> GetCurrentDir() {
@@ -1119,54 +865,23 @@ void IOFile::Swap(IOFile& other) noexcept {
 bool IOFile::Open() {
     Close();
 
-#ifdef _WIN32
-    if (flags == 0) {
-        flags = _SH_DENYNO;
-    }
-    m_file = _wfsopen(Common::UTF8ToUTF16W(filename).c_str(),
-                      Common::UTF8ToUTF16W(openmode).c_str(), flags);
-    m_good = m_file != nullptr;
+    unsigned mode = 0;
+    if (strchr(openmode.c_str(), 'r')) mode |= RETRO_VFS_FILE_ACCESS_READ;
+    if (strchr(openmode.c_str(), 'w')) mode |= RETRO_VFS_FILE_ACCESS_WRITE;
+    if (strchr(openmode.c_str(), 'a')) mode |= RETRO_VFS_FILE_ACCESS_WRITE | RETRO_VFS_FILE_ACCESS_UPDATE_EXISTING;
+    if (strchr(openmode.c_str(), '+')) mode |= RETRO_VFS_FILE_ACCESS_READ_WRITE;
 
-#elif ANDROID
-    // Check whether filepath is startsWith content
-    AndroidStorage::AndroidOpenMode android_open_mode = AndroidStorage::ParseOpenmode(openmode);
-    if (android_open_mode == AndroidStorage::AndroidOpenMode::WRITE ||
-        android_open_mode == AndroidStorage::AndroidOpenMode::READ_WRITE ||
-        android_open_mode == AndroidStorage::AndroidOpenMode::WRITE_APPEND ||
-        android_open_mode == AndroidStorage::AndroidOpenMode::WRITE_TRUNCATE ||
-        android_open_mode == AndroidStorage::AndroidOpenMode::READ_WRITE_TRUNCATE ||
-        android_open_mode == AndroidStorage::AndroidOpenMode::READ_WRITE_APPEND) {
-        if (!FileUtil::Exists(filename)) {
-            std::string directory(GetParentPath(filename));
-            std::string display_name(GetFilename(filename));
-            if (!AndroidStorage::CreateFile(directory, display_name)) {
-                m_good = m_file != nullptr;
-                return m_good;
-            }
-        }
+    m_file = filestream_open(filename.c_str(), mode, RETRO_VFS_FILE_ACCESS_HINT_NONE);
+    if (m_file && strchr(openmode.c_str(), 'a')) {
+        filestream_seek(m_file, 0, RETRO_VFS_SEEK_POSITION_END);
     }
-    m_fd = AndroidStorage::OpenContentUri(filename, android_open_mode);
-    if (m_fd != -1) {
-        int error_num = 0;
-        m_file = fdopen(m_fd, openmode.c_str());
-        error_num = errno;
-        if (error_num != 0 && m_file == nullptr) {
-            LOG_ERROR(Common_Filesystem, "Error on file: {}, error: {}", filename,
-                      strerror(error_num));
-        }
-    }
-
     m_good = m_file != nullptr;
-#else
-    m_file = std::fopen(filename.c_str(), openmode.c_str());
-    m_good = m_file != nullptr;
-#endif
 
     return m_good;
 }
 
 bool IOFile::Close() {
-    if (!IsOpen() || 0 != std::fclose(m_file))
+    if (!IsOpen() || 0 != filestream_close(m_file))
         m_good = false;
 
     m_file = nullptr;
@@ -1181,7 +896,14 @@ u64 IOFile::GetSize() const {
 }
 
 bool IOFile::SeekImpl(s64 off, int origin) {
-    if (!IsOpen() || 0 != fseeko(m_file, off, origin))
+    int retro_origin;
+    switch(origin) {
+        case SEEK_SET: retro_origin = RETRO_VFS_SEEK_POSITION_START; break;
+        case SEEK_CUR: retro_origin = RETRO_VFS_SEEK_POSITION_CURRENT; break;
+        case SEEK_END: retro_origin = RETRO_VFS_SEEK_POSITION_END; break;
+        default: return false;
+    }
+    if (!IsOpen() || -1 == filestream_seek(m_file, off, retro_origin))
         m_good = false;
 
     return m_good;
@@ -1189,13 +911,13 @@ bool IOFile::SeekImpl(s64 off, int origin) {
 
 u64 IOFile::TellImpl() const {
     if (IsOpen())
-        return ftello(m_file);
+        return filestream_tell(m_file);
 
     return std::numeric_limits<u64>::max();
 }
 
 bool IOFile::Flush() {
-    if (!IsOpen() || 0 != std::fflush(m_file))
+    if (!IsOpen() || 0 != filestream_flush(m_file))
         m_good = false;
 
     return m_good;
@@ -1213,7 +935,7 @@ std::size_t IOFile::ReadImpl(void* data, std::size_t length, std::size_t data_si
 
     DEBUG_ASSERT(data != nullptr);
 
-    return std::fread(data, data_size, length, m_file);
+    return filestream_read(m_file, data, length * data_size) / data_size;
 }
 
 #ifdef _WIN32
@@ -1257,7 +979,13 @@ std::size_t IOFile::ReadAtImpl(void* data, std::size_t length, std::size_t data_
 
     DEBUG_ASSERT(data != nullptr);
 
-    return pread(fileno(m_file), data, data_size * length, offset);
+    int64_t old_pos = filestream_tell(m_file);
+    if (filestream_seek(m_file, (int64_t)offset, RETRO_VFS_SEEK_POSITION_START) == -1) {
+        return 0;
+    }
+    std::size_t read = (std::size_t)filestream_read(m_file, data, (int64_t)(length * data_size));
+    filestream_seek(m_file, old_pos, RETRO_VFS_SEEK_POSITION_START);
+    return read / data_size;
 }
 
 std::size_t IOFile::WriteImpl(const void* data, std::size_t length, std::size_t data_size) {
@@ -1272,20 +1000,11 @@ std::size_t IOFile::WriteImpl(const void* data, std::size_t length, std::size_t 
 
     DEBUG_ASSERT(data != nullptr);
 
-    return std::fwrite(data, data_size, length, m_file);
+    return filestream_write(m_file, data, length * data_size) / data_size;
 }
 
 bool IOFile::Resize(u64 size) {
-    if (!IsOpen() || 0 !=
-#ifdef _WIN32
-                         // ector: _chsize sucks, not 64-bit safe
-                         // F|RES: changed to _chsize_s. i think it is 64-bit safe
-                         _chsize_s(_fileno(m_file), size)
-#else
-                         // TODO: handle 64bit and growing
-                         ftruncate(fileno(m_file), size)
-#endif
-    )
+    if (!IsOpen() || 0 != filestream_truncate(m_file, size))
         m_good = false;
 
     return m_good;

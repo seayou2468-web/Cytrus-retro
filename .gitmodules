@@ -16,3 +16,7 @@
 [submodule "libretro/original-core-reference"]
 	path = libretro/original-core-reference
 	url = https://github.com/folium-app/Cytrus.git
+[submodule "libretro/externals/openssl"]
+	path = libretro/externals/openssl
+	url = https://github.com/openssl/openssl.git
+	branch = OpenSSL_1_1_1-stable

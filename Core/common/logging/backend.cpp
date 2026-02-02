@@ -183,6 +183,51 @@ public:
 };
 #endif
 
+/**
+ * Backend that writes to Libretro logging callback
+ */
+class LibretroBackend final : public Backend {
+public:
+    explicit LibretroBackend() = default;
+    ~LibretroBackend() override = default;
+
+    void Write(const Entry& entry) override {
+        if (callback) {
+            int retro_level;
+            switch (entry.log_level) {
+            case Level::Trace:
+            case Level::Debug:
+                retro_level = 0; // RETRO_LOG_DEBUG
+                break;
+            case Level::Info:
+                retro_level = 1; // RETRO_LOG_INFO
+                break;
+            case Level::Warning:
+                retro_level = 2; // RETRO_LOG_WARN
+                break;
+            case Level::Error:
+            case Level::Critical:
+                retro_level = 3; // RETRO_LOG_ERROR
+                break;
+            default:
+                retro_level = 1;
+                break;
+            }
+            callback(retro_level, "[%s] %s\n", GetLogClassName(entry.log_class), entry.message.c_str());
+        }
+    }
+
+    void Flush() override {}
+    void EnableForStacktrace() override {}
+
+    void SetCallback(LibretroLogCallback cb) {
+        callback = cb;
+    }
+
+private:
+    LibretroLogCallback callback = nullptr;
+};
+
 bool initialization_in_progress_suppress_logging = true;
 
 #ifdef CITRA_LINUX_GCC_BACKTRACE
@@ -253,6 +298,10 @@ public:
 
     void SetColorConsoleBackendEnabled(bool enabled) {
         color_console_backend.SetEnabled(enabled);
+    }
+
+    void SetLibretroLogCallback(LibretroLogCallback callback) {
+        libretro_backend.SetCallback(callback);
     }
 
     void PushEntry(Class log_class, Level log_level, const char* filename, unsigned int line_num,
@@ -393,6 +442,7 @@ private:
         lambda(static_cast<Backend&>(debugger_backend));
         lambda(static_cast<Backend&>(color_console_backend));
         lambda(static_cast<Backend&>(file_backend));
+        lambda(static_cast<Backend&>(libretro_backend));
 #ifdef ANDROID
         lambda(static_cast<Backend&>(lc_backend));
 #endif
@@ -439,6 +489,7 @@ private:
     DebuggerBackend debugger_backend{};
     ColorConsoleBackend color_console_backend{};
     FileBackend file_backend;
+    LibretroBackend libretro_backend{};
 #ifdef ANDROID
     LogcatBackend lc_backend{};
 #endif
@@ -482,6 +533,10 @@ bool SetRegexFilter(const std::string& regex) {
 
 void SetColorConsoleBackendEnabled(bool enabled) {
     Impl::Instance().SetColorConsoleBackendEnabled(enabled);
+}
+
+void SetLibretroLogCallback(LibretroLogCallback callback) {
+    Impl::Instance().SetLibretroLogCallback(callback);
 }
 
 void FmtLogMessageImpl(Class log_class, Level log_level, const char* filename,
