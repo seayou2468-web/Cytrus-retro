@@ -123,31 +123,24 @@ OPENSSL_DIR := libretro/externals/openssl
 OPENSSL_LIBS := $(OPENSSL_DIR)/libssl.a $(OPENSSL_DIR)/libcrypto.a
 
 # OS detection
-ifeq ($(shell uname -s),Darwin)
-    CXXFLAGS += -stdlib=libc++
-    LDFLAGS += -stdlib=libc++ -framework CoreFoundation -framework AudioToolbox -framework Security
-    # Target iOS if requested, else macOS
-    ifeq ($(PLATFORM),ios)
-        IPHONEOS_SDK := $(shell xcrun --sdk iphoneos --show-sdk-path)
-        CC := $(shell xcrun --sdk iphoneos --find clang)
-        CXX := $(shell xcrun --sdk iphoneos --find clang++)
-        AR := $(shell xcrun --sdk iphoneos --find ar)
-        STRIP := $(shell xcrun --sdk iphoneos --find strip)
-        CXXFLAGS += -isysroot $(IPHONEOS_SDK) -miphoneos-version-min=15.0 -arch arm64 -fembed-bitcode
-        CFLAGS += -isysroot $(IPHONEOS_SDK) -miphoneos-version-min=15.0 -arch arm64 -fembed-bitcode
-        LDFLAGS += -isysroot $(IPHONEOS_SDK) -miphoneos-version-min=15.0 -arch arm64 -dynamiclib -fembed-bitcode
-        TARGET := $(TARGET_NAME)_libretro_ios.dylib
-        OPENSSL_CONFIGURE := IPHONEOS_DEPLOYMENT_TARGET=15.0 ./Configure ios64-xcrun no-shared no-tests no-unit-test
-    else
-        LDFLAGS += -dynamiclib
-        TARGET := $(TARGET_NAME)_libretro.dylib
-        OPENSSL_CONFIGURE := ./config no-shared no-tests no-unit-test
-    endif
-else
-    LDFLAGS += -shared -Wl,--version-script=$(CURDIR)/libretro/link.T
-    TARGET := $(TARGET_NAME)_libretro.so
-    OPENSSL_CONFIGURE := ./config no-shared no-tests no-unit-test
+ifeq ($(PLATFORM),ios)
+    IPHONEOS_SDK := $(shell xcrun --sdk iphoneos --show-sdk-path)
+    CC := $(shell xcrun --sdk iphoneos --find clang)
+    CXX := $(shell xcrun --sdk iphoneos --find clang++)
+    AR := $(shell xcrun --sdk iphoneos --find ar)
+    STRIP := $(shell xcrun --sdk iphoneos --find strip)
+    
+    # 環境変数 IOS_MIN_VERSION があればそれを使う、なければ 15.0
+    MIN_VER ?= 15.0
+
+    CXXFLAGS += -isysroot $(IPHONEOS_SDK) -miphoneos-version-min=$(MIN_VER) -arch arm64 -fembed-bitcode
+    CFLAGS   += -isysroot $(IPHONEOS_SDK) -miphoneos-version-min=$(MIN_VER) -arch arm64 -fembed-bitcode
+    LDFLAGS  += -isysroot $(IPHONEOS_SDK) -miphoneos-version-min=$(MIN_VER) -arch arm64 -dynamiclib -fembed-bitcode
+
+    TARGET := $(TARGET_NAME)_libretro_ios.dylib
+    OPENSSL_CONFIGURE := IPHONEOS_DEPLOYMENT_TARGET=$(MIN_VER) ./Configure ios64-xcrun no-shared no-tests no-unit-test
 endif
+
 
 CXXFLAGS += -include Core/include/common/assert.h -include Core/include/common/logging/log.h
 
