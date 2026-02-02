@@ -904,11 +904,15 @@ void ARM_StaticIR::ExecuteBlock(const TranslatedBlock& block) {
     u32 next_pc = block.guest_end_pc;
     bool branched = false;
 
+    size_t executed_count = 0;
     for (const auto& inst : block.instructions) {
         op_handlers[(int)inst.op](*this, inst, results_ptr, next_pc, branched);
+        executed_count++;
+        if (branched) break;
     }
     regs[15] = next_pc;
-    cb->AddTicks(10);
+    // Estimate 2 ticks per IR instruction on average as a better placeholder than fixed 10
+    cb->AddTicks(std::max<u64>(1, (u64)executed_count * 2));
 }
 
 } // namespace Core

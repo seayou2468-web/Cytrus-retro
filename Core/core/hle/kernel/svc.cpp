@@ -474,6 +474,16 @@ private:
     Result GetSystemInfo(s64* out, u32 type, s32 param);
     Result GetProcessInfo(s64* out, Handle process_handle, u32 type);
     Result GetThreadInfo(s64* out, Handle thread_handle, u32 type);
+    u32 GetCurrentProcessorNumber();
+    Result GetProcessIdealProcessor(s32* ideal_cpu, Handle process_handle);
+    Result GetThreadIdealProcessor(s32* ideal_cpu, Handle thread_handle);
+    Result GetThreadContext(VAddr out_context, Handle thread_handle);
+    Result GetProcessAffinityMask(VAddr affinity_mask, Handle process_handle, s32 processor_count);
+    Result SetProcessAffinityMask(Handle process_handle, VAddr affinity_mask, s32 processor_count);
+    Result SetProcessIdealProcessor(Handle process_handle, s32 ideal_cpu);
+    Result GetThreadAffinityMask(VAddr affinity_mask, Handle thread_handle, s32 processor_count);
+    Result SetThreadAffinityMask(Handle thread_handle, VAddr affinity_mask, s32 processor_count);
+    Result SetThreadIdealProcessor(Handle thread_handle, s32 ideal_cpu);
     Result GetProcessList(s32* process_count, VAddr out_process_array, s32 out_process_array_count);
     Result InvalidateInstructionCacheRange(u32 addr, u32 size);
     Result InvalidateEntireInstructionCache();
@@ -560,6 +570,46 @@ Result SVC::ControlMemory(u32* out_addr, u32 addr0, u32 addr1, u32 size, u32 ope
         return ResultInvalidCombination;
     }
 
+    return ResultSuccess;
+}
+
+Result SVC::GetProcessAffinityMask(VAddr affinity_mask, Handle process_handle, s32 processor_count) {
+    LOG_WARNING(Kernel_SVC, "(STUBBED) called process=0x{:08X}", process_handle);
+    if (processor_count > 0) {
+        std::vector<u8> mask((processor_count + 7) / 8, 0xFF);
+        memory.WriteBlock(*kernel.GetCurrentProcess(), affinity_mask, mask.data(), mask.size());
+    }
+    return ResultSuccess;
+}
+
+Result SVC::SetProcessAffinityMask(Handle process_handle, VAddr affinity_mask, s32 processor_count) {
+    LOG_WARNING(Kernel_SVC, "(STUBBED) called process=0x{:08X}", process_handle);
+    return ResultSuccess;
+}
+
+Result SVC::SetProcessIdealProcessor(Handle process_handle, s32 ideal_cpu) {
+    LOG_WARNING(Kernel_SVC, "(STUBBED) called process=0x{:08X} ideal_cpu={}", process_handle,
+                ideal_cpu);
+    return ResultSuccess;
+}
+
+Result SVC::GetThreadAffinityMask(VAddr affinity_mask, Handle thread_handle, s32 processor_count) {
+    LOG_WARNING(Kernel_SVC, "(STUBBED) called thread=0x{:08X}", thread_handle);
+    if (processor_count > 0) {
+        std::vector<u8> mask((processor_count + 7) / 8, 0xFF);
+        memory.WriteBlock(*kernel.GetCurrentProcess(), affinity_mask, mask.data(), mask.size());
+    }
+    return ResultSuccess;
+}
+
+Result SVC::SetThreadAffinityMask(Handle thread_handle, VAddr affinity_mask, s32 processor_count) {
+    LOG_WARNING(Kernel_SVC, "(STUBBED) called thread=0x{:08X}", thread_handle);
+    return ResultSuccess;
+}
+
+Result SVC::SetThreadIdealProcessor(Handle thread_handle, s32 ideal_cpu) {
+    LOG_WARNING(Kernel_SVC, "(STUBBED) called thread=0x{:08X} ideal_cpu={}", thread_handle,
+                ideal_cpu);
     return ResultSuccess;
 }
 
@@ -2006,6 +2056,45 @@ Result SVC::GetThreadInfo(s64* out, Handle thread_handle, u32 type) {
     return ResultSuccess;
 }
 
+u32 SVC::GetCurrentProcessorNumber() {
+    return system.GetRunningCore().GetID();
+}
+
+Result SVC::GetProcessIdealProcessor(s32* ideal_cpu, Handle process_handle) {
+    auto process = kernel.GetCurrentProcess()->handle_table.Get<Process>(process_handle);
+    R_UNLESS(process, ResultInvalidHandle);
+    *ideal_cpu = static_cast<s32>(process->ideal_processor);
+    return ResultSuccess;
+}
+
+Result SVC::GetThreadIdealProcessor(s32* ideal_cpu, Handle thread_handle) {
+    auto thread = kernel.GetCurrentProcess()->handle_table.Get<Thread>(thread_handle);
+    R_UNLESS(thread, ResultInvalidHandle);
+    *ideal_cpu = thread->processor_id;
+    return ResultSuccess;
+}
+
+Result SVC::GetThreadContext(VAddr out_context, Handle thread_handle) {
+    auto thread = kernel.GetCurrentProcess()->handle_table.Get<Thread>(thread_handle);
+    R_UNLESS(thread, ResultInvalidHandle);
+    R_UNLESS(memory.IsValidVirtualAddress(*kernel.GetCurrentProcess(), out_context),
+             ResultInvalidPointer);
+
+    if (thread.get() == kernel.GetCurrentThreadManager().GetCurrentThread()) {
+        system.GetRunningCore().SaveContext(thread->context);
+    }
+
+    memory.WriteBlock(*kernel.GetCurrentProcess(), out_context, &thread->context.cpu_registers[0],
+                      16 * sizeof(u32));
+    memory.Write32(out_context + 0x40, thread->context.cpsr);
+    memory.WriteBlock(*kernel.GetCurrentProcess(), out_context + 0x44,
+                      &thread->context.fpu_registers[0], 32 * sizeof(u32));
+    memory.Write32(out_context + 0xC4, thread->context.fpscr);
+    memory.Write32(out_context + 0xC8, thread->context.fpexc);
+
+    return ResultSuccess;
+}
+
 Result SVC::GetProcessList(s32* process_count, VAddr out_process_array,
                            s32 out_process_array_count) {
     R_UNLESS(memory.IsValidVirtualAddress(*kernel.GetCurrentProcess(), out_process_array),
@@ -2195,20 +2284,20 @@ const std::array<SVC::FunctionDef, 180> SVC::SVC_Table{{
     {0x01, &SVC::Wrap<&SVC::ControlMemory>, "ControlMemory", 1000},
     {0x02, &SVC::Wrap<&SVC::QueryMemory>, "QueryMemory", 1000},
     {0x03, &SVC::ExitProcess, "ExitProcess", 1000},
-    {0x04, nullptr, "GetProcessAffinityMask", 1000},
-    {0x05, nullptr, "SetProcessAffinityMask", 1000},
-    {0x06, nullptr, "GetProcessIdealProcessor", 1000},
-    {0x07, nullptr, "SetProcessIdealProcessor", 1000},
+    {0x04, &SVC::Wrap<&SVC::GetProcessAffinityMask>, "GetProcessAffinityMask", 1000},
+    {0x05, &SVC::Wrap<&SVC::SetProcessAffinityMask>, "SetProcessAffinityMask", 1000},
+    {0x06, &SVC::Wrap<&SVC::GetProcessIdealProcessor>, "GetProcessIdealProcessor", 1000},
+    {0x07, &SVC::Wrap<&SVC::SetProcessIdealProcessor>, "SetProcessIdealProcessor", 1000},
     {0x08, &SVC::Wrap<&SVC::CreateThread>, "CreateThread", 5214},
     {0x09, &SVC::ExitThread, "ExitThread", 1000},
     {0x0A, &SVC::Wrap<&SVC::SleepThread>, "SleepThread", 946},
     {0x0B, &SVC::Wrap<&SVC::GetThreadPriority>, "GetThreadPriority", 616},
     {0x0C, &SVC::Wrap<&SVC::SetThreadPriority>, "SetThreadPriority", 1812},
-    {0x0D, nullptr, "GetThreadAffinityMask", 1000},
-    {0x0E, nullptr, "SetThreadAffinityMask", 1000},
-    {0x0F, nullptr, "GetThreadIdealProcessor", 1000},
-    {0x10, nullptr, "SetThreadIdealProcessor", 1000},
-    {0x11, nullptr, "GetCurrentProcessorNumber", 1000},
+    {0x0D, &SVC::Wrap<&SVC::GetThreadAffinityMask>, "GetThreadAffinityMask", 1000},
+    {0x0E, &SVC::Wrap<&SVC::SetThreadAffinityMask>, "SetThreadAffinityMask", 1000},
+    {0x0F, &SVC::Wrap<&SVC::GetThreadIdealProcessor>, "GetThreadIdealProcessor", 1000},
+    {0x10, &SVC::Wrap<&SVC::SetThreadIdealProcessor>, "SetThreadIdealProcessor", 1000},
+    {0x11, &SVC::Wrap<&SVC::GetCurrentProcessorNumber>, "GetCurrentProcessorNumber", 1000},
     {0x12, nullptr, "Run", 1000},
     {0x13, &SVC::Wrap<&SVC::CreateMutex>, "CreateMutex", 1000},
     {0x14, &SVC::Wrap<&SVC::ReleaseMutex>, "ReleaseMutex", 1324},
@@ -2250,7 +2339,7 @@ const std::array<SVC::FunctionDef, 180> SVC::SVC_Table{{
     {0x38, &SVC::Wrap<&SVC::GetResourceLimit>, "GetResourceLimit", 1000},
     {0x39, &SVC::Wrap<&SVC::GetResourceLimitLimitValues>, "GetResourceLimitLimitValues", 1000},
     {0x3A, &SVC::Wrap<&SVC::GetResourceLimitCurrentValues>, "GetResourceLimitCurrentValues", 1000},
-    {0x3B, nullptr, "GetThreadContext", 1000},
+    {0x3B, &SVC::Wrap<&SVC::GetThreadContext>, "GetThreadContext", 1000},
     {0x3C, &SVC::Wrap<&SVC::Break>, "Break", 1000},
     {0x3D, &SVC::Wrap<&SVC::OutputDebugString>, "OutputDebugString", 1000},
     {0x3E, nullptr, "ControlPerformanceCounter", 1000},
