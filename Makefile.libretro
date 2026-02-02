@@ -155,9 +155,12 @@ CRYPTOPP_OBJECTS := $(CRYPTOPP_SOURCES:.cpp=.o)
 
 all: $(TARGET)
 
-$(OPENSSL_LIBS):
-	perl -i -pe 's/-mios-version-min=[0-9.]*/-mios-version-min=$(MIN_VER)/g' $(OPENSSL_DIR)/Configurations/15-ios.conf
-	cd $(OPENSSL_DIR) && $(OPENSSL_CONFIGURE) && make build_libs -j$(shell nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 1)
+$(OPENSSL_DIR)/libcrypto.a: $(OPENSSL_DIR)/libssl.a
+
+$(OPENSSL_DIR)/libssl.a:
+	perl -i -pe 's/-mios-version-min=[0-9.]*/-miphoneos-version-min=$(MIN_VER)/g' $(OPENSSL_DIR)/Configurations/15-ios.conf
+	cd $(OPENSSL_DIR) && $(OPENSSL_CONFIGURE) && make -j$(shell nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 1) build_generated
+	cd $(OPENSSL_DIR) && make -j$(shell nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 1) libcrypto.a libssl.a
 
 $(CRYPTOPP_DIR)/libcryptopp.a: $(CRYPTOPP_OBJECTS)
 	$(AR) rcs $@ $(CRYPTOPP_OBJECTS)
