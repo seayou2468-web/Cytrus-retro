@@ -10,7 +10,7 @@ jobs:
   build-ios:
     runs-on: macos-latest
     env:
-      IOS_MIN_VERSION: 13.0  # ←ここで指定
+      IOS_MIN_VERSION: 15.0  # ←ここで指定
     steps:
     - uses: actions/checkout@v4
       with:

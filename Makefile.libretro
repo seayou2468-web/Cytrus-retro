@@ -131,14 +131,17 @@ ifeq ($(PLATFORM),ios)
     STRIP := $(shell xcrun --sdk iphoneos --find strip)
     
     # 環境変数 IOS_MIN_VERSION があればそれを使う、なければ 15.0
-    MIN_VER ?= 15.0
+    MIN_VER := $(IOS_MIN_VERSION)
+    ifeq ($(MIN_VER),)
+        MIN_VER := 15.0
+    endif
 
     CXXFLAGS += -isysroot $(IPHONEOS_SDK) -miphoneos-version-min=$(MIN_VER) -arch arm64 -fembed-bitcode
     CFLAGS   += -isysroot $(IPHONEOS_SDK) -miphoneos-version-min=$(MIN_VER) -arch arm64 -fembed-bitcode
     LDFLAGS  += -isysroot $(IPHONEOS_SDK) -miphoneos-version-min=$(MIN_VER) -arch arm64 -dynamiclib -fembed-bitcode
 
     TARGET := $(TARGET_NAME)_libretro_ios.dylib
-    OPENSSL_CONFIGURE := IPHONEOS_DEPLOYMENT_TARGET=$(MIN_VER) ./Configure ios64-xcrun no-shared no-tests no-unit-test
+    OPENSSL_CONFIGURE := IPHONEOS_DEPLOYMENT_TARGET=$(MIN_VER) ./Configure ios64-xcrun no-shared no-tests no-unit-test -miphoneos-version-min=$(MIN_VER)
 endif
 
 
