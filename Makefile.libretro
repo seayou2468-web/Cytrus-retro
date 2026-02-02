@@ -137,7 +137,7 @@ ifeq ($(shell uname -s),Darwin)
         CFLAGS += -isysroot $(IPHONEOS_SDK) -miphoneos-version-min=15.0 -arch arm64 -fembed-bitcode
         LDFLAGS += -isysroot $(IPHONEOS_SDK) -miphoneos-version-min=15.0 -arch arm64 -dynamiclib -fembed-bitcode
         TARGET := $(TARGET_NAME)_libretro_ios.dylib
-        OPENSSL_CONFIGURE := ./Configure ios64-xcrun no-shared no-tests no-unit-test
+        OPENSSL_CONFIGURE := IPHONEOS_DEPLOYMENT_TARGET=15.0 ./Configure ios64-xcrun no-shared no-tests no-unit-test
     else
         LDFLAGS += -dynamiclib
         TARGET := $(TARGET_NAME)_libretro.dylib

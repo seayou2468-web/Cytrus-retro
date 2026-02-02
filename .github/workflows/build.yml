@@ -22,7 +22,7 @@ jobs:
     - name: Build
       run: |
         set -x
-        make -f Makefile.libretro PLATFORM=ios V=1 VERBOSE=1 -j$(sysctl -n hw.ncpu)
+        make -f Makefile.libretro PLATFORM=ios V=1 -j$(sysctl -n hw.ncpu)
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4
