@@ -1,0 +1,15 @@
+[submodule "libretro-common"]
+	path = libretro/libretro-common
+	url = https://github.com/libretro/libretro-common.git
+[submodule "libretro-super"]
+	path = libretro/libretro-super
+	url = https://github.com/libretro/libretro-super.git
+[submodule "docs"]
+	path = libretro/docs
+	url = https://github.com/libretro/docs.git
+[submodule "libretro/azahar"]
+	path = libretro/azahar
+	url = https://github.com/azahar-emu/azahar
+[submodule "libretro/dynarmic"]
+	path = libretro/dynarmic
+	url = https://github.com/lioncash/dynarmic.git
