@@ -30,7 +30,6 @@ SOURCES_CXX += $(shell find Core/video_core -name "*.cpp")
 SOURCES_CXX += $(shell find libretro/azahar/src/video_core/renderer_software -name "*.cpp")
 SOURCES_CXX += $(shell find Core/audio_core -name "*.cpp")
 SOURCES_CXX += $(shell find Core/network -name "*.cpp")
-SOURCES_CXX += $(shell find Core/web_service -name "*.cpp")
 SOURCES_CXX += $(shell find Core/input_common -name "*.cpp")
 SOURCES_CXX += libretro/src/libretro.cpp
 SOURCES_CXX += libretro/src/libretro_emu_window.cpp
@@ -67,7 +66,6 @@ SOURCES_C   += $(EXTERNAL_BASE)/zstd/contrib/seekable_format/zstdseek_compress.c
 SOURCES_C   += $(EXTERNAL_BASE)/zstd/contrib/seekable_format/zstdseek_decompress.c
 SOURCES_C   += $(shell find $(EXTERNAL_BASE)/enet -name "*.c")
 SOURCES_CXX += $(shell find $(EXTERNAL_BASE)/xxHash -name "*.cpp")
-SOURCES_CXX += $(shell find $(EXTERNAL_BASE)/sirit/sirit/src -name "*.cpp")
 SOURCES_CXX += $(shell find $(EXTERNAL_BASE)/soundtouch/source/SoundTouch -name "*.cpp")
 SOURCES_CXX += $(shell find $(EXTERNAL_BASE)/teakra/src -name "*.cpp")
 # Statically compile boost serialization into the core
@@ -139,10 +137,6 @@ INCFLAGS += -I$(EXTERNAL_BASE)/json
 INCFLAGS += -I$(EXTERNAL_BASE)/lodepng/lodepng
 INCFLAGS += -I$(EXTERNAL_BASE)/inih
 INCFLAGS += -I$(EXTERNAL_BASE)/enet/include
-INCFLAGS += -I$(EXTERNAL_BASE)/sirit/sirit/include
-INCFLAGS += -I$(EXTERNAL_BASE)/sirit/sirit/src
-INCFLAGS += -I$(EXTERNAL_BASE)/spirv-headers/include
-INCFLAGS += -I$(EXTERNAL_BASE)/xbyak
 INCFLAGS += -I$(EXTERNAL_BASE)/dds-ktx
 INCFLAGS += -I$(EXTERNAL_BASE)/httplib
 INCFLAGS += -I$(EXTERNAL_BASE)/zstd/contrib/seekable_format
@@ -157,10 +151,6 @@ INCFLAGS += -I$(EXTERNAL_BASE)/dynarmic/externals/zydis/dependencies/zycore/incl
 INCFLAGS += -Ilibretro/externals/openssl/include
 INCFLAGS += -ICore/include/network
 INCFLAGS += -ICore/include/network/artic_base
-INCFLAGS += -ICore/include/web_service
-INCFLAGS += -I$(EXTERNAL_BASE)/cpp-jwt/include
-
-INCFLAGS += -ICore/network/artic_base
 # Compiler flags
 CXXFLAGS += -fPIC -O3 -ffast-math -fno-strict-aliasing -flto -std=c++20 $(INCFLAGS)
 CFLAGS   += -fPIC -O3 -ffast-math -fno-strict-aliasing -flto $(INCFLAGS)
