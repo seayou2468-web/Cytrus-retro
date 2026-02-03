@@ -69,7 +69,7 @@ std::shared_ptr<Kernel::Process> LaunchTitle(Core::System& system, FS::MediaType
 }
 
 void RebootToTitle(Core::System& system, FS::MediaType media_type, u64 title_id,
-                   std::optional<Kernel::MemoryMode> mem_mode) {
+                   Kernel::MemoryMode mem_mode) {
     std::string new_path;
     if (media_type == FS::MediaType::GameCard) {
         new_path = system.GetCartridge();
@@ -86,11 +86,7 @@ void RebootToTitle(Core::System& system, FS::MediaType media_type, u64 title_id,
         new_path.clear();
     }
 
-    std::optional<u8> mem_mode_u8;
-    if (mem_mode) {
-        mem_mode_u8 = static_cast<u8>(mem_mode.value());
-    }
-    system.RequestReset(new_path, mem_mode_u8);
+    system.RequestReset(new_path, static_cast<u8>(mem_mode));
 }
 
 } // namespace Service::NS

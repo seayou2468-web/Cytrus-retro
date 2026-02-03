@@ -509,6 +509,10 @@ private:
     Result StartInterProcessDma(Handle* out_handle, Handle dst_process, VAddr dst_addr,
                                 Handle src_process, VAddr src_addr, u32 size, u32 dma_config);
     Result StopDma(Handle dma_handle);
+    Result GetDmaState(u32* out_state, Handle dma_handle);
+    Result RestartDma(Handle dma_handle);
+    Result SetGpuProt();
+    Result SetWifiEnabled(u32 enabled);
 
     struct FunctionDef {
         using Func = void (SVC::*)();
@@ -2370,6 +2374,27 @@ Result SVC::StopDma(Handle dma_handle) {
     return ResultSuccess;
 }
 
+Result SVC::GetDmaState(u32* out_state, Handle dma_handle) {
+    LOG_WARNING(Kernel_SVC, "(STUBBED) called dma_handle=0x{:08X}", dma_handle);
+    *out_state = 0; // DMA_STATE_STOPPED
+    return ResultSuccess;
+}
+
+Result SVC::RestartDma(Handle dma_handle) {
+    LOG_WARNING(Kernel_SVC, "(STUBBED) called dma_handle=0x{:08X}", dma_handle);
+    return ResultSuccess;
+}
+
+Result SVC::SetGpuProt() {
+    LOG_WARNING(Kernel_SVC, "(STUBBED) called");
+    return ResultSuccess;
+}
+
+Result SVC::SetWifiEnabled(u32 enabled) {
+    LOG_WARNING(Kernel_SVC, "(STUBBED) called enabled={}", enabled);
+    return ResultSuccess;
+}
+
 // Array of SVC handlers, and the cycles it takes to process them.
 // The cycles have been obtained from real hardware using a
 // custom svc profiler and doing an average.
@@ -2472,10 +2497,10 @@ const std::array<SVC::FunctionDef, 180> SVC::SVC_Table{{
     {0x54, &SVC::Wrap<&SVC::FlushProcessDataCache>, "FlushProcessDataCache", 9084},
     {0x55, &SVC::Wrap<&SVC::StartInterProcessDma>, "StartInterProcessDma", 9146},
     {0x56, &SVC::Wrap<&SVC::StopDma>, "StopDma", 1163},
-    {0x57, nullptr, "GetDmaState", 2222},
-    {0x58, nullptr, "RestartDma", 8096},
-    {0x59, nullptr, "SetGpuProt", 356},
-    {0x5A, nullptr, "SetWifiEnabled", 1000},
+    {0x57, &SVC::Wrap<&SVC::GetDmaState>, "GetDmaState", 2222},
+    {0x58, &SVC::Wrap<&SVC::RestartDma>, "RestartDma", 8096},
+    {0x59, &SVC::Wrap<&SVC::SetGpuProt>, "SetGpuProt", 356},
+    {0x5A, &SVC::Wrap<&SVC::SetWifiEnabled>, "SetWifiEnabled", 1000},
     {0x5B, nullptr, "Unknown", 1000},
     {0x5C, nullptr, "Unknown", 1000},
     {0x5D, nullptr, "Unknown", 1000},
