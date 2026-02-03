@@ -17,6 +17,7 @@ else
     endif
 endif
 AR ?= ar
+LDFLAGS :=
 
 SOURCES_CXX :=
 SOURCES_C   :=
@@ -30,6 +31,8 @@ SOURCES_CXX := $(filter-out Core/core/arm/dynarmic/arm_dynarmic_cp15.cpp,$(SOURC
 SOURCES_CXX += $(shell find Core/common -name "*.cpp")
 SOURCES_CXX += $(shell find Core/video_core -name "*.cpp")
 SOURCES_CXX += $(shell find libretro/azahar/src/video_core/renderer_software -name "*.cpp")
+SOURCES_CXX := $(filter-out libretro/azahar/src/video_core/renderer_software/renderer_software.cpp,$(SOURCES_CXX))
+SOURCES_CXX += libretro/src/video_core/renderer_software/renderer_software.cpp
 SOURCES_CXX += $(shell find Core/audio_core -name "*.cpp")
 SOURCES_CXX += $(shell find Core/network -name "*.cpp")
 SOURCES_CXX += $(shell find Core/input_common -name "*.cpp")
@@ -94,6 +97,7 @@ SOURCES_CXX_DYNARMIC := $(filter-out %/backend/x64/exclusive_monitor.cpp %/backe
 ifeq ($(IS_X64),1)
     SOURCES_CXX_DYNARMIC += $(DYNARMIC_DIR)/common/spin_lock_x64.cpp
     SOURCES_CXX_DYNARMIC += $(DYNARMIC_DIR)/backend/x64/exclusive_monitor.cpp
+    SOURCES_CXX_DYNARMIC += $(DYNARMIC_DIR)/backend/x64/hostloc.cpp
 else
     SOURCES_CXX_DYNARMIC += $(DYNARMIC_DIR)/common/spin_lock_arm64.cpp
     SOURCES_CXX_DYNARMIC += $(DYNARMIC_DIR)/backend/arm64/exclusive_monitor.cpp
@@ -112,6 +116,7 @@ SOURCES_CXX := $(filter-out %/main.cpp %/ffmpeg.cpp %/ffmpeg_backend.cpp,$(SOURC
 SOURCES_CXX := $(filter-out Core/%_sink.cpp %openal_input.cpp,$(SOURCES_CXX))
 SOURCES_CXX := $(filter-out Core/video_core/renderer_vulkan/%,$(SOURCES_CXX))
 SOURCES_CXX := $(filter-out Core/video_core/renderer_opengl/%,$(SOURCES_CXX))
+SOURCES_CXX += $(shell find Core/web_service -name "*.cpp")
 SOURCES_CXX := $(filter-out Core/video_core/shader/shader_jit%,$(SOURCES_CXX))
 SOURCES_CXX := $(filter-out Core/video_core/shader/generator/spv_%,$(SOURCES_CXX))
 SOURCES_CXX := $(filter-out Core/video_core/shader/generator/glsl_%,$(SOURCES_CXX))
@@ -132,7 +137,7 @@ SOURCES_C := $(filter-out %/win32.c,$(SOURCES_C))
 SOURCES_CXX := $(filter-out %/main.cpp %/test%.cpp,$(SOURCES_CXX))
 
 # Include paths
-INCFLAGS += -ICore/include -ICore -Ilibretro/src -Ilibretro/libretro-common/include
+INCFLAGS += -Ilibretro/src -ICore/include -ICore -Ilibretro/libretro-common/include
 INCFLAGS += -Ilibretro/azahar/src
 INCFLAGS += -I$(EXTERNAL_BASE)/boost
 INCFLAGS += -I$(EXTERNAL_BASE)/fmt/include
@@ -153,6 +158,7 @@ INCFLAGS += -I$(EXTERNAL_BASE)/inih
 INCFLAGS += -I$(EXTERNAL_BASE)/enet/include
 INCFLAGS += -I$(EXTERNAL_BASE)/dds-ktx
 INCFLAGS += -I$(EXTERNAL_BASE)/httplib
+INCFLAGS += -I$(EXTERNAL_BASE)/cpp-jwt/include
 INCFLAGS += -I$(EXTERNAL_BASE)/zstd/contrib/seekable_format
 INCFLAGS += -I$(EXTERNAL_BASE)/soundtouch/include
 INCFLAGS += -I$(EXTERNAL_BASE)/teakra/include
@@ -202,15 +208,18 @@ ifeq ($(PLATFORM),ios)
     OPENSSL_CONFIGURE := IPHONEOS_DEPLOYMENT_TARGET=$(MIN_VER) ./Configure ios64-xcrun no-shared no-tests no-unit-test
 else
     TARGET := $(TARGET_NAME)_libretro.so
+    LDFLAGS += -shared -Wl,--version-script=libretro/notes/link.T
     OPENSSL_CONFIGURE := ./config no-shared no-tests no-unit-test
 endif
 
 
 CXXFLAGS += -include Core/include/common/assert.h -include Core/include/common/logging/log.h
 
+# Filter and deduplicate objects
 OBJECTS := $(patsubst %.cpp,%.o,$(filter %.cpp,$(SOURCES_CXX)))
 OBJECTS += $(patsubst %.cc,%.o,$(filter %.cc,$(SOURCES_CXX)))
 OBJECTS += $(SOURCES_C:.c=.o)
+OBJECTS := $(sort $(OBJECTS))
 
 CRYPTOPP_OBJECTS := $(CRYPTOPP_SOURCES:.cpp=.o)
 
@@ -218,6 +227,10 @@ all: $(TARGET)
 
 .PHONY: patch-version
 patch-version:
+	@echo "Fixing cpp-jwt template and include issues..."
+	@mkdir -p libretro/azahar/externals/json/nlohmann 2>/dev/null || true
+	@if [ ! -L libretro/azahar/externals/json/nlohmann/json.hpp ]; then ln -sf ../json.hpp libretro/azahar/externals/json/nlohmann/json.hpp 2>/dev/null || true; fi
+	@perl -i -pe 's/decltype\(auto\) get_claim_value/T get_claim_value/g' libretro/azahar/externals/cpp-jwt/include/jwt/jwt.hpp 2>/dev/null || true
 ifeq ($(PLATFORM),ios)
 	@echo "Patching minimum OS version to $(MIN_VER)..."
 	@perl -i -pe 's/-(mios|miphoneos|mtvos|mwatchos|mappletvos|mmacosx)-version-min=[0-9.]*/-miphoneos-version-min=$(MIN_VER)/g' libretro/externals/openssl/Configurations/15-ios.conf 2>/dev/null || true
@@ -227,10 +240,6 @@ ifeq ($(PLATFORM),ios)
 	@find . -name "project.pbxproj" -exec perl -i -pe 's/(IPHONEOS|MACOSX|TVOS|WATCHOS)_DEPLOYMENT_TARGET = [0-9.]*;/ $$1_DEPLOYMENT_TARGET = $(MIN_VER);/g' {} + 2>/dev/null || true
 	@find . -name "*.xcconfig" -exec perl -i -pe 's/(IPHONEOS|MACOSX|TVOS|WATCHOS)_DEPLOYMENT_TARGET = [0-9.]*/$$1_DEPLOYMENT_TARGET = $(MIN_VER)/g' {} + 2>/dev/null || true
 	@find . -name "CMakeLists.txt" -exec perl -i -pe 's/set\(CMAKE_OSX_DEPLOYMENT_TARGET "[0-9.]*"\)/set(CMAKE_OSX_DEPLOYMENT_TARGET "$(MIN_VER)")/g' {} + 2>/dev/null || true
-	@echo "Fixing cpp-jwt template and include issues..."
-	@mkdir -p libretro/azahar/externals/json/nlohmann 2>/dev/null || true
-	@if [ ! -L libretro/azahar/externals/json/nlohmann/json.hpp ]; then ln -sf ../json.hpp libretro/azahar/externals/json/nlohmann/json.hpp 2>/dev/null || true; fi
-	@perl -i -pe 's/decltype\(auto\) get_claim_value/T get_claim_value/g' libretro/azahar/externals/cpp-jwt/include/jwt/jwt.hpp 2>/dev/null || true
 endif
 
 $(OPENSSL_DIR)/configdata.pm: patch-version

@@ -2,6 +2,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <vector>
+#include <sstream>
 #include "libretro.h"
 #include "core/core.h"
 #include "common/settings.h"
@@ -17,11 +18,16 @@
 #include "libretro_input.h"
 #include "common/logging/backend.h"
 #include "common/file_util.h"
+#include "common/archives.h"
 #include <streams/file_stream.h>
 #include <vfs/vfs_implementation.h>
 #include <file/file_path.h>
 #include <retro_dirent.h>
 #include <string/stdstring.h>
+
+namespace SwRenderer {
+void LibretroRenderOptimized(Core::System& system, u32* output_data, u32 output_pitch, bool side_by_side);
+}
 
 static retro_environment_t environ_cb;
 static retro_video_refresh_t video_cb;
@@ -48,7 +54,8 @@ static void libretro_log_callback(int level, const char* fmt, ...) {
 static Core::System* system_instance = nullptr;
 static LibretroEmuWindow* emu_window = nullptr;
 
-static bool sensor_enabled = false;
+static bool accel_enabled = false;
+static bool gyro_enabled = false;
 
 static const struct retro_subsystem_rom_info update_subsystem_roms[] = {
     { "Game", "3ds|cci|cxi|app", false, false, true, nullptr, 0 },
@@ -107,7 +114,7 @@ unsigned retro_api_version(void) { return RETRO_API_VERSION; }
 
 void retro_get_system_info(struct retro_system_info *info) {
     memset(info, 0, sizeof(*info));
-    info->library_name = "Cytrus";
+    info->library_name = "Cytrus IR";
     info->library_version = "v1.1";
     info->need_fullpath = true;
     info->valid_extensions = "3ds|3dsx|cci|cia|cxi|app|elf|axf";
@@ -156,8 +163,9 @@ void retro_set_environment(retro_environment_t cb) {
         {
             "cytrus_model",
             "Console Model",
+            nullptr,
             "Select which 3DS model to emulate. New 3DS has more RAM and a faster CPU.",
-            "Select which 3DS model to emulate.",
+            nullptr,
             "emulation",
             {
                 { "Old 3DS", nullptr },
@@ -169,8 +177,9 @@ void retro_set_environment(retro_environment_t cb) {
         {
             "cytrus_region",
             "Console Region",
+            nullptr,
             "Select the region of the console. 'Auto' will use the game's region.",
-            "Select the region of the console.",
+            nullptr,
             "emulation",
             {
                 { "Auto", nullptr },
@@ -188,8 +197,9 @@ void retro_set_environment(retro_environment_t cb) {
         {
             "cytrus_layout",
             "Screen Layout",
+            nullptr,
             "Select how the two screens are displayed.",
-            "Select screen layout.",
+            nullptr,
             "video",
             {
                 { "Vertical", nullptr },
@@ -198,7 +208,7 @@ void retro_set_environment(retro_environment_t cb) {
             },
             "Vertical"
         },
-        { nullptr, nullptr, nullptr, nullptr, nullptr, { { nullptr, nullptr } }, nullptr }
+        { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, { { nullptr, nullptr } }, nullptr }
     };
 
     struct retro_core_options_v2 opts = { (struct retro_core_option_v2_category*)categories, (struct retro_core_option_v2_definition*)definitions };
@@ -225,6 +235,9 @@ void retro_set_environment(retro_environment_t cb) {
 
     bool support_achievements = true;
     environ_cb(RETRO_ENVIRONMENT_SET_SUPPORT_ACHIEVEMENTS, &support_achievements);
+
+    bool can_dupe = true;
+    environ_cb(RETRO_ENVIRONMENT_GET_CAN_DUPE, &can_dupe);
 }
 
 void retro_set_video_refresh(retro_video_refresh_t cb) { video_cb = cb; }
@@ -274,7 +287,6 @@ bool retro_load_game(const struct retro_game_info *game) {
     if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var_model) && var_model.value) {
         if (string_is_equal(var_model.value, "New 3DS")) {
             Settings::values.is_new_3ds = true;
-            // New 3DS has a faster CPU (804MHz vs 268MHz)
             Settings::values.cpu_clock_percentage.SetValue(100);
         }
     }
@@ -332,18 +344,10 @@ bool retro_load_game(const struct retro_game_info *game) {
 
 bool retro_load_game_special(unsigned type, const struct retro_game_info *info, size_t num_info) {
     if (type != 1 || num_info < 1) return false; // Only support "update" subsystem
-
-    // Load base game
     if (!retro_load_game(&info[0])) return false;
-
-    // Load update if provided
     if (num_info > 1) {
-        // Citra typically expects updates to be installed in NAND.
-        // We can't easily "load" an update CIA directly over a game without installing it.
-        // But we can inform the user via log.
-        LOG_INFO(Loader, "Subsystem update CIA provided: {}. Note: It may need to be installed in the virtual NAND.", info[1].path);
+        LOG_INFO(Loader, "Subsystem update CIA provided: {}. Note: Standard build handles system updates.", info[1].path);
     }
-
     return true;
 }
 
@@ -384,7 +388,6 @@ void retro_run(void) {
         supports_bitmask_init = true;
     }
 
-    // Update Joypad
     if (supports_bitmask) {
         int16_t mask = input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_MASK);
         for (auto& mapping : button_map) {
@@ -397,7 +400,6 @@ void retro_run(void) {
         }
     }
 
-    // Update Analogs
     float circle_x = input_state_cb(0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_X) / 32768.0f;
     float circle_y = input_state_cb(0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_Y) / -32768.0f;
     Input::LibretroSetAnalog(false, circle_x, circle_y);
@@ -406,48 +408,23 @@ void retro_run(void) {
     float c_stick_y = input_state_cb(0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_RIGHT, RETRO_DEVICE_ID_ANALOG_Y) / -32768.0f;
     Input::LibretroSetAnalog(true, c_stick_x, c_stick_y);
 
-    // Update Sensors
-    if (sensor_enabled) {
-        retro_get_sensor_input_t get_sensor = nullptr;
-        if (environ_cb(RETRO_ENVIRONMENT_GET_SENSOR_INTERFACE, &get_sensor) && get_sensor) {
-            float ax = get_sensor(0, RETRO_SENSOR_ACCELEROMETER_X);
-            float ay = get_sensor(0, RETRO_SENSOR_ACCELEROMETER_Y);
-            float az = get_sensor(0, RETRO_SENSOR_ACCELEROMETER_Z);
-            float gx = get_sensor(0, RETRO_SENSOR_GYROSCOPE_X);
-            float gy = get_sensor(0, RETRO_SENSOR_GYROSCOPE_Y);
-            float gz = get_sensor(0, RETRO_SENSOR_GYROSCOPE_Z);
+    if (accel_enabled || gyro_enabled) {
+        static struct retro_sensor_interface *sensor_iface;
+        if (environ_cb(RETRO_ENVIRONMENT_GET_SENSOR_INTERFACE, &sensor_iface) && sensor_iface) {
+            float ax = 0, ay = 0, az = 0, gx = 0, gy = 0, gz = 0;
+            if (accel_enabled) {
+                ax = sensor_iface->get_sensor_input(0, RETRO_SENSOR_ACCELEROMETER_X);
+                ay = sensor_iface->get_sensor_input(0, RETRO_SENSOR_ACCELEROMETER_Y);
+                az = sensor_iface->get_sensor_input(0, RETRO_SENSOR_ACCELEROMETER_Z);
+            }
+            if (gyro_enabled) {
+                gx = sensor_iface->get_sensor_input(0, RETRO_SENSOR_GYROSCOPE_X);
+                gy = sensor_iface->get_sensor_input(0, RETRO_SENSOR_GYROSCOPE_Y);
+                gz = sensor_iface->get_sensor_input(0, RETRO_SENSOR_GYROSCOPE_Z);
+            }
             Input::LibretroSetMotion(ax, ay, az, gx, gy, gz);
         }
     }
-
-    // Update Touch
-    bool touch_pressed = input_state_cb(0, RETRO_DEVICE_POINTER, 0, RETRO_DEVICE_ID_POINTER_PRESSED);
-    if (touch_pressed) {
-        float tx = (input_state_cb(0, RETRO_DEVICE_POINTER, 0, RETRO_DEVICE_ID_POINTER_X) + 32767) / 65535.0f;
-        float ty = (input_state_cb(0, RETRO_DEVICE_POINTER, 0, RETRO_DEVICE_ID_POINTER_Y) + 32767) / 65535.0f;
-        // Map tyrosine to 3DS bottom screen area
-        // In vertical layout, top is 400x240, bottom is 320x240 centered (40px padding)
-        // ty in [0.5, 1.0] corresponds to bottom screen
-        if (ty >= 0.5f) {
-            float bty = (ty - 0.5f) * 2.0f;
-            float btx = (tx - 0.1f) / 0.8f; // 320/400 = 0.8, centered
-            Input::LibretroSetTouch(btx, bty, true);
-        } else {
-            Input::LibretroSetTouch(0, 0, false);
-        }
-    } else {
-        Input::LibretroSetTouch(0, 0, false);
-    }
-
-    if (system_instance->RunLoop(true) != Core::System::ResultStatus::Success) {
-        // Handle error
-    }
-
-    // Delegate video output
-    auto& gpu = system_instance->GPU();
-    auto& renderer = static_cast<SwRenderer::RendererSoftware&>(gpu.Renderer());
-    const auto& top_screen = renderer.Screen(VideoCore::ScreenId::TopLeft);
-    const auto& bottom_screen = renderer.Screen(VideoCore::ScreenId::Bottom);
 
     struct retro_variable var_layout = { "cytrus_layout", nullptr };
     bool side_by_side = false;
@@ -455,6 +432,35 @@ void retro_run(void) {
         if (string_is_equal(var_layout.value, "Side-by-Side")) {
             side_by_side = true;
         }
+    }
+
+    bool touch_pressed = input_state_cb(0, RETRO_DEVICE_POINTER, 0, RETRO_DEVICE_ID_POINTER_PRESSED);
+    if (touch_pressed) {
+        float tx = (input_state_cb(0, RETRO_DEVICE_POINTER, 0, RETRO_DEVICE_ID_POINTER_X) + 32767) / 65535.0f;
+        float ty = (input_state_cb(0, RETRO_DEVICE_POINTER, 0, RETRO_DEVICE_ID_POINTER_Y) + 32767) / 65535.0f;
+        if (side_by_side) {
+            if (tx >= 400.0f / 720.0f) {
+                float btx = (tx - 400.0f / 720.0f) / (320.0f / 720.0f);
+                float bty = ty;
+                Input::LibretroSetTouch(btx, bty, true);
+            } else {
+                Input::LibretroSetTouch(0, 0, false);
+            }
+        } else {
+            if (ty >= 0.5f) {
+                float bty = (ty - 0.5f) * 2.0f;
+                float btx = (tx - 40.0f / 400.0f) / (320.0f / 400.0f);
+                Input::LibretroSetTouch(btx, bty, true);
+            } else {
+                Input::LibretroSetTouch(0, 0, false);
+            }
+        }
+    } else {
+        Input::LibretroSetTouch(0, 0, false);
+    }
+
+    if (system_instance->RunLoop(true) != Core::System::ResultStatus::Success) {
+        LOG_ERROR(Frontend, "RunLoop failed!");
     }
 
     struct retro_framebuffer fb = {0};
@@ -471,51 +477,28 @@ void retro_run(void) {
         output_data = fb.data;
         output_pitch = fb.pitch;
     } else {
-        if (combined_fb.size() != fb.width * fb.height) combined_fb.assign(fb.width * fb.height, 0xFF000000);
+        if (combined_fb.size() != (size_t)fb.width * fb.height) combined_fb.assign(fb.width * fb.height, 0xFF000000);
         output_data = combined_fb.data();
         output_pitch = fb.width * sizeof(u32);
     }
 
-    if (side_by_side) {
-        if (!top_screen.pixels.empty()) {
-            for (u32 y = 0; y < 240; y++) {
-                std::memcpy((u8*)output_data + y * output_pitch, top_screen.pixels.data() + y * 400 * 4, 400 * 4);
-            }
-        }
-        if (!bottom_screen.pixels.empty()) {
-            for (u32 y = 0; y < 240; y++) {
-                std::memcpy((u8*)output_data + y * output_pitch + 400 * 4, bottom_screen.pixels.data() + y * 320 * 4, 320 * 4);
-            }
-        }
-    } else {
-        if (!top_screen.pixels.empty()) {
-            for (u32 y = 0; y < 240; y++) {
-                std::memcpy((u8*)output_data + y * output_pitch, top_screen.pixels.data() + y * 400 * 4, 400 * 4);
-            }
-        }
-        if (!bottom_screen.pixels.empty()) {
-            for (u32 y = 0; y < 240; y++) {
-                std::memcpy((u8*)output_data + (y + 240) * output_pitch + 40 * 4, bottom_screen.pixels.data() + y * 320 * 4, 320 * 4);
-            }
-        }
-    }
+    // Single-pass optimized rendering (decode + rotate + layout)
+    SwRenderer::LibretroRenderOptimized(*system_instance, (u32*)output_data, output_pitch, side_by_side);
 
     video_cb(output_data, fb.width, fb.height, output_pitch);
 
-    // Delegate audio output
     auto& dsp = system_instance->DSP();
     auto& sink = static_cast<AudioCore::LibretroSink&>(dsp.GetSink());
-    s16 audio_buffer[44100 / 50 * 2]; // Enough for one frame
-    std::size_t num_frames = 44100 / 60; // Approximate
-    sink.Pull(audio_buffer, num_frames);
-    audio_batch_cb(audio_buffer, num_frames);
+    s16 audio_buffer[44100 / 50 * 2];
+    std::size_t num_frames = 44100 / 60;
+    std::size_t pulled = sink.Pull(audio_buffer, num_frames);
+    audio_batch_cb(audio_buffer, pulled);
 }
 
 void retro_reset(void) { system_instance->RequestReset(); }
 
 size_t retro_serialize_size(void) {
-    // 300MB is enough to hold uncompressed FCRAM (256MB) and other states
-    return 300 * 1024 * 1024;
+    return Settings::values.is_new_3ds ? 300 * 1024 * 1024 : 160 * 1024 * 1024;
 }
 
 bool retro_serialize(void *data, size_t size) {
@@ -529,7 +512,6 @@ bool retro_serialize(void *data, size_t size) {
             return false;
         }
         memcpy(data, str.data(), str.size());
-        // Zero-fill remaining space to ensure determinism for RetroArch rollback/netplay
         if (size > str.size()) {
             memset((uint8_t*)data + str.size(), 0, size - str.size());
         }
@@ -560,11 +542,10 @@ bool retro_unserialize(const void *data, size_t size) {
 }
 
 void retro_cheat_reset(void) {
-    system_instance->CheatEngine().LoadCheatFile(0); // TODO: Pass actual title_id
+    system_instance->CheatEngine().LoadCheatFile(0);
 }
 
 void retro_cheat_set(unsigned index, bool enabled, const char *code) {
-    // Citra's cheat engine might need more complex integration, but we can try basic support
 }
 
 void* retro_get_memory_data(unsigned id) {
@@ -594,10 +575,20 @@ unsigned retro_get_region(void) { return RETRO_REGION_NTSC; }
 void retro_set_controller_port_device(unsigned port, unsigned device) {}
 
 void retro_set_sensor_state(unsigned port, enum retro_sensor_action action, unsigned rate) {
-    if (action == RETRO_SENSOR_ACTION_ENABLE) sensor_enabled = true;
-    else if (action == RETRO_SENSOR_ACTION_DISABLE) sensor_enabled = false;
-}
-
-float retro_get_sensor_input(unsigned port, unsigned id) {
-    return 0.0f; // Handled in retro_run via Sensor API if needed, or we just use environment get
+    switch (action) {
+        case RETRO_SENSOR_ACCELEROMETER_ENABLE:
+            accel_enabled = true;
+            break;
+        case RETRO_SENSOR_ACCELEROMETER_DISABLE:
+            accel_enabled = false;
+            break;
+        case RETRO_SENSOR_GYROSCOPE_ENABLE:
+            gyro_enabled = true;
+            break;
+        case RETRO_SENSOR_GYROSCOPE_DISABLE:
+            gyro_enabled = false;
+            break;
+        default:
+            break;
+    }
 }

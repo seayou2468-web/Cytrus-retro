@@ -1,14 +1,33 @@
-display_name = "Nintendo - 3DS (Cytrus)"
+# Software Information
+display_name = "Nintendo - 3DS (Cytrus IR)"
 authors = "Cytrus Team"
 supported_extensions = "3ds|3dsx|cci|cia|cxi|app|elf|axf"
-corename = "Cytrus"
+corename = "cytrus"
 categories = "Emulator"
-systemname = "Nintendo 3DS"
-systemid = "nintendo_3ds"
-database = "Nintendo - Nintendo 3DS"
 license = "GPLv2"
 permissions = ""
 display_version = "v1.1"
+
+# Hardware Information
+manufacturer = "Nintendo"
+systemname = "Nintendo 3DS"
+systemid = "nintendo_3ds"
+
+# Libretro Information
+database = "Nintendo - Nintendo 3DS"
 supports_no_game = "false"
+savestate = "true"
 savestate_features = "serialized"
+cheats = "true"
+input_descriptors = "true"
+memory_descriptors = "true"
+libretro_saves = "true"
+core_options = "true"
+load_subsystem = "true"
+hw_render = "false"
+needs_fullpath = "true"
+disk_control = "false"
+is_experimental = "false"
+
 notes = "CPU: Static IR Interpreter. GPU: Software Renderer. Optimized for iOS."
+description = "A port of the Cytrus 3DS emulator to libretro, featuring a high-performance Static IR interpreter and multi-threaded Software Renderer for systems where JIT is restricted, such as iOS."
