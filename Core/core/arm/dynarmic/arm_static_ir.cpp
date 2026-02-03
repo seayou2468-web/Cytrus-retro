@@ -6,6 +6,9 @@
 #include <cmath>
 #include <limits>
 #include <cstring>
+#include <map>
+#include <unordered_map>
+#include <vector>
 #include <dynarmic/frontend/A32/translate/a32_translate.h>
 #include <dynarmic/ir/basic_block.h>
 #include <dynarmic/ir/microinstruction.h>

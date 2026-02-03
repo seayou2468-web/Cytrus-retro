@@ -10,6 +10,7 @@
 #include <fstream>
 #include <limits>
 #include <memory>
+#include <optional>
 #include <sstream>
 #include <unordered_map>
 #include <boost/iostreams/device/file_descriptor.hpp>
@@ -29,6 +30,10 @@
 #include <streams/file_stream.h>
 #include <file/file_path.h>
 #include <retro_dirent.h>
+
+#ifdef __APPLE__
+#include <CoreFoundation/CoreFoundation.h>
+#endif
 
 #ifdef _WIN32
 #include <windows.h>

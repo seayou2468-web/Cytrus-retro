@@ -18,6 +18,7 @@
 #include "common/logging/backend.h"
 #include "common/file_util.h"
 #include <streams/file_stream.h>
+#include <vfs/vfs_implementation.h>
 #include <file/file_path.h>
 #include <retro_dirent.h>
 #include <string/stdstring.h>

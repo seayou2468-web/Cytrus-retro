@@ -118,6 +118,7 @@ SOURCES_CXX := $(filter-out Core/video_core/shader/generator/glsl_%,$(SOURCES_CX
 SOURCES_CXX := $(filter-out %/cubeb/% %/dumping/%,$(SOURCES_CXX))
 ifeq ($(IS_X64),0)
     SOURCES_CXX := $(filter-out %/mmx_optimized.cpp %/sse_optimized.cpp %/cpu_detect_x86.cpp,$(SOURCES_CXX))
+    SOURCES_CXX += libretro/src/soundtouch_stub.cpp
 endif
 # Always include SoundTouch base files
 SOURCES_CXX := $(filter-out Core/audio_core/lle/%,$(SOURCES_CXX))
@@ -195,7 +196,7 @@ ifeq ($(PLATFORM),ios)
 
     CXXFLAGS += -isysroot $(IPHONEOS_SDK) -miphoneos-version-min=$(MIN_VER) -arch arm64 -fembed-bitcode
     CFLAGS   += -isysroot $(IPHONEOS_SDK) -miphoneos-version-min=$(MIN_VER) -arch arm64 -fembed-bitcode
-    LDFLAGS  += -isysroot $(IPHONEOS_SDK) -miphoneos-version-min=$(MIN_VER) -arch arm64 -dynamiclib -fembed-bitcode
+    LDFLAGS  += -isysroot $(IPHONEOS_SDK) -miphoneos-version-min=$(MIN_VER) -arch arm64 -dynamiclib -fembed-bitcode -framework CoreFoundation -framework Foundation -framework AudioToolbox -framework Security
 
     TARGET := $(TARGET_NAME)_libretro_ios.dylib
     OPENSSL_CONFIGURE := IPHONEOS_DEPLOYMENT_TARGET=$(MIN_VER) ./Configure ios64-xcrun no-shared no-tests no-unit-test
