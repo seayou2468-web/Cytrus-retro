@@ -8,6 +8,7 @@
 #include "common/string_util.h"
 #include "core/core.h"
 #include "core/hle/kernel/process.h"
+#include "core/file_sys/cia_container.h"
 #include "core/loader/3dsx.h"
 #include "core/loader/artic.h"
 #include "core/loader/elf.h"
@@ -17,6 +18,13 @@ namespace Loader {
 
 FileType IdentifyFile(FileUtil::IOFile& file) {
     FileType type;
+
+    // Check for CIA
+    u32 cia_header_size = 0;
+    file.Seek(0, SEEK_SET);
+    if (file.ReadArray<u32>(&cia_header_size, 1) == 1 && cia_header_size == 0x2020) {
+        return FileType::CIA;
+    }
 
 #define CHECK_TYPE(loader)                                                                         \
     type = AppLoader_##loader::IdentifyType(&file);                                                \
@@ -48,7 +56,7 @@ FileType GuessFromExtension(const std::string& extension_) {
     if (extension == ".elf" || extension == ".axf")
         return FileType::ELF;
 
-    if (extension == ".cci" || extension == ".zcci")
+    if (extension == ".3ds" || extension == ".cci" || extension == ".zcci")
         return FileType::CCI;
 
     if (extension == ".cxi" || extension == ".app" || extension == ".zcxi")
@@ -110,6 +118,16 @@ static std::unique_ptr<AppLoader> GetFileLoader(Core::System& system, FileUtil::
     case FileType::CXI:
     case FileType::CCI:
         return std::make_unique<AppLoader_NCCH>(system, std::move(file), filepath);
+
+    case FileType::CIA: {
+        FileSys::CIAContainer cia;
+        if (cia.Load(&file) == ResultStatus::Success) {
+            u32 content0_offset = static_cast<u32>(cia.GetContentOffset(0));
+            return std::make_unique<AppLoader_NCCH>(system, std::move(file), filepath,
+                                                    content0_offset);
+        }
+        return nullptr;
+    }
 
     case FileType::ARTIC: {
         Apploader_Artic::ArticInitMode mode = Apploader_Artic::ArticInitMode::NONE;

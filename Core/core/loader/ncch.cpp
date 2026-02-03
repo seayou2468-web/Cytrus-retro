@@ -37,9 +37,9 @@ namespace Loader {
 using namespace Common::Literals;
 static constexpr u64 UPDATE_TID_HIGH = 0x0004000e00000000;
 
-FileType AppLoader_NCCH::IdentifyType(FileUtil::IOFile* file) {
+FileType AppLoader_NCCH::IdentifyType(FileUtil::IOFile* file, u32 offset) {
     u32 magic;
-    file->Seek(0x100, SEEK_SET);
+    file->Seek(offset + 0x100, SEEK_SET);
     if (1 != file->ReadArray<u32>(&magic, 1))
         return FileType::Error;
 

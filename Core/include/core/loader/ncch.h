@@ -17,19 +17,20 @@ namespace Loader {
 /// Loads an NCCH file (e.g. from a CCI, or the first NCCH in a CXI)
 class AppLoader_NCCH final : public AppLoader {
 public:
-    AppLoader_NCCH(Core::System& system_, FileUtil::IOFile&& file, const std::string& filepath)
-        : AppLoader(system_, std::move(file)), base_ncch(filepath), overlay_ncch(&base_ncch),
+    AppLoader_NCCH(Core::System& system_, FileUtil::IOFile&& file, const std::string& filepath, u32 ncch_offset = 0)
+        : AppLoader(system_, std::move(file)), base_ncch(filepath, ncch_offset), overlay_ncch(&base_ncch),
           filepath(filepath) {
-        filetype = IdentifyType(this->file.get());
+        filetype = IdentifyType(this->file.get(), ncch_offset);
         this->file.reset();
     }
 
     /**
      * Returns the type of the file
      * @param file FileUtil::IOFile open file
+     * @param offset Offset to the NCCH header
      * @return FileType found, or FileType::Error if this loader doesn't know it
      */
-    static FileType IdentifyType(FileUtil::IOFile* file);
+    static FileType IdentifyType(FileUtil::IOFile* file, u32 offset = 0);
 
     FileType GetFileType() override {
         return filetype;

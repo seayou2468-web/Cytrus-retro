@@ -48,6 +48,18 @@ static void libretro_log_callback(int level, const char* fmt, ...) {
 static Core::System* system_instance = nullptr;
 static LibretroEmuWindow* emu_window = nullptr;
 
+static bool sensor_enabled = false;
+
+static const struct retro_subsystem_rom_info update_subsystem_roms[] = {
+    { "Game", "3ds|cci|cxi|app", false, false, true, nullptr, 0 },
+    { "Update", "cia", false, false, true, nullptr, 0 },
+};
+
+static const struct retro_subsystem_info subsystems[] = {
+    { "3DS Game with Update", "update", update_subsystem_roms, 2, 1 },
+    { nullptr, nullptr, nullptr, 0, 0 },
+};
+
 struct ButtonMapping {
     unsigned retro;
     Settings::NativeButton::Values native;
@@ -96,9 +108,9 @@ unsigned retro_api_version(void) { return RETRO_API_VERSION; }
 void retro_get_system_info(struct retro_system_info *info) {
     memset(info, 0, sizeof(*info));
     info->library_name = "Cytrus";
-    info->library_version = "v1";
+    info->library_version = "v1.1";
     info->need_fullpath = true;
-    info->valid_extensions = "3ds|cia|app";
+    info->valid_extensions = "3ds|3dsx|cci|cia|cxi|app|elf|axf";
 }
 
 void retro_get_system_av_info(struct retro_system_av_info *info) {
@@ -134,12 +146,85 @@ void retro_set_environment(retro_environment_t cb) {
         Common::Log::SetLibretroLogCallback(libretro_log_callback);
     }
 
-    static const struct retro_variable vars[] = {
-        { "cytrus_model", "Console Model; Old 3DS|New 3DS" },
-        { "cytrus_layout", "Screen Layout; Vertical|Side-by-Side" },
-        { nullptr, nullptr },
+    static const struct retro_core_option_v2_category categories[] = {
+        { "emulation", "Emulation Settings", "Settings related to CPU/GPU/Region emulation." },
+        { "video", "Video Settings", "Settings related to layout and rendering." },
+        { nullptr, nullptr, nullptr },
     };
-    environ_cb(RETRO_ENVIRONMENT_SET_VARIABLES, (void*)vars);
+
+    static const struct retro_core_option_v2_definition definitions[] = {
+        {
+            "cytrus_model",
+            "Console Model",
+            "Select which 3DS model to emulate. New 3DS has more RAM and a faster CPU.",
+            "Select which 3DS model to emulate.",
+            "emulation",
+            {
+                { "Old 3DS", nullptr },
+                { "New 3DS", nullptr },
+                { nullptr, nullptr },
+            },
+            "Old 3DS"
+        },
+        {
+            "cytrus_region",
+            "Console Region",
+            "Select the region of the console. 'Auto' will use the game's region.",
+            "Select the region of the console.",
+            "emulation",
+            {
+                { "Auto", nullptr },
+                { "Japan", nullptr },
+                { "USA", nullptr },
+                { "Europe", nullptr },
+                { "Australia", nullptr },
+                { "China", nullptr },
+                { "Korea", nullptr },
+                { "Taiwan", nullptr },
+                { nullptr, nullptr },
+            },
+            "Auto"
+        },
+        {
+            "cytrus_layout",
+            "Screen Layout",
+            "Select how the two screens are displayed.",
+            "Select screen layout.",
+            "video",
+            {
+                { "Vertical", nullptr },
+                { "Side-by-Side", nullptr },
+                { nullptr, nullptr },
+            },
+            "Vertical"
+        },
+        { nullptr, nullptr, nullptr, nullptr, nullptr, { { nullptr, nullptr } }, nullptr }
+    };
+
+    struct retro_core_options_v2 opts = { (struct retro_core_option_v2_category*)categories, (struct retro_core_option_v2_definition*)definitions };
+    if (!environ_cb(RETRO_ENVIRONMENT_SET_CORE_OPTIONS_V2, &opts)) {
+        static const struct retro_variable vars[] = {
+            { "cytrus_model", "Console Model; Old 3DS|New 3DS" },
+            { "cytrus_layout", "Screen Layout; Vertical|Side-by-Side" },
+            { "cytrus_region", "Console Region; Auto|Japan|USA|Europe|Australia|China|Korea|Taiwan" },
+            { nullptr, nullptr },
+        };
+        environ_cb(RETRO_ENVIRONMENT_SET_VARIABLES, (void*)vars);
+    }
+
+    static const struct retro_controller_description controllers[] = {
+        { "3DS Pad", RETRO_DEVICE_JOYPAD },
+    };
+    static const struct retro_controller_info ports[] = {
+        { controllers, 1 },
+        { nullptr, 0 },
+    };
+    environ_cb(RETRO_ENVIRONMENT_SET_CONTROLLER_INFO, (void*)ports);
+
+    environ_cb(RETRO_ENVIRONMENT_SET_SUBSYSTEM_INFO, (void*)subsystems);
+
+    bool support_achievements = true;
+    environ_cb(RETRO_ENVIRONMENT_SET_SUPPORT_ACHIEVEMENTS, &support_achievements);
 }
 
 void retro_set_video_refresh(retro_video_refresh_t cb) { video_cb = cb; }
@@ -147,6 +232,26 @@ void retro_set_audio_sample(retro_audio_sample_t cb) { audio_cb = cb; }
 void retro_set_audio_sample_batch(retro_audio_sample_batch_t cb) { audio_batch_cb = cb; }
 void retro_set_input_poll(retro_input_poll_t cb) { input_poll_cb = cb; }
 void retro_set_input_state(retro_input_state_t cb) { input_state_cb = cb; }
+
+static void set_memory_maps() {
+    static struct retro_memory_descriptor descriptors[2];
+    memset(descriptors, 0, sizeof(descriptors));
+
+    // FCRAM
+    descriptors[0].ptr = (uint8_t*)system_instance->Memory().GetFCRAMPointer(0);
+    descriptors[0].start = 0x20000000;
+    descriptors[0].len = Settings::values.is_new_3ds ? Memory::FCRAM_N3DS_SIZE : Memory::FCRAM_SIZE;
+    descriptors[0].addrspace = "physical";
+
+    // VRAM
+    descriptors[1].ptr = (uint8_t*)system_instance->Memory().GetPhysicalPointer(Memory::VRAM_PADDR);
+    descriptors[1].start = 0x18000000;
+    descriptors[1].len = Memory::VRAM_SIZE;
+    descriptors[1].addrspace = "physical";
+
+    struct retro_memory_map mmaps = { descriptors, 2 };
+    environ_cb(RETRO_ENVIRONMENT_SET_MEMORY_MAPS, &mmaps);
+}
 
 bool retro_load_game(const struct retro_game_info *game) {
     if (!game) return false;
@@ -163,14 +268,27 @@ bool retro_load_game(const struct retro_game_info *game) {
         return false;
     }
 
-    struct retro_variable var = { "cytrus_model", nullptr };
+    struct retro_variable var_model = { "cytrus_model", nullptr };
     Settings::values.is_new_3ds = false;
     Settings::values.cpu_clock_percentage.SetValue(100);
-    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value) {
-        if (string_is_equal(var.value, "New 3DS")) {
+    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var_model) && var_model.value) {
+        if (string_is_equal(var_model.value, "New 3DS")) {
             Settings::values.is_new_3ds = true;
-            Settings::values.cpu_clock_percentage.SetValue(400);
+            // New 3DS has a faster CPU (804MHz vs 268MHz)
+            Settings::values.cpu_clock_percentage.SetValue(100);
         }
+    }
+
+    struct retro_variable var_region = { "cytrus_region", nullptr };
+    Settings::values.region_value.SetValue(-1); // Auto
+    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var_region) && var_region.value) {
+        if (string_is_equal(var_region.value, "Japan")) Settings::values.region_value.SetValue(0);
+        else if (string_is_equal(var_region.value, "USA")) Settings::values.region_value.SetValue(1);
+        else if (string_is_equal(var_region.value, "Europe")) Settings::values.region_value.SetValue(2);
+        else if (string_is_equal(var_region.value, "Australia")) Settings::values.region_value.SetValue(3);
+        else if (string_is_equal(var_region.value, "China")) Settings::values.region_value.SetValue(4);
+        else if (string_is_equal(var_region.value, "Korea")) Settings::values.region_value.SetValue(5);
+        else if (string_is_equal(var_region.value, "Taiwan")) Settings::values.region_value.SetValue(6);
     }
 
     // Configure Input
@@ -205,6 +323,25 @@ bool retro_load_game(const struct retro_game_info *game) {
 
     if (system_instance->Load(*emu_window, game->path) != Core::System::ResultStatus::Success) {
         return false;
+    }
+
+    set_memory_maps();
+
+    return true;
+}
+
+bool retro_load_game_special(unsigned type, const struct retro_game_info *info, size_t num_info) {
+    if (type != 1 || num_info < 1) return false; // Only support "update" subsystem
+
+    // Load base game
+    if (!retro_load_game(&info[0])) return false;
+
+    // Load update if provided
+    if (num_info > 1) {
+        // Citra typically expects updates to be installed in NAND.
+        // We can't easily "load" an update CIA directly over a game without installing it.
+        // But we can inform the user via log.
+        LOG_INFO(Loader, "Subsystem update CIA provided: {}. Note: It may need to be installed in the virtual NAND.", info[1].path);
     }
 
     return true;
@@ -268,6 +405,20 @@ void retro_run(void) {
     float c_stick_x = input_state_cb(0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_RIGHT, RETRO_DEVICE_ID_ANALOG_X) / 32768.0f;
     float c_stick_y = input_state_cb(0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_RIGHT, RETRO_DEVICE_ID_ANALOG_Y) / -32768.0f;
     Input::LibretroSetAnalog(true, c_stick_x, c_stick_y);
+
+    // Update Sensors
+    if (sensor_enabled) {
+        retro_get_sensor_input_t get_sensor = nullptr;
+        if (environ_cb(RETRO_ENVIRONMENT_GET_SENSOR_INTERFACE, &get_sensor) && get_sensor) {
+            float ax = get_sensor(0, RETRO_SENSOR_ACCELEROMETER_X);
+            float ay = get_sensor(0, RETRO_SENSOR_ACCELEROMETER_Y);
+            float az = get_sensor(0, RETRO_SENSOR_ACCELEROMETER_Z);
+            float gx = get_sensor(0, RETRO_SENSOR_GYROSCOPE_X);
+            float gy = get_sensor(0, RETRO_SENSOR_GYROSCOPE_Y);
+            float gz = get_sensor(0, RETRO_SENSOR_GYROSCOPE_Z);
+            Input::LibretroSetMotion(ax, ay, az, gx, gy, gz);
+        }
+    }
 
     // Update Touch
     bool touch_pressed = input_state_cb(0, RETRO_DEVICE_POINTER, 0, RETRO_DEVICE_ID_POINTER_PRESSED);
@@ -441,3 +592,12 @@ size_t retro_get_memory_size(unsigned id) {
 unsigned retro_get_region(void) { return RETRO_REGION_NTSC; }
 
 void retro_set_controller_port_device(unsigned port, unsigned device) {}
+
+void retro_set_sensor_state(unsigned port, enum retro_sensor_action action, unsigned rate) {
+    if (action == RETRO_SENSOR_ACTION_ENABLE) sensor_enabled = true;
+    else if (action == RETRO_SENSOR_ACTION_DISABLE) sensor_enabled = false;
+}
+
+float retro_get_sensor_input(unsigned port, unsigned id) {
+    return 0.0f; // Handled in retro_run via Sensor API if needed, or we just use environment get
+}
