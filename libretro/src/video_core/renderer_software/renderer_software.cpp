@@ -1,4 +1,5 @@
-#include "renderer_software.h"
+#include "video_core/pica/regs_lcd.h"
+#include "video_core/renderer_software/renderer_software.h"
 #include <algorithm>
 #include <cstring>
 #include "common/color.h"
@@ -6,9 +7,21 @@
 #include "core/core.h"
 #include "core/memory.h"
 #include "video_core/pica/pica_core.h"
-#include "video_core/pica/regs_lcd.h"
+#include "video_core/pica/regs_external.h"
 
 namespace SwRenderer {
+
+struct FramebufferState {
+    PAddr address;
+    u32 width;
+    u32 height;
+    u32 stride;
+    Pica::PixelFormat format;
+    Pica::ColorFill color_fill;
+};
+
+// Global states to avoid changing the class definition in the header (ODR fix)
+static std::array<FramebufferState, 3> g_fb_states{};
 
 RendererSoftware::RendererSoftware(Core::System& system, Pica::PicaCore& pica,
                                   Frontend::EmuWindow& window)
@@ -27,7 +40,7 @@ void RendererSoftware::PrepareRenderTarget() {
     for (u32 i = 0; i < 3; i++) {
         const u32 fb_id = (i == 1) ? 1 : 0;
         const auto& framebuffer = pica.regs.framebuffer_config[fb_id];
-        auto& state = fb_states[i];
+        auto& state = g_fb_states[i];
 
         if (i == 0) state.address = (framebuffer.active_fb == 0) ? framebuffer.address_left1 : framebuffer.address_left2;
         else if (i == 1) state.address = (framebuffer.active_fb == 0) ? framebuffer.address_left1 : framebuffer.address_left2;
@@ -44,20 +57,20 @@ void RendererSoftware::PrepareRenderTarget() {
 template <typename DecodeFunc>
 static void RenderScreen(u32* output_data, const u8* src_data, u32 width, u32 height, u32 stride, u32 bpp, u32 dest_x, u32 dest_y, u32 dest_pitch, DecodeFunc decode) {
     for (u32 ly = 0; ly < height; ly++) {
-        u32 gx = height - 1 - ly;
-        const u8* src_row = src_data + gx * stride * bpp;
-        u32* dest_ptr = output_data + (dest_y + ly) * (dest_pitch / 4) + dest_x;
+        const u8* src_column = src_data + ly * stride * bpp;
+        u32* dest_row = output_data + (dest_y + ly) * (dest_pitch / 4) + dest_x;
         for (u32 lx = 0; lx < width; lx++) {
-            // gy = lx
-            const u8* pixel = src_row + (stride - 1 - lx) * bpp;
-            dest_ptr[lx] = decode(pixel);
+            const u8* pixel = src_column + (stride - 1 - lx) * bpp;
+            dest_row[lx] = decode(pixel);
         }
     }
 }
 
-void RendererSoftware::RenderToLibretro(u32* output_data, u32 output_pitch, bool side_by_side) {
+// Global helper for Libretro
+void LibretroRenderOptimized(Core::System& system, u32* output_data, u32 output_pitch, bool side_by_side) {
+    auto& memory = system.Memory();
     for (u32 i = 0; i < 2; i++) {
-        const auto& state = fb_states[i];
+        const auto& state = g_fb_states[i];
         if (state.address == 0) continue;
 
         const u8* src_data = memory.GetPhysicalPointer(state.address);

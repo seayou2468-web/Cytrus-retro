@@ -10,7 +10,7 @@
 #include "common/logging/log.h"
 #include "core/hle/service/hid/hid.h"
 #include "video_core/pica/regs_lcd.h"
-#include "renderer_software.h"
+#include "video_core/renderer_software/renderer_software.h"
 #include "video_core/gpu.h"
 #include "audio_core/dsp_interface.h"
 #include "audio_core/hle/hle.h"
@@ -24,6 +24,10 @@
 #include <file/file_path.h>
 #include <retro_dirent.h>
 #include <string/stdstring.h>
+
+namespace SwRenderer {
+void LibretroRenderOptimized(Core::System& system, u32* output_data, u32 output_pitch, bool side_by_side);
+}
 
 static retro_environment_t environ_cb;
 static retro_video_refresh_t video_cb;
@@ -50,7 +54,8 @@ static void libretro_log_callback(int level, const char* fmt, ...) {
 static Core::System* system_instance = nullptr;
 static LibretroEmuWindow* emu_window = nullptr;
 
-static bool sensor_enabled = false;
+static bool accel_enabled = false;
+static bool gyro_enabled = false;
 
 static const struct retro_subsystem_rom_info update_subsystem_roms[] = {
     { "Game", "3ds|cci|cxi|app", false, false, true, nullptr, 0 },
@@ -109,7 +114,7 @@ unsigned retro_api_version(void) { return RETRO_API_VERSION; }
 
 void retro_get_system_info(struct retro_system_info *info) {
     memset(info, 0, sizeof(*info));
-    info->library_name = "Cytrus";
+    info->library_name = "Cytrus IR";
     info->library_version = "v1.1";
     info->need_fullpath = true;
     info->valid_extensions = "3ds|3dsx|cci|cia|cxi|app|elf|axf";
@@ -403,15 +408,20 @@ void retro_run(void) {
     float c_stick_y = input_state_cb(0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_RIGHT, RETRO_DEVICE_ID_ANALOG_Y) / -32768.0f;
     Input::LibretroSetAnalog(true, c_stick_x, c_stick_y);
 
-    if (sensor_enabled) {
+    if (accel_enabled || gyro_enabled) {
         struct retro_sensor_interface sensor_iface;
         if (environ_cb(RETRO_ENVIRONMENT_GET_SENSOR_INTERFACE, &sensor_iface)) {
-            float ax = sensor_iface.get_sensor_input(0, RETRO_SENSOR_ACCELEROMETER_X);
-            float ay = sensor_iface.get_sensor_input(0, RETRO_SENSOR_ACCELEROMETER_Y);
-            float az = sensor_iface.get_sensor_input(0, RETRO_SENSOR_ACCELEROMETER_Z);
-            float gx = sensor_iface.get_sensor_input(0, RETRO_SENSOR_GYROSCOPE_X);
-            float gy = sensor_iface.get_sensor_input(0, RETRO_SENSOR_GYROSCOPE_Y);
-            float gz = sensor_iface.get_sensor_input(0, RETRO_SENSOR_GYROSCOPE_Z);
+            float ax = 0, ay = 0, az = 0, gx = 0, gy = 0, gz = 0;
+            if (accel_enabled) {
+                ax = sensor_iface.get_sensor_input(0, RETRO_SENSOR_ACCELEROMETER_X);
+                ay = sensor_iface.get_sensor_input(0, RETRO_SENSOR_ACCELEROMETER_Y);
+                az = sensor_iface.get_sensor_input(0, RETRO_SENSOR_ACCELEROMETER_Z);
+            }
+            if (gyro_enabled) {
+                gx = sensor_iface.get_sensor_input(0, RETRO_SENSOR_GYROSCOPE_X);
+                gy = sensor_iface.get_sensor_input(0, RETRO_SENSOR_GYROSCOPE_Y);
+                gz = sensor_iface.get_sensor_input(0, RETRO_SENSOR_GYROSCOPE_Z);
+            }
             Input::LibretroSetMotion(ax, ay, az, gx, gy, gz);
         }
     }
@@ -450,10 +460,8 @@ void retro_run(void) {
     }
 
     if (system_instance->RunLoop(true) != Core::System::ResultStatus::Success) {
+        LOG_ERROR(Frontend, "RunLoop failed!");
     }
-
-    auto& gpu = system_instance->GPU();
-    auto& renderer = static_cast<SwRenderer::RendererSoftware&>(gpu.Renderer());
 
     struct retro_framebuffer fb = {0};
     fb.width = side_by_side ? 720 : 400;
@@ -475,7 +483,7 @@ void retro_run(void) {
     }
 
     // Single-pass optimized rendering (decode + rotate + layout)
-    renderer.RenderToLibretro((u32*)output_data, output_pitch, side_by_side);
+    SwRenderer::LibretroRenderOptimized(*system_instance, (u32*)output_data, output_pitch, side_by_side);
 
     video_cb(output_data, fb.width, fb.height, output_pitch);
 
@@ -490,7 +498,7 @@ void retro_run(void) {
 void retro_reset(void) { system_instance->RequestReset(); }
 
 size_t retro_serialize_size(void) {
-    return Settings::values.is_new_3ds ? 270 * 1024 * 1024 : 140 * 1024 * 1024;
+    return Settings::values.is_new_3ds ? 300 * 1024 * 1024 : 160 * 1024 * 1024;
 }
 
 bool retro_serialize(void *data, size_t size) {
@@ -567,6 +575,20 @@ unsigned retro_get_region(void) { return RETRO_REGION_NTSC; }
 void retro_set_controller_port_device(unsigned port, unsigned device) {}
 
 void retro_set_sensor_state(unsigned port, enum retro_sensor_action action, unsigned rate) {
-    if (action == RETRO_SENSOR_ACCELEROMETER_ENABLE || action == RETRO_SENSOR_GYROSCOPE_ENABLE) sensor_enabled = true;
-    else if (action == RETRO_SENSOR_ACCELEROMETER_DISABLE || action == RETRO_SENSOR_GYROSCOPE_DISABLE) sensor_enabled = false;
+    switch (action) {
+        case RETRO_SENSOR_ACCELEROMETER_ENABLE:
+            accel_enabled = true;
+            break;
+        case RETRO_SENSOR_ACCELEROMETER_DISABLE:
+            accel_enabled = false;
+            break;
+        case RETRO_SENSOR_GYROSCOPE_ENABLE:
+            gyro_enabled = true;
+            break;
+        case RETRO_SENSOR_GYROSCOPE_DISABLE:
+            gyro_enabled = false;
+            break;
+        default:
+            break;
+    }
 }
