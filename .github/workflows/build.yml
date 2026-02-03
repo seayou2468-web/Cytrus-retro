@@ -40,7 +40,6 @@ jobs:
       with:
         fetch-depth: 1
         submodules: recursive
-        fetch-depth: 1
 
     - name: Install dependencies
       run: |
