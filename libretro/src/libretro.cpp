@@ -409,18 +409,18 @@ void retro_run(void) {
     Input::LibretroSetAnalog(true, c_stick_x, c_stick_y);
 
     if (accel_enabled || gyro_enabled) {
-        struct retro_sensor_interface sensor_iface;
-        if (environ_cb(RETRO_ENVIRONMENT_GET_SENSOR_INTERFACE, &sensor_iface)) {
+        static struct retro_sensor_interface *sensor_iface;
+        if (environ_cb(RETRO_ENVIRONMENT_GET_SENSOR_INTERFACE, &sensor_iface) && sensor_iface) {
             float ax = 0, ay = 0, az = 0, gx = 0, gy = 0, gz = 0;
             if (accel_enabled) {
-                ax = sensor_iface.get_sensor_input(0, RETRO_SENSOR_ACCELEROMETER_X);
-                ay = sensor_iface.get_sensor_input(0, RETRO_SENSOR_ACCELEROMETER_Y);
-                az = sensor_iface.get_sensor_input(0, RETRO_SENSOR_ACCELEROMETER_Z);
+                ax = sensor_iface->get_sensor_input(0, RETRO_SENSOR_ACCELEROMETER_X);
+                ay = sensor_iface->get_sensor_input(0, RETRO_SENSOR_ACCELEROMETER_Y);
+                az = sensor_iface->get_sensor_input(0, RETRO_SENSOR_ACCELEROMETER_Z);
             }
             if (gyro_enabled) {
-                gx = sensor_iface.get_sensor_input(0, RETRO_SENSOR_GYROSCOPE_X);
-                gy = sensor_iface.get_sensor_input(0, RETRO_SENSOR_GYROSCOPE_Y);
-                gz = sensor_iface.get_sensor_input(0, RETRO_SENSOR_GYROSCOPE_Z);
+                gx = sensor_iface->get_sensor_input(0, RETRO_SENSOR_GYROSCOPE_X);
+                gy = sensor_iface->get_sensor_input(0, RETRO_SENSOR_GYROSCOPE_Y);
+                gz = sensor_iface->get_sensor_input(0, RETRO_SENSOR_GYROSCOPE_Z);
             }
             Input::LibretroSetMotion(ax, ay, az, gx, gy, gz);
         }
