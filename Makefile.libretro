@@ -221,9 +221,6 @@ OBJECTS += $(patsubst %.cc,%.o,$(filter %.cc,$(SOURCES_CXX)))
 OBJECTS += $(SOURCES_C:.c=.o)
 OBJECTS := $(sort $(OBJECTS))
 
-# Filter redundant xxhash.o from zstd if already present
-OBJECTS := $(filter-out %zstd/lib/common/xxhash.o,$(OBJECTS))
-
 CRYPTOPP_OBJECTS := $(CRYPTOPP_SOURCES:.cpp=.o)
 
 all: $(TARGET)
