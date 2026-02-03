@@ -463,6 +463,7 @@ private:
     Result QueryMemory(MemoryInfo* memory_info, PageInfo* page_info, u32 addr);
     Result CreateEvent(Handle* out_handle, u32 reset_type);
     Result DuplicateHandle(Handle* out, Handle handle);
+    Result SignalAndWait(Handle signal_handle, Handle wait_handle, s64 nano_seconds);
     Result SignalEvent(Handle handle);
     Result ClearEvent(Handle handle);
     Result CreateTimer(Handle* out_handle, u32 reset_type);
@@ -494,6 +495,8 @@ private:
     Result SetThreadIdealProcessor(Handle thread_handle, s32 ideal_cpu);
     Result Run(Handle process_handle, VAddr startup_info);
     Result GetProcessList(s32* process_count, VAddr out_process_array, s32 out_process_array_count);
+    Result GetThreadList(s32* thread_count, VAddr out_thread_array, s32 out_thread_array_count,
+                         Handle process_handle);
     Result InvalidateInstructionCacheRange(u32 addr, u32 size);
     Result InvalidateEntireInstructionCache();
     u32 ConvertVaToPa(u32 addr);
@@ -502,6 +505,14 @@ private:
                               Handle dst_process_handle_backup);
     Result UnmapProcessMemoryEx(Handle process, u32 dst_address, u32 size);
     Result ControlProcess(Handle process_handle, u32 process_OP, u32 varg2, u32 varg3);
+    Result ControlPerformanceCounter(u32 type, u32 varg1, u32 varg2);
+    Result StartInterProcessDma(Handle* out_handle, Handle dst_process, VAddr dst_addr,
+                                Handle src_process, VAddr src_addr, u32 size, u32 dma_config);
+    Result StopDma(Handle dma_handle);
+    Result GetDmaState(u32* out_state, Handle dma_handle);
+    Result RestartDma(Handle dma_handle);
+    Result SetGpuProt();
+    Result SetWifiEnabled(u32 enabled);
 
     struct FunctionDef {
         using Func = void (SVC::*)();
@@ -1620,6 +1631,21 @@ Result SVC::DuplicateHandle(Handle* out, Handle handle) {
     return kernel.GetCurrentProcess()->handle_table.Duplicate(out, handle);
 }
 
+Result SVC::SignalAndWait(Handle signal_handle, Handle wait_handle, s64 nano_seconds) {
+    auto signal_object = kernel.GetCurrentProcess()->handle_table.Get<Event>(signal_handle);
+    R_UNLESS(signal_object, ResultInvalidHandle);
+
+    auto wait_object = kernel.GetCurrentProcess()->handle_table.Get<WaitObject>(wait_handle);
+    R_UNLESS(wait_object, ResultInvalidHandle);
+
+    LOG_TRACE(Kernel_SVC, "called signal_handle=0x{:08X}, wait_handle=0x{:08X}, nanoseconds={}",
+              signal_handle, wait_handle, nano_seconds);
+
+    signal_object->Signal();
+
+    return WaitSynchronization1(wait_handle, nano_seconds);
+}
+
 /// Signals an event
 Result SVC::SignalEvent(Handle handle) {
     LOG_TRACE(Kernel_SVC, "called event=0x{:08X}", handle);
@@ -2156,6 +2182,28 @@ Result SVC::GetProcessList(s32* process_count, VAddr out_process_array,
     return ResultSuccess;
 }
 
+Result SVC::GetThreadList(s32* thread_count, VAddr out_thread_array, s32 out_thread_array_count,
+                          Handle process_handle) {
+    auto process = kernel.GetCurrentProcess()->handle_table.Get<Process>(process_handle);
+    R_UNLESS(process, ResultInvalidHandle);
+    R_UNLESS(memory.IsValidVirtualAddress(*kernel.GetCurrentProcess(), out_thread_array),
+             ResultInvalidPointer);
+
+    s32 written = 0;
+    for (u32 i = 0; i < system.GetNumCores(); i++) {
+        for (auto& thread : kernel.GetThreadManager(i).GetThreadList()) {
+            if (written >= out_thread_array_count) {
+                break;
+            }
+            if (thread->owner_process.lock() == process) {
+                memory.Write32(out_thread_array + written++ * sizeof(u32), thread->thread_id);
+            }
+        }
+    }
+    *thread_count = written;
+    return ResultSuccess;
+}
+
 Result SVC::InvalidateInstructionCacheRange(u32 addr, u32 size) {
     system.GetRunningCore().InvalidateCacheRange(addr, size);
     return ResultSuccess;
@@ -2308,6 +2356,45 @@ Result SVC::ControlProcess(Handle process_handle, u32 process_OP, u32 varg2, u32
     }
 }
 
+Result SVC::ControlPerformanceCounter(u32 type, u32 varg1, u32 varg2) {
+    LOG_TRACE(Kernel_SVC, "called type={}, varg1={}, varg2={}", type, varg1, varg2);
+    return ResultSuccess;
+}
+
+Result SVC::StartInterProcessDma(Handle* out_handle, Handle dst_process, VAddr dst_addr,
+                                Handle src_process, VAddr src_addr, u32 size, u32 dma_config) {
+    LOG_WARNING(Kernel_SVC, "(STUBBED) called dst_addr=0x{:08X}, src_addr=0x{:08X}, size=0x{:X}",
+                dst_addr, src_addr, size);
+    *out_handle = 0;
+    return ResultSuccess;
+}
+
+Result SVC::StopDma(Handle dma_handle) {
+    LOG_WARNING(Kernel_SVC, "(STUBBED) called dma_handle=0x{:08X}", dma_handle);
+    return ResultSuccess;
+}
+
+Result SVC::GetDmaState(u32* out_state, Handle dma_handle) {
+    LOG_WARNING(Kernel_SVC, "(STUBBED) called dma_handle=0x{:08X}", dma_handle);
+    *out_state = 0; // DMA_STATE_STOPPED
+    return ResultSuccess;
+}
+
+Result SVC::RestartDma(Handle dma_handle) {
+    LOG_WARNING(Kernel_SVC, "(STUBBED) called dma_handle=0x{:08X}", dma_handle);
+    return ResultSuccess;
+}
+
+Result SVC::SetGpuProt() {
+    LOG_WARNING(Kernel_SVC, "(STUBBED) called");
+    return ResultSuccess;
+}
+
+Result SVC::SetWifiEnabled(u32 enabled) {
+    LOG_WARNING(Kernel_SVC, "(STUBBED) called enabled={}", enabled);
+    return ResultSuccess;
+}
+
 // Array of SVC handlers, and the cycles it takes to process them.
 // The cycles have been obtained from real hardware using a
 // custom svc profiler and doing an average.
@@ -2361,7 +2448,7 @@ const std::array<SVC::FunctionDef, 180> SVC::SVC_Table{{
     {0x23, &SVC::Wrap<&SVC::CloseHandle>, "CloseHandle", 2937},
     {0x24, &SVC::Wrap<&SVC::WaitSynchronization1>, "WaitSynchronization1", 4005},
     {0x25, &SVC::Wrap<&SVC::WaitSynchronizationN>, "WaitSynchronizationN", 6918},
-    {0x26, nullptr, "SignalAndWait", 1000},
+    {0x26, &SVC::Wrap<&SVC::SignalAndWait>, "SignalAndWait", 1000},
     {0x27, &SVC::Wrap<&SVC::DuplicateHandle>, "DuplicateHandle", 1000},
     {0x28, &SVC::Wrap<&SVC::GetSystemTick>, "GetSystemTick", 340},
     {0x29, &SVC::Wrap<&SVC::GetHandleInfo>, "GetHandleInfo", 1000},
@@ -2369,10 +2456,10 @@ const std::array<SVC::FunctionDef, 180> SVC::SVC_Table{{
     {0x2B, &SVC::Wrap<&SVC::GetProcessInfo>, "GetProcessInfo", 1510},
     {0x2C, &SVC::Wrap<&SVC::GetThreadInfo>, "GetThreadInfo", 1000},
     {0x2D, &SVC::Wrap<&SVC::ConnectToPort>, "ConnectToPort", 1000},
-    {0x2E, nullptr, "SendSyncRequest1", 1000},
-    {0x2F, nullptr, "SendSyncRequest2", 1000},
-    {0x30, nullptr, "SendSyncRequest3", 1000},
-    {0x31, nullptr, "SendSyncRequest4", 1000},
+    {0x2E, &SVC::Wrap<&SVC::SendSyncRequest>, "SendSyncRequest1", 1000},
+    {0x2F, &SVC::Wrap<&SVC::SendSyncRequest>, "SendSyncRequest2", 1000},
+    {0x30, &SVC::Wrap<&SVC::SendSyncRequest>, "SendSyncRequest3", 1000},
+    {0x31, &SVC::Wrap<&SVC::SendSyncRequest>, "SendSyncRequest4", 1000},
     {0x32, &SVC::Wrap<&SVC::SendSyncRequest>, "SendSyncRequest", 5825},
     {0x33, &SVC::Wrap<&SVC::OpenProcess>, "OpenProcess", 1000},
     {0x34, &SVC::Wrap<&SVC::OpenThread>, "OpenThread", 1000},
@@ -2385,7 +2472,7 @@ const std::array<SVC::FunctionDef, 180> SVC::SVC_Table{{
     {0x3B, &SVC::Wrap<&SVC::GetThreadContext>, "GetThreadContext", 1000},
     {0x3C, &SVC::Wrap<&SVC::Break>, "Break", 1000},
     {0x3D, &SVC::Wrap<&SVC::OutputDebugString>, "OutputDebugString", 1000},
-    {0x3E, nullptr, "ControlPerformanceCounter", 1000},
+    {0x3E, &SVC::Wrap<&SVC::ControlPerformanceCounter>, "ControlPerformanceCounter", 1000},
     {0x3F, nullptr, "Unknown", 1000},
     {0x40, nullptr, "Unknown", 1000},
     {0x41, nullptr, "Unknown", 1000},
@@ -2398,22 +2485,22 @@ const std::array<SVC::FunctionDef, 180> SVC::SVC_Table{{
     {0x48, &SVC::Wrap<&SVC::CreateSessionToPort>, "CreateSessionToPort", 5122},
     {0x49, &SVC::Wrap<&SVC::CreateSession>, "CreateSession", 3492},
     {0x4A, &SVC::Wrap<&SVC::AcceptSession>, "AcceptSession", 1842},
-    {0x4B, nullptr, "ReplyAndReceive1", 1000},
-    {0x4C, nullptr, "ReplyAndReceive2", 1000},
-    {0x4D, nullptr, "ReplyAndReceive3", 1000},
-    {0x4E, nullptr, "ReplyAndReceive4", 1000},
+    {0x4B, &SVC::Wrap<&SVC::ReplyAndReceive>, "ReplyAndReceive1", 1000},
+    {0x4C, &SVC::Wrap<&SVC::ReplyAndReceive>, "ReplyAndReceive2", 1000},
+    {0x4D, &SVC::Wrap<&SVC::ReplyAndReceive>, "ReplyAndReceive3", 1000},
+    {0x4E, &SVC::Wrap<&SVC::ReplyAndReceive>, "ReplyAndReceive4", 1000},
     {0x4F, &SVC::Wrap<&SVC::ReplyAndReceive>, "ReplyAndReceive", 8762},
     {0x50, nullptr, "BindInterrupt", 1000},
     {0x51, nullptr, "UnbindInterrupt", 1000},
     {0x52, &SVC::Wrap<&SVC::InvalidateProcessDataCache>, "InvalidateProcessDataCache", 9609},
     {0x53, &SVC::Wrap<&SVC::StoreProcessDataCache>, "StoreProcessDataCache", 7174},
     {0x54, &SVC::Wrap<&SVC::FlushProcessDataCache>, "FlushProcessDataCache", 9084},
-    {0x55, nullptr, "StartInterProcessDma", 9146},
-    {0x56, nullptr, "StopDma", 1163},
-    {0x57, nullptr, "GetDmaState", 2222},
-    {0x58, nullptr, "RestartDma", 8096},
-    {0x59, nullptr, "SetGpuProt", 356},
-    {0x5A, nullptr, "SetWifiEnabled", 1000},
+    {0x55, &SVC::Wrap<&SVC::StartInterProcessDma>, "StartInterProcessDma", 9146},
+    {0x56, &SVC::Wrap<&SVC::StopDma>, "StopDma", 1163},
+    {0x57, &SVC::Wrap<&SVC::GetDmaState>, "GetDmaState", 2222},
+    {0x58, &SVC::Wrap<&SVC::RestartDma>, "RestartDma", 8096},
+    {0x59, &SVC::Wrap<&SVC::SetGpuProt>, "SetGpuProt", 356},
+    {0x5A, &SVC::Wrap<&SVC::SetWifiEnabled>, "SetWifiEnabled", 1000},
     {0x5B, nullptr, "Unknown", 1000},
     {0x5C, nullptr, "Unknown", 1000},
     {0x5D, nullptr, "Unknown", 1000},
@@ -2425,7 +2512,7 @@ const std::array<SVC::FunctionDef, 180> SVC::SVC_Table{{
     {0x63, nullptr, "GetProcessDebugEvent", 1000},
     {0x64, nullptr, "ContinueDebugEvent", 1000},
     {0x65, &SVC::Wrap<&SVC::GetProcessList>, "GetProcessList", 1000},
-    {0x66, nullptr, "GetThreadList", 1000},
+    {0x66, &SVC::Wrap<&SVC::GetThreadList>, "GetThreadList", 1000},
     {0x67, nullptr, "GetDebugThreadContext", 1000},
     {0x68, nullptr, "SetDebugThreadContext", 1000},
     {0x69, nullptr, "QueryDebugProcessMemory", 1000},

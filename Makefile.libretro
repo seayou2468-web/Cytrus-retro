@@ -2,6 +2,20 @@
 
 TARGET_NAME := cytrus
 EXTERNAL_BASE := libretro/azahar/externals
+
+# Architecture detection
+ifeq ($(PLATFORM),ios)
+    IS_X64 := 0
+else
+    UNAME_M := $(shell uname -m)
+    ifeq ($(UNAME_M),x86_64)
+        IS_X64 := 1
+    else ifeq ($(ARCH),x86_64)
+        IS_X64 := 1
+    else
+        IS_X64 := 0
+    endif
+endif
 AR ?= ar
 
 SOURCES_CXX :=
@@ -18,7 +32,6 @@ SOURCES_CXX += $(shell find Core/video_core -name "*.cpp")
 SOURCES_CXX += $(shell find libretro/azahar/src/video_core/renderer_software -name "*.cpp")
 SOURCES_CXX += $(shell find Core/audio_core -name "*.cpp")
 SOURCES_CXX += $(shell find Core/network -name "*.cpp")
-SOURCES_CXX += $(shell find Core/web_service -name "*.cpp")
 SOURCES_CXX += $(shell find Core/input_common -name "*.cpp")
 SOURCES_CXX += libretro/src/libretro.cpp
 SOURCES_CXX += libretro/src/libretro_emu_window.cpp
@@ -30,6 +43,7 @@ SOURCES_CXX += $(EXTERNAL_BASE)/fmt/src/format.cc
 SOURCES_CXX += $(EXTERNAL_BASE)/fmt/src/os.cc
 SOURCES_CXX += $(EXTERNAL_BASE)/lodepng/lodepng/lodepng.cpp
 SOURCES_C   += $(EXTERNAL_BASE)/inih/inih/ini.c
+SOURCES_C   += $(EXTERNAL_BASE)/xxHash/xxhash.c
 
 # libretro-common
 SOURCES_C   += libretro/libretro-common/streams/file_stream.c \
@@ -55,7 +69,6 @@ SOURCES_C   += $(EXTERNAL_BASE)/zstd/contrib/seekable_format/zstdseek_compress.c
 SOURCES_C   += $(EXTERNAL_BASE)/zstd/contrib/seekable_format/zstdseek_decompress.c
 SOURCES_C   += $(shell find $(EXTERNAL_BASE)/enet -name "*.c")
 SOURCES_CXX += $(shell find $(EXTERNAL_BASE)/xxHash -name "*.cpp")
-SOURCES_CXX += $(shell find $(EXTERNAL_BASE)/sirit/sirit/src -name "*.cpp")
 SOURCES_CXX += $(shell find $(EXTERNAL_BASE)/soundtouch/source/SoundTouch -name "*.cpp")
 SOURCES_CXX += $(shell find $(EXTERNAL_BASE)/teakra/src -name "*.cpp")
 # Statically compile boost serialization into the core
@@ -67,9 +80,26 @@ SOURCES_CXX += $(EXTERNAL_BASE)/dynarmic/externals/mcl/src/assert.cpp
 
 # Dynarmic (IR and Frontend only, No JIT)
 DYNARMIC_DIR := $(EXTERNAL_BASE)/dynarmic/src/dynarmic
-SOURCES_CXX += $(shell find $(DYNARMIC_DIR)/common -name "*.cpp")
-SOURCES_CXX += $(shell find $(DYNARMIC_DIR)/frontend/A32 -name "*.cpp")
-SOURCES_CXX += $(shell find $(DYNARMIC_DIR)/ir -name "*.cpp")
+SOURCES_CXX_DYNARMIC := $(shell find $(DYNARMIC_DIR)/common -name "*.cpp")
+SOURCES_CXX_DYNARMIC += $(shell find $(DYNARMIC_DIR)/frontend/A32 -name "*.cpp")
+SOURCES_CXX_DYNARMIC += $(shell find $(DYNARMIC_DIR)/frontend/A64 -name "*.cpp")
+SOURCES_CXX_DYNARMIC += $(DYNARMIC_DIR)/frontend/imm.cpp
+SOURCES_CXX_DYNARMIC += $(shell find $(DYNARMIC_DIR)/ir -name "*.cpp")
+
+# Filter out platform-specific files and those requiring extra dependencies not needed for IR interpreter
+SOURCES_CXX_DYNARMIC := $(filter-out %/spin_lock_arm64.cpp %/spin_lock_x64.cpp,$(SOURCES_CXX_DYNARMIC))
+SOURCES_CXX_DYNARMIC := $(filter-out %/x64_disassemble.cpp %/llvm_disassemble.cpp,$(SOURCES_CXX_DYNARMIC))
+SOURCES_CXX_DYNARMIC := $(filter-out %/backend/x64/exclusive_monitor.cpp %/backend/arm64/exclusive_monitor.cpp,$(SOURCES_CXX_DYNARMIC))
+
+ifeq ($(IS_X64),1)
+    SOURCES_CXX_DYNARMIC += $(DYNARMIC_DIR)/common/spin_lock_x64.cpp
+    SOURCES_CXX_DYNARMIC += $(DYNARMIC_DIR)/backend/x64/exclusive_monitor.cpp
+else
+    SOURCES_CXX_DYNARMIC += $(DYNARMIC_DIR)/common/spin_lock_arm64.cpp
+    SOURCES_CXX_DYNARMIC += $(DYNARMIC_DIR)/backend/arm64/exclusive_monitor.cpp
+endif
+
+SOURCES_CXX += $(SOURCES_CXX_DYNARMIC)
 
 # Crypto++ Sources (handled separately as libcryptopp.a)
 CRYPTOPP_DIR := $(EXTERNAL_BASE)/cryptopp
@@ -83,8 +113,14 @@ SOURCES_CXX := $(filter-out Core/%_sink.cpp %openal_input.cpp,$(SOURCES_CXX))
 SOURCES_CXX := $(filter-out Core/video_core/renderer_vulkan/%,$(SOURCES_CXX))
 SOURCES_CXX := $(filter-out Core/video_core/renderer_opengl/%,$(SOURCES_CXX))
 SOURCES_CXX := $(filter-out Core/video_core/shader/shader_jit%,$(SOURCES_CXX))
+SOURCES_CXX := $(filter-out Core/video_core/shader/generator/spv_%,$(SOURCES_CXX))
+SOURCES_CXX := $(filter-out Core/video_core/shader/generator/glsl_%,$(SOURCES_CXX))
 SOURCES_CXX := $(filter-out %/cubeb/% %/dumping/%,$(SOURCES_CXX))
-SOURCES_CXX := $(filter-out %/mmx_optimized.cpp %/sse_optimized.cpp %/cpu_detect_x86.cpp,$(SOURCES_CXX))
+ifeq ($(IS_X64),0)
+    SOURCES_CXX := $(filter-out %/mmx_optimized.cpp %/sse_optimized.cpp %/cpu_detect_x86.cpp,$(SOURCES_CXX))
+    SOURCES_CXX += libretro/src/soundtouch_stub.cpp
+endif
+# Always include SoundTouch base files
 SOURCES_CXX := $(filter-out Core/audio_core/lle/%,$(SOURCES_CXX))
 SOURCES_CXX := $(filter-out Core/network/announce_multiplayer_session.cpp,$(SOURCES_CXX))
 SOURCES_CXX := $(filter-out Core/input_common/sdl/%,$(SOURCES_CXX))
@@ -115,23 +151,20 @@ INCFLAGS += -I$(EXTERNAL_BASE)/json
 INCFLAGS += -I$(EXTERNAL_BASE)/lodepng/lodepng
 INCFLAGS += -I$(EXTERNAL_BASE)/inih
 INCFLAGS += -I$(EXTERNAL_BASE)/enet/include
-INCFLAGS += -I$(EXTERNAL_BASE)/sirit/sirit/include
-INCFLAGS += -I$(EXTERNAL_BASE)/sirit/sirit/src
-INCFLAGS += -I$(EXTERNAL_BASE)/spirv-headers/include
-INCFLAGS += -I$(EXTERNAL_BASE)/xbyak
 INCFLAGS += -I$(EXTERNAL_BASE)/dds-ktx
 INCFLAGS += -I$(EXTERNAL_BASE)/httplib
 INCFLAGS += -I$(EXTERNAL_BASE)/zstd/contrib/seekable_format
 INCFLAGS += -I$(EXTERNAL_BASE)/soundtouch/include
 INCFLAGS += -I$(EXTERNAL_BASE)/teakra/include
 INCFLAGS += -I$(EXTERNAL_BASE)/teakra/include/teakra/impl
+INCFLAGS += -I$(EXTERNAL_BASE)/dynarmic/externals/oaknut/include
+INCFLAGS += -I$(EXTERNAL_BASE)/dynarmic/externals/biscuit/include
+INCFLAGS += -I$(EXTERNAL_BASE)/dynarmic/externals/xbyak
+INCFLAGS += -I$(EXTERNAL_BASE)/dynarmic/externals/zydis/include
+INCFLAGS += -I$(EXTERNAL_BASE)/dynarmic/externals/zydis/dependencies/zycore/include
 INCFLAGS += -Ilibretro/externals/openssl/include
 INCFLAGS += -ICore/include/network
 INCFLAGS += -ICore/include/network/artic_base
-INCFLAGS += -ICore/include/web_service
-INCFLAGS += -I$(EXTERNAL_BASE)/cpp-jwt/include
-
-INCFLAGS += -ICore/network/artic_base
 # Compiler flags
 CXXFLAGS += -fPIC -O3 -ffast-math -fno-strict-aliasing -flto -std=c++20 $(INCFLAGS)
 CFLAGS   += -fPIC -O3 -ffast-math -fno-strict-aliasing -flto $(INCFLAGS)
@@ -163,7 +196,7 @@ ifeq ($(PLATFORM),ios)
 
     CXXFLAGS += -isysroot $(IPHONEOS_SDK) -miphoneos-version-min=$(MIN_VER) -arch arm64 -fembed-bitcode
     CFLAGS   += -isysroot $(IPHONEOS_SDK) -miphoneos-version-min=$(MIN_VER) -arch arm64 -fembed-bitcode
-    LDFLAGS  += -isysroot $(IPHONEOS_SDK) -miphoneos-version-min=$(MIN_VER) -arch arm64 -dynamiclib -fembed-bitcode
+    LDFLAGS  += -isysroot $(IPHONEOS_SDK) -miphoneos-version-min=$(MIN_VER) -arch arm64 -dynamiclib -fembed-bitcode -framework CoreFoundation -framework Foundation -framework AudioToolbox -framework Security
 
     TARGET := $(TARGET_NAME)_libretro_ios.dylib
     OPENSSL_CONFIGURE := IPHONEOS_DEPLOYMENT_TARGET=$(MIN_VER) ./Configure ios64-xcrun no-shared no-tests no-unit-test

@@ -106,6 +106,15 @@ private:
 
     std::shared_ptr<Memory::PageTable> current_page_table = nullptr;
     std::unordered_map<u32, TranslatedBlock> block_cache;
+
+    // Fast-path cache
+    static constexpr size_t FAST_BLOCK_CACHE_SIZE = 4096;
+    struct FastCacheEntry {
+        u32 pc = 0xFFFFFFFF;
+        const TranslatedBlock* block = nullptr;
+    };
+    std::array<FastCacheEntry, FAST_BLOCK_CACHE_SIZE> fast_block_cache;
+
     std::vector<u64> results_buffer;
 
 public:
