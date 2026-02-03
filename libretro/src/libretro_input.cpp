@@ -11,10 +11,17 @@ static LibretroTouchDevice* touch_device = nullptr;
 static LibretroMotionDevice* motion_device = nullptr;
 
 LibretroButtonDevice::LibretroButtonDevice(unsigned id) : id(id) {}
+LibretroButtonDevice::~LibretroButtonDevice() {
+    buttons.erase(id);
+}
 bool LibretroButtonDevice::GetStatus() const { return status.load(); }
 void LibretroButtonDevice::SetStatus(bool pressed) { status.store(pressed); }
 
 LibretroAnalogDevice::LibretroAnalogDevice(unsigned ax, unsigned ay) : axis_x(ax), axis_y(ay) {}
+LibretroAnalogDevice::~LibretroAnalogDevice() {
+    if (circle_pad == this) circle_pad = nullptr;
+    if (c_stick == this) c_stick = nullptr;
+}
 std::tuple<float, float> LibretroAnalogDevice::GetStatus() const {
     return { status_x.load(), status_y.load() };
 }
@@ -23,6 +30,9 @@ void LibretroAnalogDevice::SetStatus(float x, float y) {
     status_y.store(y);
 }
 
+LibretroTouchDevice::~LibretroTouchDevice() {
+    if (touch_device == this) touch_device = nullptr;
+}
 std::tuple<float, float, bool> LibretroTouchDevice::GetStatus() const {
     return { status_x.load(), status_y.load(), status_pressed.load() };
 }
@@ -32,6 +42,9 @@ void LibretroTouchDevice::SetStatus(float x, float y, bool pressed) {
     status_pressed.store(pressed);
 }
 
+LibretroMotionDevice::~LibretroMotionDevice() {
+    if (motion_device == this) motion_device = nullptr;
+}
 std::tuple<Common::Vec3<float>, Common::Vec3<float>> LibretroMotionDevice::GetStatus() const {
     return { {ax.load(), ay.load(), az.load()}, {gx.load(), gy.load(), gz.load()} };
 }

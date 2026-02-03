@@ -11,6 +11,7 @@ namespace Input {
 class LibretroButtonDevice final : public ButtonDevice {
 public:
     explicit LibretroButtonDevice(unsigned id);
+    ~LibretroButtonDevice() override;
     bool GetStatus() const override;
     void SetStatus(bool pressed);
 
@@ -22,6 +23,7 @@ private:
 class LibretroAnalogDevice final : public AnalogDevice {
 public:
     explicit LibretroAnalogDevice(unsigned axis_x, unsigned axis_y);
+    ~LibretroAnalogDevice() override;
     std::tuple<float, float> GetStatus() const override;
     void SetStatus(float x, float y);
 
@@ -32,6 +34,7 @@ private:
 
 class LibretroTouchDevice final : public TouchDevice {
 public:
+    ~LibretroTouchDevice() override;
     std::tuple<float, float, bool> GetStatus() const override;
     void SetStatus(float x, float y, bool pressed);
 
@@ -52,6 +55,7 @@ public:
 
 class LibretroMotionDevice final : public MotionDevice {
 public:
+    ~LibretroMotionDevice() override;
     std::tuple<Common::Vec3<float>, Common::Vec3<float>> GetStatus() const override;
     void SetStatus(Common::Vec3<float> accel, Common::Vec3<float> gyro);
 

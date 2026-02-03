@@ -57,10 +57,11 @@ void RendererSoftware::PrepareRenderTarget() {
 template <typename DecodeFunc>
 static void RenderScreen(u32* output_data, const u8* src_data, u32 width, u32 height, u32 stride, u32 bpp, u32 dest_x, u32 dest_y, u32 dest_pitch, DecodeFunc decode) {
     for (u32 ly = 0; ly < height; ly++) {
-        const u8* src_column = src_data + ly * stride * bpp;
         u32* dest_row = output_data + (dest_y + ly) * (dest_pitch / 4) + dest_x;
         for (u32 lx = 0; lx < width; lx++) {
-            const u8* pixel = src_column + (stride - 1 - lx) * bpp;
+            // 3DS is column-major: Landscape(lx, ly) = Portrait(239 - ly, lx)
+            // Offset = lx * 240 + (239 - ly)
+            const u8* pixel = src_data + (lx * height + (height - 1 - ly)) * bpp;
             dest_row[lx] = decode(pixel);
         }
     }
