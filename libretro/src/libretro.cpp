@@ -272,6 +272,8 @@ bool retro_load_game(const struct retro_game_info *game) {
     const char* system_dir = nullptr;
     if (environ_cb(RETRO_ENVIRONMENT_GET_SYSTEM_DIRECTORY, &system_dir) && system_dir) {
         FileUtil::SetUserPath(std::string(system_dir) + "/citra-emu/");
+    } else {
+        FileUtil::SetUserPath("./citra-emu/");
     }
 
     // Set pixel format
@@ -502,6 +504,7 @@ size_t retro_serialize_size(void) {
 }
 
 bool retro_serialize(void *data, size_t size) {
+    if (!system_instance || !system_instance->IsPoweredOn()) return false;
     try {
         std::ostringstream sstream{std::ios_base::binary};
         oarchive oa{sstream};
@@ -526,6 +529,7 @@ bool retro_serialize(void *data, size_t size) {
 }
 
 bool retro_unserialize(const void *data, size_t size) {
+    if (!system_instance || !system_instance->IsPoweredOn()) return false;
     try {
         std::string str((const char*)data, size);
         std::istringstream sstream{str, std::ios_base::binary};
@@ -549,6 +553,7 @@ void retro_cheat_set(unsigned index, bool enabled, const char *code) {
 }
 
 void* retro_get_memory_data(unsigned id) {
+    if (!system_instance || !system_instance->IsPoweredOn()) return nullptr;
     switch (id) {
         case RETRO_MEMORY_SYSTEM_RAM:
             return system_instance->Memory().GetFCRAMPointer(0);
@@ -560,6 +565,7 @@ void* retro_get_memory_data(unsigned id) {
 }
 
 size_t retro_get_memory_size(unsigned id) {
+    if (!system_instance || !system_instance->IsPoweredOn()) return 0;
     switch (id) {
         case RETRO_MEMORY_SYSTEM_RAM:
             return Settings::values.is_new_3ds ? Memory::FCRAM_N3DS_SIZE : Memory::FCRAM_SIZE;

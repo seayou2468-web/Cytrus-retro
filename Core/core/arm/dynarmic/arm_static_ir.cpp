@@ -768,7 +768,15 @@ void ARM_StaticIR::ExecuteBlock(const TranslatedBlock& block) {
         executed_count++;
         switch (inst.op) {
         case IR::Opcode::A32GetRegister: results_ptr[inst.result_index] = regs[(int)inst.args[0].value]; break;
-        case IR::Opcode::A32SetRegister: regs[(int)inst.args[0].value] = (u32)GetArg(inst, results_ptr, 1); break;
+        case IR::Opcode::A32SetRegister: {
+            u32 val = (u32)GetArg(inst, results_ptr, 1);
+            int reg = (int)inst.args[0].value;
+            regs[reg] = val;
+            if (reg == 15) {
+                next_pc = val & ~1;
+                branched = true;
+            }
+        } break;
         case IR::Opcode::A32GetExtendedRegister32: results_ptr[inst.result_index] = vfp_regs[(int)inst.args[0].value]; break;
         case IR::Opcode::A32SetExtendedRegister32: vfp_regs[(int)inst.args[0].value] = (u32)GetArg(inst, results_ptr, 1); break;
         case IR::Opcode::A32GetCpsr: results_ptr[inst.result_index] = cpsr; break;
