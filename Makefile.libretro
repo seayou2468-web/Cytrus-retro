@@ -44,7 +44,7 @@ SOURCES_C   += libretro/libretro-common/streams/file_stream.c \
                libretro/libretro-common/file/file_path_io.c \
                libretro/libretro-common/time/rtime.c
 
-SOURCES_C   += $(shell find $(EXTERNAL_BASE)/zstd/lib/common -name "*.c")
+SOURCES_C   += $(filter-out %/xxhash.c,$(shell find $(EXTERNAL_BASE)/zstd/lib/common -name "*.c"))
 SOURCES_C   += $(shell find $(EXTERNAL_BASE)/zstd/lib/compress -name "*.c")
 SOURCES_C   += $(shell find $(EXTERNAL_BASE)/zstd/lib/decompress -name "*.c")
 SOURCES_C   += $(EXTERNAL_BASE)/zstd/contrib/seekable_format/zstdseek_compress.c
@@ -67,7 +67,6 @@ SOURCES_CXX += $(shell find $(DYNARMIC_DIR)/common -name "*.cpp")
 SOURCES_CXX += $(shell find $(DYNARMIC_DIR)/frontend -maxdepth 1 -name "*.cpp")
 SOURCES_CXX += $(shell find $(DYNARMIC_DIR)/frontend/A32 -name "*.cpp")
 SOURCES_CXX += $(shell find $(DYNARMIC_DIR)/ir -name "*.cpp")
-SOURCES_CXX += Core/core/arm/dynarmic/dynarmic_exclusive_monitor_common.cpp
 
 # Crypto++ Sources (handled separately as libcryptopp.a)
 CRYPTOPP_DIR := $(EXTERNAL_BASE)/cryptopp
@@ -90,6 +89,10 @@ SOURCES_CXX := $(filter-out %/mmx_optimized.cpp %/sse_optimized.cpp %/cpu_detect
 SOURCES_CXX := $(filter-out Core/audio_core/lle/%,$(SOURCES_CXX))
 SOURCES_CXX := $(filter-out Core/network/announce_multiplayer_session.cpp,$(SOURCES_CXX))
 SOURCES_CXX := $(filter-out Core/input_common/sdl/%,$(SOURCES_CXX))
+
+# Unique the lists
+SOURCES_CXX := $(sort $(SOURCES_CXX))
+SOURCES_C   := $(sort $(SOURCES_C))
 
 # ENet filters (only unix.c for our targets)
 SOURCES_C := $(filter-out %/win32.c,$(SOURCES_C))
@@ -135,8 +138,8 @@ CXXFLAGS += -fPIC -O3 -ffast-math -fno-strict-aliasing -flto -std=c++20 $(INCFLA
 CFLAGS   += -fPIC -O3 -ffast-math -fno-strict-aliasing -flto $(INCFLAGS)
 
 # Libretro defines
-CXXFLAGS += -DENABLE_SOFTWARE_RENDERER -D__LIBRETRO__ -DZSTD_DISABLE_ASM -DCPPHTTPLIB_OPENSSL_SUPPORT -DCPP_JWT_USE_VENDORED_NLOHMANN_JSON -DSOUNDTOUCH_DISABLE_X86_OPTIMIZATIONS
-CFLAGS   += -DENABLE_SOFTWARE_RENDERER -D__LIBRETRO__ -DZSTD_DISABLE_ASM -DCPPHTTPLIB_OPENSSL_SUPPORT -DCPP_JWT_USE_VENDORED_NLOHMANN_JSON -DSOUNDTOUCH_DISABLE_X86_OPTIMIZATIONS
+CXXFLAGS += -DENABLE_SOFTWARE_RENDERER -D__LIBRETRO__ -DZSTD_DISABLE_ASM -DCPPHTTPLIB_OPENSSL_SUPPORT -DCPP_JWT_USE_VENDORED_NLOHMANN_JSON -DSOUNDTOUCH_DISABLE_X86_OPTIMIZATIONS -DSOUNDTOUCH_DISABLE_SSE
+CFLAGS   += -DENABLE_SOFTWARE_RENDERER -D__LIBRETRO__ -DZSTD_DISABLE_ASM -DCPPHTTPLIB_OPENSSL_SUPPORT -DCPP_JWT_USE_VENDORED_NLOHMANN_JSON -DSOUNDTOUCH_DISABLE_X86_OPTIMIZATIONS -DSOUNDTOUCH_DISABLE_SSE
 
 # Crypto++ defines
 CXXFLAGS += -DCRYPTOPP_DISABLE_ASM -DCRYPTOPP_DISABLE_SSSE3 -DCRYPTOPP_DISABLE_AESNI
@@ -166,6 +169,7 @@ ifeq ($(PLATFORM),ios)
     TARGET := $(TARGET_NAME)_libretro_ios.dylib
     OPENSSL_CONFIGURE := IPHONEOS_DEPLOYMENT_TARGET=$(MIN_VER) ./Configure ios64-xcrun no-shared no-tests no-unit-test
 else
+    LDFLAGS += -shared -Wl,--version-script=libretro/notes/link.T
     TARGET := $(TARGET_NAME)_libretro.so
     OPENSSL_CONFIGURE := ./config no-shared no-tests no-unit-test
 endif
@@ -176,6 +180,7 @@ CXXFLAGS += -include Core/include/common/assert.h -include Core/include/common/l
 OBJECTS := $(patsubst %.cpp,%.o,$(filter %.cpp,$(SOURCES_CXX)))
 OBJECTS += $(patsubst %.cc,%.o,$(filter %.cc,$(SOURCES_CXX)))
 OBJECTS += $(SOURCES_C:.c=.o)
+OBJECTS := $(sort $(OBJECTS))
 
 CRYPTOPP_OBJECTS := $(CRYPTOPP_SOURCES:.cpp=.o)
 
@@ -190,7 +195,7 @@ ifeq ($(PLATFORM),ios)
 		perl -i -pe 's/-(mios|miphoneos|mtvos|mwatchos|mappletvos|mmacosx)-version-min=[0-9.]*/-miphoneos-version-min=$(MIN_VER)/g' $$f; \
 	done || true
 	@find . -name "project.pbxproj" -exec perl -i -pe 's/(IPHONEOS|MACOSX|TVOS|WATCHOS)_DEPLOYMENT_TARGET = [0-9.]*;/ $$1_DEPLOYMENT_TARGET = $(MIN_VER);/g' {} + 2>/dev/null || true
-	@find . -name "*.xcconfig" -exec perl -i -pe 's/(IPHONEOS|MACOSX|TVOS|WATCHOS)_DEPLOYMENT_TARGET = [0-9.]*/$$1_DEPLOYMENT_TARGET = $(MIN_VER)/g' {} + 2>/dev/null || true
+	@find . -name "*.xcconfig" -exec perl -i -pe 's/(IPHONEOS|MACOSX|TVOS|WATCHOS)_DEPLOYMENT_TARGET = [0-9.]*/$$1_DEPLOYMENT_TARGET = $(MIN_VER);/g' {} + 2>/dev/null || true
 	@find . -name "CMakeLists.txt" -exec perl -i -pe 's/set\(CMAKE_OSX_DEPLOYMENT_TARGET "[0-9.]*"\)/set(CMAKE_OSX_DEPLOYMENT_TARGET "$(MIN_VER)")/g' {} + 2>/dev/null || true
 	@echo "Fixing cpp-jwt template and include issues..."
 	@mkdir -p libretro/azahar/externals/json/nlohmann 2>/dev/null || true

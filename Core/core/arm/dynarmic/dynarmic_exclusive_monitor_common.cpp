@@ -63,3 +63,10 @@ void ExclusiveMonitor::ClearProcessor(size_t processor_id) {
 }
 
 } // namespace Dynarmic
+
+// SoundTouch stub
+extern "C" {
+    unsigned int detectCPUextensions(void) {
+        return 0; // No extensions
+    }
+}
