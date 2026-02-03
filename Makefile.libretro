@@ -9,10 +9,6 @@ SOURCES_C   :=
 
 # Core source files
 SOURCES_CXX += $(shell find Core/core -name "*.cpp")
-# Filter out JIT implementation from core
-SOURCES_CXX := $(filter-out Core/core/arm/dynarmic/arm_dynarmic.cpp,$(SOURCES_CXX))
-SOURCES_CXX := $(filter-out Core/core/arm/dynarmic/arm_dynarmic_cp15.cpp,$(SOURCES_CXX))
-
 SOURCES_CXX += $(shell find Core/common -name "*.cpp")
 SOURCES_CXX += $(shell find Core/video_core -name "*.cpp")
 SOURCES_CXX += $(shell find libretro/azahar/src/video_core/renderer_software -name "*.cpp")
@@ -55,7 +51,6 @@ SOURCES_C   += $(EXTERNAL_BASE)/zstd/contrib/seekable_format/zstdseek_compress.c
 SOURCES_C   += $(EXTERNAL_BASE)/zstd/contrib/seekable_format/zstdseek_decompress.c
 SOURCES_C   += $(shell find $(EXTERNAL_BASE)/enet -name "*.c")
 SOURCES_CXX += $(shell find $(EXTERNAL_BASE)/xxHash -name "*.cpp")
-SOURCES_CXX += $(shell find $(EXTERNAL_BASE)/sirit/sirit/src -name "*.cpp")
 SOURCES_CXX += $(shell find $(EXTERNAL_BASE)/soundtouch/source/SoundTouch -name "*.cpp")
 SOURCES_CXX += $(shell find $(EXTERNAL_BASE)/teakra/src -name "*.cpp")
 # Statically compile boost serialization into the core
@@ -82,7 +77,9 @@ SOURCES_CXX := $(filter-out %/main.cpp %/ffmpeg.cpp %/ffmpeg_backend.cpp,$(SOURC
 SOURCES_CXX := $(filter-out Core/%_sink.cpp %openal_input.cpp,$(SOURCES_CXX))
 SOURCES_CXX := $(filter-out Core/video_core/renderer_vulkan/%,$(SOURCES_CXX))
 SOURCES_CXX := $(filter-out Core/video_core/renderer_opengl/%,$(SOURCES_CXX))
-SOURCES_CXX := $(filter-out Core/video_core/shader/shader_jit%,$(SOURCES_CXX))
+SOURCES_CXX := $(filter-out %/shader_jit.cpp %/shader_jit_%.cpp,$(SOURCES_CXX))
+SOURCES_CXX := $(filter-out %/arm_dynarmic.cpp %/arm_dynarmic_cp15.cpp,$(SOURCES_CXX))
+SOURCES_CXX := $(filter-out Core/video_core/shader/generator/%,$(SOURCES_CXX))
 SOURCES_CXX := $(filter-out %/cubeb/% %/dumping/%,$(SOURCES_CXX))
 SOURCES_CXX := $(filter-out %/mmx_optimized.cpp %/sse_optimized.cpp %/cpu_detect_x86.cpp,$(SOURCES_CXX))
 SOURCES_CXX := $(filter-out Core/audio_core/lle/%,$(SOURCES_CXX))
@@ -115,10 +112,6 @@ INCFLAGS += -I$(EXTERNAL_BASE)/json
 INCFLAGS += -I$(EXTERNAL_BASE)/lodepng/lodepng
 INCFLAGS += -I$(EXTERNAL_BASE)/inih
 INCFLAGS += -I$(EXTERNAL_BASE)/enet/include
-INCFLAGS += -I$(EXTERNAL_BASE)/sirit/sirit/include
-INCFLAGS += -I$(EXTERNAL_BASE)/sirit/sirit/src
-INCFLAGS += -I$(EXTERNAL_BASE)/spirv-headers/include
-INCFLAGS += -I$(EXTERNAL_BASE)/xbyak
 INCFLAGS += -I$(EXTERNAL_BASE)/dds-ktx
 INCFLAGS += -I$(EXTERNAL_BASE)/httplib
 INCFLAGS += -I$(EXTERNAL_BASE)/zstd/contrib/seekable_format

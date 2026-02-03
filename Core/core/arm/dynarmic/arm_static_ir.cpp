@@ -229,19 +229,26 @@ const ARM_StaticIR::TranslatedBlock& ARM_StaticIR::GetOrTranslateBlock(u32 pc) {
 }
 
 namespace {
-typedef void (*OpHandler)(ARM_StaticIR& self, const ARM_StaticIR::Instruction& inst, u64* results, u32& next_pc, bool& branched);
+typedef void (*OpHandler)(ARM_StaticIR& self, const ARM_StaticIR::Instruction& inst, unsigned __int128* results, u32& next_pc, bool& branched);
 
-static inline u64 GetArg(const ARM_StaticIR::Instruction& inst, const u64* results, size_t i) {
-    if (inst.args[i].kind == ARM_StaticIR::Operand::Immediate) return inst.args[i].value;
+static inline unsigned __int128 GetArg(const ARM_StaticIR::Instruction& inst, const unsigned __int128* results, size_t i) {
+    if (inst.args[i].kind == ARM_StaticIR::Operand::Immediate) return (unsigned __int128)inst.args[i].value;
     return results[inst.args[i].value];
 }
 
-#define OP_HANDLER(name) static void Handle##name(ARM_StaticIR& self, const ARM_StaticIR::Instruction& inst, u64* results, u32& next_pc, bool& branched)
+static size_t GetVFPStorageIndex(int ext_reg) {
+    if (ext_reg >= 0 && ext_reg <= 31) return (size_t)ext_reg; // S
+    if (ext_reg >= 32 && ext_reg <= 63) return (size_t)(ext_reg - 32) * 2; // D
+    if (ext_reg >= 64 && ext_reg <= 79) return (size_t)(ext_reg - 64) * 4; // Q
+    return 0;
+}
+
+#define OP_HANDLER(name) static void Handle##name(ARM_StaticIR& self, const ARM_StaticIR::Instruction& inst, unsigned __int128* results, u32& next_pc, bool& branched)
 
 OP_HANDLER(A32GetRegister) { results[inst.result_index] = self.GetReg((int)inst.args[0].value); }
 OP_HANDLER(A32SetRegister) { self.SetReg((int)inst.args[0].value, (u32)GetArg(inst, results, 1)); }
-OP_HANDLER(A32GetExtendedRegister32) { results[inst.result_index] = self.GetVFPReg((int)inst.args[0].value); }
-OP_HANDLER(A32SetExtendedRegister32) { self.SetVFPReg((int)inst.args[0].value, (u32)GetArg(inst, results, 1)); }
+OP_HANDLER(A32GetExtendedRegister32) { results[inst.result_index] = self.GetVFPReg(GetVFPStorageIndex((int)inst.args[0].value)); }
+OP_HANDLER(A32SetExtendedRegister32) { self.SetVFPReg(GetVFPStorageIndex((int)inst.args[0].value), (u32)GetArg(inst, results, 1)); }
 OP_HANDLER(A32GetCpsr) { results[inst.result_index] = self.GetCPSR(); }
 OP_HANDLER(A32SetCpsr) { self.SetCPSR((u32)GetArg(inst, results, 0)); }
 OP_HANDLER(A32SetCpsrNZCV) { self.SetCPSR((self.GetCPSR() & 0x0FFFFFFF) | ((u32)GetArg(inst, results, 0) << 28)); }
@@ -356,6 +363,21 @@ OP_HANDLER(MaxUnsigned32) { results[inst.result_index] = (u32)std::max((u32)GetA
 OP_HANDLER(MinSigned32) { results[inst.result_index] = (u32)std::min((s32)GetArg(inst, results, 0), (s32)GetArg(inst, results, 1)); }
 OP_HANDLER(MinUnsigned32) { results[inst.result_index] = (u32)std::min((u32)GetArg(inst, results, 0), (u32)GetArg(inst, results, 1)); }
 OP_HANDLER(IsZero32) { results[inst.result_index] = (u32)GetArg(inst, results, 0) == 0; }
+OP_HANDLER(IsZero64) { results[inst.result_index] = (u64)GetArg(inst, results, 0) == 0; }
+OP_HANDLER(UnsignedDiv64) {
+    u64 a = (u64)GetArg(inst, results, 0);
+    u64 b = (u64)GetArg(inst, results, 1);
+    results[inst.result_index] = b == 0 ? 0 : a / b;
+}
+OP_HANDLER(SignedDiv64) {
+    s64 a = (s64)GetArg(inst, results, 0);
+    s64 b = (s64)GetArg(inst, results, 1);
+    results[inst.result_index] = b == 0 ? 0 : (unsigned __int128)(a / b);
+}
+OP_HANDLER(MaxSigned64) { results[inst.result_index] = (u64)std::max((s64)GetArg(inst, results, 0), (s64)GetArg(inst, results, 1)); }
+OP_HANDLER(MaxUnsigned64) { results[inst.result_index] = std::max((u64)GetArg(inst, results, 0), (u64)GetArg(inst, results, 1)); }
+OP_HANDLER(MinSigned64) { results[inst.result_index] = (u64)std::min((s64)GetArg(inst, results, 0), (s64)GetArg(inst, results, 1)); }
+OP_HANDLER(MinUnsigned64) { results[inst.result_index] = std::min((u64)GetArg(inst, results, 0), (u64)GetArg(inst, results, 1)); }
 OP_HANDLER(TestBit) { results[inst.result_index] = (GetArg(inst, results, 0) >> (u8)GetArg(inst, results, 1)) & 1; }
 OP_HANDLER(A32BXWritePC) {
     u32 val = (u32)GetArg(inst, results, 0);
@@ -442,36 +464,75 @@ OP_HANDLER(ByteReverseHalf) {
     u16 val = (u16)GetArg(inst, results, 0);
     results[inst.result_index] = (u16)((val >> 8) | (val << 8));
 }
+OP_HANDLER(ByteReverseDual) {
+    u64 val = (u64)GetArg(inst, results, 0);
+    u32 low = (u32)val;
+    u32 high = (u32)(val >> 32);
+    low = ((low & 0xFF) << 24) | ((low & 0xFF00) << 8) | ((low & 0xFF0000) >> 8) | ((low >> 24) & 0xFF);
+    high = ((high & 0xFF) << 24) | ((high & 0xFF00) << 8) | ((high & 0xFF0000) >> 8) | ((high >> 24) & 0xFF);
+    results[inst.result_index] = ((u64)high << 32) | low;
+}
 OP_HANDLER(RotateRight32) {
     u32 val = (u32)GetArg(inst, results, 0);
     u32 amount = (u32)GetArg(inst, results, 1) & 31;
     results[inst.result_index] = amount == 0 ? val : (val >> amount) | (val << (32 - amount));
 }
 OP_HANDLER(RotateRight64) {
-    u64 val = GetArg(inst, results, 0);
-    u64 amount = GetArg(inst, results, 1) & 63;
+    u64 val = (u64)GetArg(inst, results, 0);
+    u64 amount = (u64)GetArg(inst, results, 1) & 63;
     results[inst.result_index] = amount == 0 ? val : (val >> amount) | (val << (64 - amount));
+}
+OP_HANDLER(ExtractRegister32) {
+    u32 low = (u32)GetArg(inst, results, 0);
+    u32 high = (u32)GetArg(inst, results, 1);
+    u8 shift = (u8)GetArg(inst, results, 2);
+    results[inst.result_index] = (u32)((((u64)high << 32) | low) >> shift);
+}
+OP_HANDLER(ExtractRegister64) {
+    u64 low = (u64)GetArg(inst, results, 0);
+    u64 high = (u64)GetArg(inst, results, 1);
+    u8 shift = (u8)GetArg(inst, results, 2);
+    results[inst.result_index] = (u64)((((unsigned __int128)high << 64) | low) >> shift);
 }
 OP_HANDLER(CountLeadingZeros32) {
     u32 val = (u32)GetArg(inst, results, 0);
     results[inst.result_index] = val == 0 ? 32 : __builtin_clz(val);
 }
 OP_HANDLER(CountLeadingZeros64) {
-    u64 val = GetArg(inst, results, 0);
+    u64 val = (u64)GetArg(inst, results, 0);
     results[inst.result_index] = val == 0 ? 64 : __builtin_clzll(val);
 }
-OP_HANDLER(Pack2x32To1x64) { results[inst.result_index] = (GetArg(inst, results, 0) & 0xFFFFFFFF) | (GetArg(inst, results, 1) << 32); }
-OP_HANDLER(LeastSignificantWord) { results[inst.result_index] = GetArg(inst, results, 0) & 0xFFFFFFFF; }
+OP_HANDLER(Pack2x32To1x64) { results[inst.result_index] = ((u64)GetArg(inst, results, 0) & 0xFFFFFFFF) | ((u64)GetArg(inst, results, 1) << 32); }
+OP_HANDLER(LeastSignificantWord) { results[inst.result_index] = (u64)GetArg(inst, results, 0) & 0xFFFFFFFF; }
 OP_HANDLER(LeastSignificantHalf) { results[inst.result_index] = (u16)GetArg(inst, results, 0); }
 OP_HANDLER(LeastSignificantByte) { results[inst.result_index] = (u8)GetArg(inst, results, 0); }
-OP_HANDLER(MostSignificantWord) { results[inst.result_index] = GetArg(inst, results, 0) >> 32; }
+OP_HANDLER(MostSignificantWord) { results[inst.result_index] = (u32)((u64)GetArg(inst, results, 0) >> 32); }
+OP_HANDLER(MostSignificantBit) { results[inst.result_index] = (u32)((u32)GetArg(inst, results, 0) >> 31); }
 OP_HANDLER(A32GetExtendedRegister64) {
-    results[inst.result_index] = ((u64)self.GetVFPReg((int)inst.args[0].value + 1) << 32) | self.GetVFPReg((int)inst.args[0].value);
+    size_t idx = GetVFPStorageIndex((int)inst.args[0].value);
+    results[inst.result_index] = ((u64)self.GetVFPReg(idx + 1) << 32) | self.GetVFPReg(idx);
 }
 OP_HANDLER(A32SetExtendedRegister64) {
-    u64 val = GetArg(inst, results, 1);
-    self.SetVFPReg((int)inst.args[0].value, (u32)val);
-    self.SetVFPReg((int)inst.args[0].value + 1, (u32)(val >> 32));
+    size_t idx = GetVFPStorageIndex((int)inst.args[0].value);
+    u64 val = (u64)GetArg(inst, results, 1);
+    self.SetVFPReg(idx, (u32)val);
+    self.SetVFPReg(idx + 1, (u32)(val >> 32));
+}
+OP_HANDLER(A32GetVector) {
+    size_t idx = GetVFPStorageIndex((int)inst.args[0].value);
+    u64 low = ((u64)self.GetVFPReg(idx + 1) << 32) | self.GetVFPReg(idx);
+    u64 high = ((u64)self.GetVFPReg(idx + 3) << 32) | self.GetVFPReg(idx + 2);
+    results[inst.result_index] = ((unsigned __int128)high << 64) | low;
+}
+OP_HANDLER(A32SetVector) {
+    size_t idx = GetVFPStorageIndex((int)inst.args[0].value);
+    unsigned __int128 val = GetArg(inst, results, 1);
+    u64 low = (u64)val;
+    u64 high = (u64)(val >> 64);
+    self.SetVFPReg(idx, (u32)low);
+    self.SetVFPReg(idx + 1, (u32)(low >> 32));
+    self.SetVFPReg(idx + 2, (u32)high);
+    self.SetVFPReg(idx + 3, (u32)(high >> 32));
 }
 OP_HANDLER(GetNZCVFromOp) { results[inst.result_index] = self.flags_buffer[inst.args[0].value]; }
 OP_HANDLER(GetCarryFromOp) { results[inst.result_index] = (self.flags_buffer[inst.args[0].value] >> 1) & 1; }
@@ -492,8 +553,8 @@ OP_HANDLER(FPAdd32) {
     results[inst.result_index] = std::bit_cast<u32>(a + b);
 }
 OP_HANDLER(FPAdd64) {
-    double a = std::bit_cast<double>(GetArg(inst, results, 0));
-    double b = std::bit_cast<double>(GetArg(inst, results, 1));
+    double a = std::bit_cast<double>((u64)GetArg(inst, results, 0));
+    double b = std::bit_cast<double>((u64)GetArg(inst, results, 1));
     results[inst.result_index] = std::bit_cast<u64>(a + b);
 }
 OP_HANDLER(FPSub32) {
@@ -502,8 +563,8 @@ OP_HANDLER(FPSub32) {
     results[inst.result_index] = std::bit_cast<u32>(a - b);
 }
 OP_HANDLER(FPSub64) {
-    double a = std::bit_cast<double>(GetArg(inst, results, 0));
-    double b = std::bit_cast<double>(GetArg(inst, results, 1));
+    double a = std::bit_cast<double>((u64)GetArg(inst, results, 0));
+    double b = std::bit_cast<double>((u64)GetArg(inst, results, 1));
     results[inst.result_index] = std::bit_cast<u64>(a - b);
 }
 OP_HANDLER(FPMul32) {
@@ -512,8 +573,8 @@ OP_HANDLER(FPMul32) {
     results[inst.result_index] = std::bit_cast<u32>(a * b);
 }
 OP_HANDLER(FPMul64) {
-    double a = std::bit_cast<double>(GetArg(inst, results, 0));
-    double b = std::bit_cast<double>(GetArg(inst, results, 1));
+    double a = std::bit_cast<double>((u64)GetArg(inst, results, 0));
+    double b = std::bit_cast<double>((u64)GetArg(inst, results, 1));
     results[inst.result_index] = std::bit_cast<u64>(a * b);
 }
 OP_HANDLER(FPMulAdd32) {
@@ -523,9 +584,9 @@ OP_HANDLER(FPMulAdd32) {
     results[inst.result_index] = std::bit_cast<u32>(a + (b * c));
 }
 OP_HANDLER(FPMulAdd64) {
-    double a = std::bit_cast<double>(GetArg(inst, results, 0));
-    double b = std::bit_cast<double>(GetArg(inst, results, 1));
-    double c = std::bit_cast<double>(GetArg(inst, results, 2));
+    double a = std::bit_cast<double>((u64)GetArg(inst, results, 0));
+    double b = std::bit_cast<double>((u64)GetArg(inst, results, 1));
+    double c = std::bit_cast<double>((u64)GetArg(inst, results, 2));
     results[inst.result_index] = std::bit_cast<u64>(a + (b * c));
 }
 OP_HANDLER(FPMulSub32) {
@@ -535,9 +596,9 @@ OP_HANDLER(FPMulSub32) {
     results[inst.result_index] = std::bit_cast<u32>(a - (b * c));
 }
 OP_HANDLER(FPMulSub64) {
-    double a = std::bit_cast<double>(GetArg(inst, results, 0));
-    double b = std::bit_cast<double>(GetArg(inst, results, 1));
-    double c = std::bit_cast<double>(GetArg(inst, results, 2));
+    double a = std::bit_cast<double>((u64)GetArg(inst, results, 0));
+    double b = std::bit_cast<double>((u64)GetArg(inst, results, 1));
+    double c = std::bit_cast<double>((u64)GetArg(inst, results, 2));
     results[inst.result_index] = std::bit_cast<u64>(a - (b * c));
 }
 OP_HANDLER(FPDiv32) {
@@ -546,8 +607,8 @@ OP_HANDLER(FPDiv32) {
     results[inst.result_index] = std::bit_cast<u32>(a / b);
 }
 OP_HANDLER(FPDiv64) {
-    double a = std::bit_cast<double>(GetArg(inst, results, 0));
-    double b = std::bit_cast<double>(GetArg(inst, results, 1));
+    double a = std::bit_cast<double>((u64)GetArg(inst, results, 0));
+    double b = std::bit_cast<double>((u64)GetArg(inst, results, 1));
     results[inst.result_index] = std::bit_cast<u64>(a / b);
 }
 OP_HANDLER(FPMax32) {
@@ -556,8 +617,8 @@ OP_HANDLER(FPMax32) {
     results[inst.result_index] = std::bit_cast<u32>(std::max(a, b));
 }
 OP_HANDLER(FPMax64) {
-    double a = std::bit_cast<double>(GetArg(inst, results, 0));
-    double b = std::bit_cast<double>(GetArg(inst, results, 1));
+    double a = std::bit_cast<double>((u64)GetArg(inst, results, 0));
+    double b = std::bit_cast<double>((u64)GetArg(inst, results, 1));
     results[inst.result_index] = std::bit_cast<u64>(std::max(a, b));
 }
 OP_HANDLER(FPMin32) {
@@ -566,8 +627,8 @@ OP_HANDLER(FPMin32) {
     results[inst.result_index] = std::bit_cast<u32>(std::min(a, b));
 }
 OP_HANDLER(FPMin64) {
-    double a = std::bit_cast<double>(GetArg(inst, results, 0));
-    double b = std::bit_cast<double>(GetArg(inst, results, 1));
+    double a = std::bit_cast<double>((u64)GetArg(inst, results, 0));
+    double b = std::bit_cast<double>((u64)GetArg(inst, results, 1));
     results[inst.result_index] = std::bit_cast<u64>(std::min(a, b));
 }
 OP_HANDLER(FPAbs32) {
@@ -575,7 +636,7 @@ OP_HANDLER(FPAbs32) {
     results[inst.result_index] = std::bit_cast<u32>(std::abs(a));
 }
 OP_HANDLER(FPAbs64) {
-    double a = std::bit_cast<double>(GetArg(inst, results, 0));
+    double a = std::bit_cast<double>((u64)GetArg(inst, results, 0));
     results[inst.result_index] = std::bit_cast<u64>(std::abs(a));
 }
 OP_HANDLER(FPNeg32) {
@@ -583,7 +644,7 @@ OP_HANDLER(FPNeg32) {
     results[inst.result_index] = std::bit_cast<u32>(-a);
 }
 OP_HANDLER(FPNeg64) {
-    double a = std::bit_cast<double>(GetArg(inst, results, 0));
+    double a = std::bit_cast<double>((u64)GetArg(inst, results, 0));
     results[inst.result_index] = std::bit_cast<u64>(-a);
 }
 OP_HANDLER(FPSqrt32) {
@@ -591,7 +652,7 @@ OP_HANDLER(FPSqrt32) {
     results[inst.result_index] = std::bit_cast<u32>(std::sqrt(a));
 }
 OP_HANDLER(FPSqrt64) {
-    double a = std::bit_cast<double>(GetArg(inst, results, 0));
+    double a = std::bit_cast<double>((u64)GetArg(inst, results, 0));
     results[inst.result_index] = std::bit_cast<u64>(std::sqrt(a));
 }
 OP_HANDLER(FPCompare32) {
@@ -603,8 +664,8 @@ OP_HANDLER(FPCompare32) {
     else results[inst.result_index] = 2; // Greater than
 }
 OP_HANDLER(FPCompare64) {
-    double a = std::bit_cast<double>(GetArg(inst, results, 0));
-    double b = std::bit_cast<double>(GetArg(inst, results, 1));
+    double a = std::bit_cast<double>((u64)GetArg(inst, results, 0));
+    double b = std::bit_cast<double>((u64)GetArg(inst, results, 1));
     if (std::isnan(a) || std::isnan(b)) results[inst.result_index] = 3;
     else if (a == b) results[inst.result_index] = 0;
     else if (a < b) results[inst.result_index] = 1;
@@ -621,12 +682,12 @@ OP_HANDLER(FPSingleToFixedU32) {
     results[inst.result_index] = (u32)(u32)(a * std::pow(2.0f, fbits));
 }
 OP_HANDLER(FPDoubleToFixedS64) {
-    double a = std::bit_cast<double>(GetArg(inst, results, 0));
+    double a = std::bit_cast<double>((u64)GetArg(inst, results, 0));
     int fbits = (int)GetArg(inst, results, 2);
     results[inst.result_index] = (u64)(s64)(a * std::pow(2.0, fbits));
 }
 OP_HANDLER(FPDoubleToFixedU64) {
-    double a = std::bit_cast<double>(GetArg(inst, results, 0));
+    double a = std::bit_cast<double>((u64)GetArg(inst, results, 0));
     int fbits = (int)GetArg(inst, results, 2);
     results[inst.result_index] = (u64)(u64)(a * std::pow(2.0, fbits));
 }
@@ -651,7 +712,7 @@ OP_HANDLER(FPFixedU64ToDouble) {
     results[inst.result_index] = std::bit_cast<u64>((double)a / std::pow(2.0, fbits));
 }
 OP_HANDLER(FPDoubleToSingle) {
-    double a = std::bit_cast<double>(GetArg(inst, results, 0));
+    double a = std::bit_cast<double>((u64)GetArg(inst, results, 0));
     results[inst.result_index] = std::bit_cast<u32>((float)a);
 }
 OP_HANDLER(FPSingleToDouble) {
@@ -731,7 +792,7 @@ OP_HANDLER(ConditionalSelectNZCV) {
 
 static const auto op_handlers = []() {
         std::array<OpHandler, 256> table;
-        for (int i = 0; i < 256; ++i) table[i] = [](ARM_StaticIR&, const ARM_StaticIR::Instruction& inst, u64*, u32&, bool&) {
+        for (int i = 0; i < 256; ++i) table[i] = [](ARM_StaticIR&, const ARM_StaticIR::Instruction& inst, unsigned __int128*, u32&, bool&) {
             LOG_TRACE(Core_ARM11, "Unimplemented IR opcode: {}", (int)inst.op);
         };
         table[(int)IR::Opcode::A32GetRegister] = HandleA32GetRegister;
@@ -834,13 +895,23 @@ static const auto op_handlers = []() {
         table[(int)IR::Opcode::LeastSignificantHalf] = HandleLeastSignificantHalf;
         table[(int)IR::Opcode::LeastSignificantByte] = HandleLeastSignificantByte;
         table[(int)IR::Opcode::MostSignificantWord] = HandleMostSignificantWord;
+        table[(int)IR::Opcode::MostSignificantBit] = HandleMostSignificantBit;
         table[(int)IR::Opcode::A32GetExtendedRegister64] = HandleA32GetExtendedRegister64;
         table[(int)IR::Opcode::A32SetExtendedRegister64] = HandleA32SetExtendedRegister64;
+        table[(int)IR::Opcode::A32GetVector] = HandleA32GetVector;
+        table[(int)IR::Opcode::A32SetVector] = HandleA32SetVector;
         table[(int)IR::Opcode::MaxSigned32] = HandleMaxSigned32;
         table[(int)IR::Opcode::MaxUnsigned32] = HandleMaxUnsigned32;
         table[(int)IR::Opcode::MinSigned32] = HandleMinSigned32;
         table[(int)IR::Opcode::MinUnsigned32] = HandleMinUnsigned32;
         table[(int)IR::Opcode::IsZero32] = HandleIsZero32;
+        table[(int)IR::Opcode::IsZero64] = HandleIsZero64;
+        table[(int)IR::Opcode::UnsignedDiv64] = HandleUnsignedDiv64;
+        table[(int)IR::Opcode::SignedDiv64] = HandleSignedDiv64;
+        table[(int)IR::Opcode::MaxSigned64] = HandleMaxSigned64;
+        table[(int)IR::Opcode::MaxUnsigned64] = HandleMaxUnsigned64;
+        table[(int)IR::Opcode::MinSigned64] = HandleMinSigned64;
+        table[(int)IR::Opcode::MinUnsigned64] = HandleMinUnsigned64;
         table[(int)IR::Opcode::TestBit] = HandleTestBit;
         table[(int)IR::Opcode::GetNZCVFromOp] = HandleGetNZCVFromOp;
         table[(int)IR::Opcode::GetCarryFromOp] = HandleGetCarryFromOp;
@@ -884,6 +955,9 @@ static const auto op_handlers = []() {
         table[(int)IR::Opcode::SignedSaturatedAdd32] = HandleSignedSaturatedAdd32;
         table[(int)IR::Opcode::SignedSaturatedSub32] = HandleSignedSaturatedSub32;
         table[(int)IR::Opcode::UnsignedSaturatedAdd32] = HandleUnsignedSaturatedAdd32;
+        table[(int)IR::Opcode::ByteReverseDual] = HandleByteReverseDual;
+        table[(int)IR::Opcode::ExtractRegister32] = HandleExtractRegister32;
+        table[(int)IR::Opcode::ExtractRegister64] = HandleExtractRegister64;
         table[(int)IR::Opcode::Identity] = HandleIdentity;
         table[(int)IR::Opcode::Void] = HandleVoid;
         table[(int)IR::Opcode::GetCFlagFromNZCV] = HandleGetCFlagFromNZCV;
@@ -899,7 +973,7 @@ void ARM_StaticIR::ExecuteBlock(const TranslatedBlock& block) {
         results_buffer.resize(std::max<size_t>(num_insts, 512));
         flags_buffer.resize(std::max<size_t>(num_insts, 512));
     }
-    u64* results_ptr = results_buffer.data();
+    unsigned __int128* results_ptr = results_buffer.data();
 
     u32 next_pc = block.guest_end_pc;
     bool branched = false;
