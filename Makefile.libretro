@@ -131,6 +131,7 @@ INCFLAGS += -ICore/include/network/artic_base
 INCFLAGS += -ICore/include/web_service
 INCFLAGS += -I$(EXTERNAL_BASE)/cpp-jwt/include
 
+INCFLAGS += -ICore/network/artic_base
 # Compiler flags
 CXXFLAGS += -fPIC -O3 -ffast-math -fno-strict-aliasing -flto -std=c++20 $(INCFLAGS)
 CFLAGS   += -fPIC -O3 -ffast-math -fno-strict-aliasing -flto $(INCFLAGS)
