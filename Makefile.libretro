@@ -2,6 +2,18 @@
 
 TARGET_NAME := cytrus
 EXTERNAL_BASE := libretro/azahar/externals
+
+# Architecture detection
+ifeq ($(PLATFORM),ios)
+    IS_X64 := 0
+else
+    UNAME_M := $(shell uname -m)
+    ifeq ($(UNAME_M),x86_64)
+        IS_X64 := 1
+    else
+        IS_X64 := 0
+    endif
+endif
 AR ?= ar
 
 SOURCES_CXX :=
@@ -67,9 +79,21 @@ SOURCES_CXX += $(EXTERNAL_BASE)/dynarmic/externals/mcl/src/assert.cpp
 
 # Dynarmic (IR and Frontend only, No JIT)
 DYNARMIC_DIR := $(EXTERNAL_BASE)/dynarmic/src/dynarmic
-SOURCES_CXX += $(shell find $(DYNARMIC_DIR)/common -name "*.cpp")
-SOURCES_CXX += $(shell find $(DYNARMIC_DIR)/frontend/A32 -name "*.cpp")
-SOURCES_CXX += $(shell find $(DYNARMIC_DIR)/ir -name "*.cpp")
+SOURCES_CXX_DYNARMIC := $(shell find $(DYNARMIC_DIR)/common -name "*.cpp")
+SOURCES_CXX_DYNARMIC += $(shell find $(DYNARMIC_DIR)/frontend/A32 -name "*.cpp")
+SOURCES_CXX_DYNARMIC += $(shell find $(DYNARMIC_DIR)/ir -name "*.cpp")
+
+# Filter out platform-specific files and those requiring extra dependencies not needed for IR interpreter
+SOURCES_CXX_DYNARMIC := $(filter-out %/spin_lock_arm64.cpp %/spin_lock_x64.cpp,$(SOURCES_CXX_DYNARMIC))
+SOURCES_CXX_DYNARMIC := $(filter-out %/x64_disassemble.cpp %/llvm_disassemble.cpp,$(SOURCES_CXX_DYNARMIC))
+
+ifeq ($(IS_X64),1)
+    SOURCES_CXX_DYNARMIC += $(DYNARMIC_DIR)/common/spin_lock_x64.cpp
+else
+    SOURCES_CXX_DYNARMIC += $(DYNARMIC_DIR)/common/spin_lock_arm64.cpp
+endif
+
+SOURCES_CXX += $(SOURCES_CXX_DYNARMIC)
 
 # Crypto++ Sources (handled separately as libcryptopp.a)
 CRYPTOPP_DIR := $(EXTERNAL_BASE)/cryptopp
@@ -125,6 +149,11 @@ INCFLAGS += -I$(EXTERNAL_BASE)/zstd/contrib/seekable_format
 INCFLAGS += -I$(EXTERNAL_BASE)/soundtouch/include
 INCFLAGS += -I$(EXTERNAL_BASE)/teakra/include
 INCFLAGS += -I$(EXTERNAL_BASE)/teakra/include/teakra/impl
+INCFLAGS += -I$(EXTERNAL_BASE)/dynarmic/externals/oaknut/include
+INCFLAGS += -I$(EXTERNAL_BASE)/dynarmic/externals/biscuit/include
+INCFLAGS += -I$(EXTERNAL_BASE)/dynarmic/externals/xbyak
+INCFLAGS += -I$(EXTERNAL_BASE)/dynarmic/externals/zydis/include
+INCFLAGS += -I$(EXTERNAL_BASE)/dynarmic/externals/zydis/dependencies/zycore/include
 INCFLAGS += -Ilibretro/externals/openssl/include
 INCFLAGS += -ICore/include/network
 INCFLAGS += -ICore/include/network/artic_base
