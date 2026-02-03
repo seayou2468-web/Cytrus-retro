@@ -49,6 +49,7 @@ SOURCES_C   += $(shell find $(EXTERNAL_BASE)/zstd/lib/compress -name "*.c")
 SOURCES_C   += $(shell find $(EXTERNAL_BASE)/zstd/lib/decompress -name "*.c")
 SOURCES_C   += $(EXTERNAL_BASE)/zstd/contrib/seekable_format/zstdseek_compress.c
 SOURCES_C   += $(EXTERNAL_BASE)/zstd/contrib/seekable_format/zstdseek_decompress.c
+SOURCES_C   += $(EXTERNAL_BASE)/xxHash/xxhash.c
 SOURCES_C   += $(shell find $(EXTERNAL_BASE)/enet -name "*.c")
 SOURCES_CXX += $(shell find $(EXTERNAL_BASE)/xxHash -name "*.cpp")
 SOURCES_CXX += $(shell find $(EXTERNAL_BASE)/soundtouch/source/SoundTouch -name "*.cpp")
@@ -63,8 +64,10 @@ SOURCES_CXX += $(EXTERNAL_BASE)/dynarmic/externals/mcl/src/assert.cpp
 # Dynarmic (IR and Frontend only, No JIT)
 DYNARMIC_DIR := $(EXTERNAL_BASE)/dynarmic/src/dynarmic
 SOURCES_CXX += $(shell find $(DYNARMIC_DIR)/common -name "*.cpp")
+SOURCES_CXX += $(shell find $(DYNARMIC_DIR)/frontend -maxdepth 1 -name "*.cpp")
 SOURCES_CXX += $(shell find $(DYNARMIC_DIR)/frontend/A32 -name "*.cpp")
 SOURCES_CXX += $(shell find $(DYNARMIC_DIR)/ir -name "*.cpp")
+SOURCES_CXX += Core/core/arm/dynarmic/dynarmic_exclusive_monitor_common.cpp
 
 # Crypto++ Sources (handled separately as libcryptopp.a)
 CRYPTOPP_DIR := $(EXTERNAL_BASE)/cryptopp
@@ -80,6 +83,7 @@ SOURCES_CXX := $(filter-out Core/video_core/renderer_opengl/%,$(SOURCES_CXX))
 SOURCES_CXX := $(filter-out %/shader_jit.cpp %/shader_jit_%.cpp,$(SOURCES_CXX))
 SOURCES_CXX := $(filter-out %/arm_dynarmic.cpp %/arm_dynarmic_cp15.cpp,$(SOURCES_CXX))
 SOURCES_CXX := $(filter-out %/spin_lock_arm64.cpp %/spin_lock_x64.cpp %/x64_disassemble.cpp %/llvm_disassemble.cpp,$(SOURCES_CXX))
+SOURCES_CXX := $(filter-out %/A64/% %/a64_%,$(SOURCES_CXX))
 SOURCES_CXX := $(filter-out Core/video_core/shader/generator/%,$(SOURCES_CXX))
 SOURCES_CXX := $(filter-out %/cubeb/% %/dumping/%,$(SOURCES_CXX))
 SOURCES_CXX := $(filter-out %/mmx_optimized.cpp %/sse_optimized.cpp %/cpu_detect_x86.cpp,$(SOURCES_CXX))
@@ -131,8 +135,8 @@ CXXFLAGS += -fPIC -O3 -ffast-math -fno-strict-aliasing -flto -std=c++20 $(INCFLA
 CFLAGS   += -fPIC -O3 -ffast-math -fno-strict-aliasing -flto $(INCFLAGS)
 
 # Libretro defines
-CXXFLAGS += -DENABLE_SOFTWARE_RENDERER -D__LIBRETRO__ -DZSTD_DISABLE_ASM -DCPPHTTPLIB_OPENSSL_SUPPORT -DCPP_JWT_USE_VENDORED_NLOHMANN_JSON
-CFLAGS   += -DENABLE_SOFTWARE_RENDERER -D__LIBRETRO__ -DZSTD_DISABLE_ASM -DCPPHTTPLIB_OPENSSL_SUPPORT -DCPP_JWT_USE_VENDORED_NLOHMANN_JSON
+CXXFLAGS += -DENABLE_SOFTWARE_RENDERER -D__LIBRETRO__ -DZSTD_DISABLE_ASM -DCPPHTTPLIB_OPENSSL_SUPPORT -DCPP_JWT_USE_VENDORED_NLOHMANN_JSON -DSOUNDTOUCH_DISABLE_X86_OPTIMIZATIONS
+CFLAGS   += -DENABLE_SOFTWARE_RENDERER -D__LIBRETRO__ -DZSTD_DISABLE_ASM -DCPPHTTPLIB_OPENSSL_SUPPORT -DCPP_JWT_USE_VENDORED_NLOHMANN_JSON -DSOUNDTOUCH_DISABLE_X86_OPTIMIZATIONS
 
 # Crypto++ defines
 CXXFLAGS += -DCRYPTOPP_DISABLE_ASM -DCRYPTOPP_DISABLE_SSSE3 -DCRYPTOPP_DISABLE_AESNI
@@ -225,6 +229,6 @@ clean:
 	rm -f $(OBJECTS) $(TARGET)
 
 print-sources:
-	@echo $(SOURCES_CXX)
+	@echo $(SOURCES_CXX) $(SOURCES_C)
 
 .PHONY: all clean print-sources
