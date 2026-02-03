@@ -1,6 +1,6 @@
 # Libretro Core Makefile for Cytrus
 
-TARGET_NAME := cytrus_ir
+TARGET_NAME := cytrus
 EXTERNAL_BASE := libretro/azahar/externals
 
 # Architecture detection
