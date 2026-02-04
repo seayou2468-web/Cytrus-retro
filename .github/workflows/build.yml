@@ -31,7 +31,9 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: cytrus_libretro_ios
-        path: cytrus_libretro_ios.dylib
+        path: |
+          cytrus_libretro_ios.dylib
+          cytrus_libretro.info
 
   build-linux:
     runs-on: ubuntu-latest
@@ -56,4 +58,6 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: cytrus_libretro_linux
-        path: cytrus_libretro.so
+        path: |
+          cytrus_libretro.so
+          cytrus_libretro.info

@@ -114,7 +114,7 @@ unsigned retro_api_version(void) { return RETRO_API_VERSION; }
 
 void retro_get_system_info(struct retro_system_info *info) {
     memset(info, 0, sizeof(*info));
-    info->library_name = "Cytrus IR";
+    info->library_name = "Nintendo - 3DS (Cytrus)";
     info->library_version = "v1.1";
     info->need_fullpath = true;
     info->valid_extensions = "3ds|3dsx|cci|cia|cxi|app|elf|axf";
@@ -461,7 +461,10 @@ void retro_run(void) {
         Input::LibretroSetTouch(0, 0, false);
     }
 
-    if (system_instance->RunLoop(true) != Core::System::ResultStatus::Success) {
+    Core::System::ResultStatus status = system_instance->RunLoop(true);
+    if (status == Core::System::ResultStatus::ShutdownRequested) {
+        environ_cb(RETRO_ENVIRONMENT_SHUTDOWN, nullptr);
+    } else if (status != Core::System::ResultStatus::Success) {
         LOG_ERROR(Frontend, "RunLoop failed!");
     }
 

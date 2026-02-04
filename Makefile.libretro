@@ -1,6 +1,6 @@
 # Libretro Core Makefile for Cytrus
 
-TARGET_NAME := cytrus_ir
+TARGET_NAME := cytrus
 EXTERNAL_BASE := libretro/azahar/externals
 
 # Architecture detection
@@ -172,7 +172,7 @@ INCFLAGS += -Ilibretro/externals/openssl/include
 INCFLAGS += -ICore/include/network
 INCFLAGS += -ICore/include/network/artic_base
 # Compiler flags
-CXXFLAGS += -fPIC -O3 -ffast-math -fno-strict-aliasing -flto -std=c++20 $(INCFLAGS)
+CXXFLAGS += -fPIC -O3 -ffast-math -fno-strict-aliasing -flto -std=c++20 -Wno-interference-size $(INCFLAGS)
 CFLAGS   += -fPIC -O3 -ffast-math -fno-strict-aliasing -flto $(INCFLAGS)
 
 # Libretro defines

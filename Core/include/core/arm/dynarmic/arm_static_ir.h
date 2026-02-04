@@ -65,7 +65,7 @@ public:
     void SetPageTable(const std::shared_ptr<Memory::PageTable>& page_table) override;
 
     struct Operand {
-        enum Kind { Immediate, Result, Register, ExtReg, Cond, AccType } kind;
+        enum Kind { Immediate, Result, Register, ExtReg, Cond, AccType, CoprocInfo } kind;
         u64 value;
     };
 
@@ -115,7 +115,7 @@ private:
     };
     std::array<FastCacheEntry, FAST_BLOCK_CACHE_SIZE> fast_block_cache;
 
-    std::vector<u64> results_buffer;
+    std::vector<unsigned __int128> results_buffer;
 
 public:
     std::vector<u32> flags_buffer;
