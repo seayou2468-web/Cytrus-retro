@@ -94,9 +94,9 @@ void LibretroRenderOptimized(Core::System& system, u32* output_data, u32 output_
         u32 bpp = Pica::BytesPerPixel(state.format);
         // Logical dimensions: width=400/320, height=240.
         // Physical dimensions in VRAM: width=240, height=400/320.
-        u32 logical_width = state.height; // Physical height is Logical width
-        u32 logical_height = state.width; // Physical width is Logical height
-        u32 physical_stride = state.width; // 240
+        u32 logical_width = state.width;   // 400 or 320
+        u32 logical_height = state.height; // 240
+        u32 physical_stride = state.height; // 240
 
         switch (state.format) {
         case Pica::PixelFormat::RGBA8:

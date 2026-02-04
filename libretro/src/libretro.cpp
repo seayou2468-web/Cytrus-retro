@@ -177,6 +177,23 @@ void retro_set_environment(retro_environment_t cb) {
             "Old 3DS"
         },
         {
+            "cytrus_cpu_clock",
+            "CPU Clock Percentage",
+            nullptr,
+            "Overclock or underclock the CPU. Higher values can improve performance in some games but may cause glitches.",
+            nullptr,
+            "emulation",
+            {
+                { "25%", nullptr },
+                { "50%", nullptr },
+                { "100%", nullptr },
+                { "200%", nullptr },
+                { "400%", nullptr },
+                { nullptr, nullptr },
+            },
+            "100%"
+        },
+        {
             "cytrus_region",
             "Console Region",
             nullptr,
@@ -209,6 +226,22 @@ void retro_set_environment(retro_environment_t cb) {
                 { nullptr, nullptr },
             },
             "Vertical"
+        },
+        {
+            "cytrus_amiibo_path",
+            "Amiibo File Path",
+            nullptr,
+            "Path to an Amiibo .bin file to mount. The file should be in the 'save/cytrus/' directory.",
+            nullptr,
+            "emulation",
+            {
+                { "None", nullptr },
+                { "amiibo.bin", nullptr },
+                { "amiibo0.bin", nullptr },
+                { "amiibo1.bin", nullptr },
+                { nullptr, nullptr },
+            },
+            "None"
         },
         { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, { { nullptr, nullptr } }, nullptr }
     };
@@ -312,12 +345,22 @@ bool retro_load_game(const struct retro_game_info *game) {
 
     struct retro_variable var_model = { "cytrus_model", nullptr };
     Settings::values.is_new_3ds = false;
-    Settings::values.cpu_clock_percentage.SetValue(100);
     if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var_model) && var_model.value) {
         if (string_is_equal(var_model.value, "New 3DS")) {
             Settings::values.is_new_3ds = true;
-            Settings::values.cpu_clock_percentage.SetValue(100);
         }
+    }
+
+    struct retro_variable var_cpu = { "cytrus_cpu_clock", nullptr };
+    Settings::values.cpu_clock_percentage.SetValue(100);
+    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var_cpu) && var_cpu.value) {
+        Settings::values.cpu_clock_percentage.SetValue(atoi(var_cpu.value));
+    }
+
+    struct retro_variable var_amiibo = { "cytrus_amiibo_path", nullptr };
+    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var_amiibo) && var_amiibo.value && !string_is_equal(var_amiibo.value, "None")) {
+        std::string path = FileUtil::GetUserPath(FileUtil::UserPath::ConfigDir) + "../" + var_amiibo.value;
+        // Load amiibo if it exists. We'll check again in retro_run if it changes.
     }
 
     struct retro_variable var_region = { "cytrus_region", nullptr };

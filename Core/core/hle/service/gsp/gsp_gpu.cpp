@@ -273,7 +273,7 @@ void GSP_GPU::WriteHWRegRepeat(Kernel::HLERequestContext& ctx) {
 void GSP_GPU::SetCommandList(Kernel::HLERequestContext& ctx) {
     IPC::RequestParser rp(ctx);
     Command command;
-    command.id = CommandId::SubmitCmdList;
+    command.id.Assign(CommandId::SubmitCmdList);
     command.submit_gpu_cmdlist = rp.PopRaw<SubmitCmdListCommand>();
 
     system.GPU().Execute(command);
@@ -285,7 +285,7 @@ void GSP_GPU::SetCommandList(Kernel::HLERequestContext& ctx) {
 void GSP_GPU::RequestDma(Kernel::HLERequestContext& ctx) {
     IPC::RequestParser rp(ctx);
     Command command;
-    command.id = CommandId::RequestDma;
+    command.id.Assign(CommandId::RequestDma);
     command.dma_request = rp.PopRaw<DmaCommand>();
 
     system.GPU().Execute(command);
@@ -297,7 +297,7 @@ void GSP_GPU::RequestDma(Kernel::HLERequestContext& ctx) {
 void GSP_GPU::SetDisplayTransfer(Kernel::HLERequestContext& ctx) {
     IPC::RequestParser rp(ctx);
     Command command;
-    command.id = CommandId::DisplayTransfer;
+    command.id.Assign(CommandId::DisplayTransfer);
     command.display_transfer = rp.PopRaw<DisplayTransferCommand>();
 
     system.GPU().Execute(command);
@@ -309,7 +309,7 @@ void GSP_GPU::SetDisplayTransfer(Kernel::HLERequestContext& ctx) {
 void GSP_GPU::SetTextureCopy(Kernel::HLERequestContext& ctx) {
     IPC::RequestParser rp(ctx);
     Command command;
-    command.id = CommandId::TextureCopy;
+    command.id.Assign(CommandId::TextureCopy);
     command.texture_copy = rp.PopRaw<TextureCopyCommand>();
 
     system.GPU().Execute(command);
@@ -321,7 +321,7 @@ void GSP_GPU::SetTextureCopy(Kernel::HLERequestContext& ctx) {
 void GSP_GPU::SetMemoryFill(Kernel::HLERequestContext& ctx) {
     IPC::RequestParser rp(ctx);
     Command command;
-    command.id = CommandId::MemoryFill;
+    command.id.Assign(CommandId::MemoryFill);
     command.memory_fill = rp.PopRaw<MemoryFillCommand>();
 
     system.GPU().Execute(command);

@@ -862,33 +862,15 @@ void ARM_StaticIR::ExecuteBlock(const TranslatedBlock& block) {
         case IR::Opcode::A32SetCpsrNZCV: cpsr = (cpsr & 0x0FFFFFFF) | ((u32)GetArg(inst, results_ptr, 0) << 28); break;
         case IR::Opcode::A32GetCFlag: results_ptr[inst.result_index] = (cpsr >> 29) & 1; break;
         case IR::Opcode::Add64: results_ptr[inst.result_index] = GetArg(inst, results_ptr, 0) + GetArg(inst, results_ptr, 1); break;
-        case IR::Opcode::Add32: {
-            u32 a = (u32)GetArg(inst, results_ptr, 0);
-            u32 b = (u32)GetArg(inst, results_ptr, 1);
-            u32 carry_in = (inst.arg_count > 2) ? ((u32)GetArg(inst, results_ptr, 2) & 1) : 0;
-            u64 res_wide = (u64)a + b + carry_in;
-            u32 res = (u32)res_wide;
-            results_ptr[inst.result_index] = res;
-            u32 flags = (((res >> 31) & 1) << 3) | ((res == 0) << 2) | ((res_wide >> 32) << 1) | (((~(a ^ b) & (a ^ res)) >> 31) & 1);
-            flags_buffer[inst.result_index] = flags;
-        } break;
+        case IR::Opcode::Add32: HandleAdd32(*this, inst, results_ptr, next_pc, branched); break;
         case IR::Opcode::Sub64: results_ptr[inst.result_index] = GetArg(inst, results_ptr, 0) - GetArg(inst, results_ptr, 1); break;
-        case IR::Opcode::Sub32: {
-            u32 a = (u32)GetArg(inst, results_ptr, 0);
-            u32 b = (u32)GetArg(inst, results_ptr, 1);
-            u32 carry_in = (inst.arg_count > 2) ? ((u32)GetArg(inst, results_ptr, 2) & 1) : 1;
-            u64 res_wide = (u64)a - b - (1 - carry_in);
-            u32 res = (u32)res_wide;
-            results_ptr[inst.result_index] = res;
-            u32 flags = (((res >> 31) & 1) << 3) | ((res == 0) << 2) | (((res_wide >> 32) == 0) << 1) | ((((a ^ b) & (a ^ res)) >> 31) & 1);
-            flags_buffer[inst.result_index] = flags;
-        } break;
-        case IR::Opcode::And32: results_ptr[inst.result_index] = (u32)GetArg(inst, results_ptr, 0) & (u32)GetArg(inst, results_ptr, 1); break;
-        case IR::Opcode::Or32: results_ptr[inst.result_index] = (u32)GetArg(inst, results_ptr, 0) | (u32)GetArg(inst, results_ptr, 1); break;
-        case IR::Opcode::Eor32: results_ptr[inst.result_index] = (u32)GetArg(inst, results_ptr, 0) ^ (u32)GetArg(inst, results_ptr, 1); break;
-        case IR::Opcode::LogicalShiftLeft32: results_ptr[inst.result_index] = (u32)GetArg(inst, results_ptr, 0) << (GetArg(inst, results_ptr, 1) & 31); break;
-        case IR::Opcode::LogicalShiftRight32: results_ptr[inst.result_index] = (u32)GetArg(inst, results_ptr, 0) >> (GetArg(inst, results_ptr, 1) & 31); break;
-        case IR::Opcode::ArithmeticShiftRight32: results_ptr[inst.result_index] = (u32)((s32)GetArg(inst, results_ptr, 0) >> (GetArg(inst, results_ptr, 1) & 31)); break;
+        case IR::Opcode::Sub32: HandleSub32(*this, inst, results_ptr, next_pc, branched); break;
+        case IR::Opcode::And32: HandleAnd32(*this, inst, results_ptr, next_pc, branched); break;
+        case IR::Opcode::Or32: HandleOr32(*this, inst, results_ptr, next_pc, branched); break;
+        case IR::Opcode::Eor32: HandleEor32(*this, inst, results_ptr, next_pc, branched); break;
+        case IR::Opcode::LogicalShiftLeft32: HandleLogicalShiftLeft32(*this, inst, results_ptr, next_pc, branched); break;
+        case IR::Opcode::LogicalShiftRight32: HandleLogicalShiftRight32(*this, inst, results_ptr, next_pc, branched); break;
+        case IR::Opcode::ArithmeticShiftRight32: HandleArithmeticShiftRight32(*this, inst, results_ptr, next_pc, branched); break;
         case IR::Opcode::A32BXWritePC: {
             u32 val = (u32)GetArg(inst, results_ptr, 0);
             next_pc = val & ~1;

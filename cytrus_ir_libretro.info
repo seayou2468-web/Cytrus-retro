@@ -1,8 +1,8 @@
 # Software Information
 display_name = "Nintendo - 3DS (Cytrus IR)"
 authors = "Cytrus Team"
-supported_extensions = "3ds|3dsx|cci|cia|cxi|app|elf|axf"
-corename = "cytrus"
+supported_extensions = "3ds|3dsx|cci|cia|cxi|app|elf|axf|bin|srl"
+corename = "cytrus_ir"
 categories = "Emulator"
 license = "GPLv2"
 permissions = ""

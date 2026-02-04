@@ -30,6 +30,8 @@ class SharedMemory;
 namespace Service::GSP {
 
 struct FrameBufferInfo {
+    static constexpr u32 PIXEL_FORMAT_MASK = 0x7;
+
     u32 active_fb; // 0 = first, 1 = second
     u32 address_left;
     u32 address_right;
@@ -38,8 +40,8 @@ struct FrameBufferInfo {
     u32 shown_fb; // maps to 0x1EF00X78 ?
     u32 unknown;
 
-    u32 GetPixelFormat() const {
-        return format;
+    u32 GetPixelFormat() {
+        return format & PIXEL_FORMAT_MASK;
     }
 };
 static_assert(sizeof(FrameBufferInfo) == 0x1c, "Struct has incorrect size");
@@ -228,6 +230,18 @@ private:
 
     /// This triggers handling of the GX command written to the command buffer in shared memory.
     void TriggerCmdReqQueue(Kernel::HLERequestContext& ctx);
+
+    void WriteHWRegRepeat(Kernel::HLERequestContext& ctx);
+
+    void SetCommandList(Kernel::HLERequestContext& ctx);
+
+    void RequestDma(Kernel::HLERequestContext& ctx);
+
+    void SetDisplayTransfer(Kernel::HLERequestContext& ctx);
+
+    void SetTextureCopy(Kernel::HLERequestContext& ctx);
+
+    void SetMemoryFill(Kernel::HLERequestContext& ctx);
 
     /**
      * GSP_GPU::SetAxiConfigQoSMode service function
