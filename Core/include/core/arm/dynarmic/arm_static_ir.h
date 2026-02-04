@@ -65,7 +65,7 @@ public:
     void SetPageTable(const std::shared_ptr<Memory::PageTable>& page_table) override;
 
     struct Operand {
-        enum Kind { Immediate, Result, Register, ExtReg, Cond, AccType } kind;
+        enum Kind { Immediate, Result, Register, ExtReg, Cond, AccType, CoprocInfo } kind;
         u64 value;
     };
 

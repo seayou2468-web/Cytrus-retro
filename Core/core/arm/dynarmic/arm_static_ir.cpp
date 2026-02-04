@@ -230,6 +230,12 @@ const ARM_StaticIR::TranslatedBlock& ARM_StaticIR::GetOrTranslateBlock(u32 pc) {
             } else if (arg.GetType() == IR::Type::A32ExtReg) {
                 op.kind = Operand::ExtReg;
                 op.value = (u64)arg.GetA32ExtRegRef();
+            } else if (arg.GetType() == IR::Type::CoprocInfo) {
+                op.kind = Operand::CoprocInfo;
+                IR::Value::CoprocessorInfo info = arg.GetCoprocInfo();
+                u64 val = 0;
+                for (int i = 0; i < 8; ++i) val |= (u64)info[i] << (i * 8);
+                op.value = val;
             } else if (!arg.IsEmpty()) {
                 op.kind = Operand::Result;
                 op.value = inst_to_index[arg.GetInst()];
@@ -797,22 +803,76 @@ void ARM_StaticIR::ExecuteBlock(const TranslatedBlock& block) {
                 branched = true;
             }
         } break;
-        case IR::Opcode::A32GetExtendedRegister32: results_ptr[inst.result_index] = vfp_regs[(int)inst.args[0].value]; break;
-        case IR::Opcode::A32SetExtendedRegister32: vfp_regs[(int)inst.args[0].value] = (u32)GetArg(inst, results_ptr, 1); break;
+        case IR::Opcode::A32GetExtendedRegister32: {
+            int reg = (int)inst.args[0].value;
+            results_ptr[inst.result_index] = vfp_regs[reg];
+        } break;
+        case IR::Opcode::A32SetExtendedRegister32: {
+            int reg = (int)inst.args[0].value;
+            vfp_regs[reg] = (u32)GetArg(inst, results_ptr, 1);
+        } break;
         case IR::Opcode::A32GetExtendedRegister64: {
             int reg = (int)inst.args[0].value;
-            results_ptr[inst.result_index] = ((u64)vfp_regs[reg + 1] << 32) | vfp_regs[reg];
+            int idx = (reg - 32) * 2;
+            results_ptr[inst.result_index] = ((u64)vfp_regs[idx + 1] << 32) | vfp_regs[idx];
         } break;
         case IR::Opcode::A32SetExtendedRegister64: {
             int reg = (int)inst.args[0].value;
+            int idx = (reg - 32) * 2;
             u64 val = (u64)GetArg(inst, results_ptr, 1);
-            vfp_regs[reg] = (u32)val;
-            vfp_regs[reg + 1] = (u32)(val >> 32);
+            vfp_regs[idx] = (u32)val;
+            vfp_regs[idx + 1] = (u32)(val >> 32);
+        } break;
+        case IR::Opcode::A32GetVector: {
+            int reg = (int)inst.args[0].value;
+            unsigned __int128 res = 0;
+            if (reg >= 64) { // Q0-Q15
+                int idx = (reg - 64) * 4;
+                res |= (unsigned __int128)vfp_regs[idx];
+                res |= (unsigned __int128)vfp_regs[idx + 1] << 32;
+                res |= (unsigned __int128)vfp_regs[idx + 2] << 64;
+                res |= (unsigned __int128)vfp_regs[idx + 3] << 96;
+            } else if (reg >= 32) { // D0-D31
+                int idx = (reg - 32) * 2;
+                res |= (unsigned __int128)vfp_regs[idx];
+                res |= (unsigned __int128)vfp_regs[idx + 1] << 32;
+            }
+            results_ptr[inst.result_index] = res;
+        } break;
+        case IR::Opcode::A32SetVector: {
+            int reg = (int)inst.args[0].value;
+            unsigned __int128 val = GetArg(inst, results_ptr, 1);
+            if (reg >= 64) { // Q0-Q15
+                int idx = (reg - 64) * 4;
+                vfp_regs[idx] = (u32)val;
+                vfp_regs[idx + 1] = (u32)(val >> 32);
+                vfp_regs[idx + 2] = (u32)(val >> 64);
+                vfp_regs[idx + 3] = (u32)(val >> 96);
+            } else if (reg >= 32) { // D0-D31
+                int idx = (reg - 32) * 2;
+                vfp_regs[idx] = (u32)val;
+                vfp_regs[idx + 1] = (u32)(val >> 32);
+            }
         } break;
         case IR::Opcode::A32GetCpsr: results_ptr[inst.result_index] = cpsr; break;
         case IR::Opcode::A32SetCpsr: cpsr = (u32)GetArg(inst, results_ptr, 0); break;
         case IR::Opcode::A32SetCpsrNZCV: cpsr = (cpsr & 0x0FFFFFFF) | ((u32)GetArg(inst, results_ptr, 0) << 28); break;
         case IR::Opcode::A32GetCFlag: results_ptr[inst.result_index] = (cpsr >> 29) & 1; break;
+        case IR::Opcode::A32SetCpsrNZCVRaw: cpsr = (cpsr & 0x0FFFFFFF) | ((u32)GetArg(inst, results_ptr, 0) & 0xF0000000); break;
+        case IR::Opcode::A32SetCpsrNZCVQ: cpsr = (cpsr & 0x07FFFFFF) | ((u32)GetArg(inst, results_ptr, 0) & 0xF8000000); break;
+        case IR::Opcode::A32SetCpsrNZ: cpsr = (cpsr & 0x3FFFFFFF) | (((u32)GetArg(inst, results_ptr, 0) & 0xC) << 28); break;
+        case IR::Opcode::A32SetCpsrNZC: cpsr = (cpsr & 0x1FFFFFFF) | (((u32)GetArg(inst, results_ptr, 0) & 0xC) << 28) | (((u32)GetArg(inst, results_ptr, 1) & 1) << 29); break;
+        case IR::Opcode::A32OrQFlag: if (GetArg(inst, results_ptr, 0) & 1) cpsr |= (1 << 27); break;
+        case IR::Opcode::A32GetGEFlags: results_ptr[inst.result_index] = (cpsr >> 16) & 0xF; break;
+        case IR::Opcode::A32SetGEFlags: cpsr = (cpsr & ~0xF0000) | ((u32)GetArg(inst, results_ptr, 0) << 16); break;
+        case IR::Opcode::A32SetGEFlagsCompressed: cpsr = (cpsr & ~0xF0000) | (((u32)GetArg(inst, results_ptr, 0) & 0xF) << 16); break;
+        case IR::Opcode::A32GetFpscr: results_ptr[inst.result_index] = fpscr; break;
+        case IR::Opcode::A32SetFpscr: fpscr = (u32)GetArg(inst, results_ptr, 0); break;
+        case IR::Opcode::A32GetFpscrNZCV: results_ptr[inst.result_index] = fpscr >> 28; break;
+        case IR::Opcode::A32SetFpscrNZCV: {
+            u32 nzcv = (u32)GetArg(inst, results_ptr, 0);
+            fpscr = (fpscr & 0x0FFFFFFF) | (nzcv << 28);
+        } break;
         case IR::Opcode::Add64: {
             u64 a = (u64)GetArg(inst, results_ptr, 0);
             u64 b = (u64)GetArg(inst, results_ptr, 1);
@@ -909,141 +969,325 @@ void ARM_StaticIR::ExecuteBlock(const TranslatedBlock& block) {
             results_ptr[inst.result_index] = (GetArg(inst, results_ptr, 0) & 0xFFFFFFFFFFFFFFFFULL) | (GetArg(inst, results_ptr, 1) << 64);
         } break;
         case IR::Opcode::Identity: results_ptr[inst.result_index] = GetArg(inst, results_ptr, 0); break;
-        case IR::Opcode::Void: break;
-
-        // Fallback to handlers for everything else
-        case IR::Opcode::A32SetCpsrNZCVRaw: HandleA32SetCpsrNZCVRaw(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::A32SetCpsrNZCVQ: HandleA32SetCpsrNZCVQ(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::A32SetCpsrNZ: HandleA32SetCpsrNZ(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::A32SetCpsrNZC: HandleA32SetCpsrNZC(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::A32SetCheckBit: HandleSetCheckBit(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::A32OrQFlag: HandleOrQFlag(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::A32ExceptionRaised: HandleA32ExceptionRaised(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::A32GetGEFlags: HandleA32GetGEFlags(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::A32SetGEFlags: HandleA32SetGEFlags(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::A32SetGEFlagsCompressed: HandleA32SetGEFlagsCompressed(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::Mul32: HandleMul32(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::Mul64: HandleMul64(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::SignedMultiplyHigh64: HandleSignedMultiplyHigh64(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::UnsignedMultiplyHigh64: HandleUnsignedMultiplyHigh64(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::SignedDiv32: HandleSignedDiv32(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::UnsignedDiv32: HandleUnsignedDiv32(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::And64: HandleAnd64(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::AndNot32: HandleAndNot32(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::AndNot64: HandleAndNot64(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::Or64: HandleOr64(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::Eor64: HandleEor64(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::Not32: HandleNot32(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::Not64: HandleNot64(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::LogicalShiftLeft64: HandleLogicalShiftLeft64(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::LogicalShiftRight64: HandleLogicalShiftRight64(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::ArithmeticShiftRight64: HandleArithmeticShiftRight64(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::LogicalShiftLeftMasked32: HandleLogicalShiftLeftMasked32(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::LogicalShiftRightMasked32: HandleLogicalShiftRightMasked32(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::ArithmeticShiftRightMasked32: HandleArithmeticShiftRightMasked32(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::RotateRightMasked32: HandleRotateRightMasked32(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::A32ReadMemory8: HandleA32ReadMemory8(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::A32ReadMemory16: HandleA32ReadMemory16(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::A32ReadMemory32: HandleA32ReadMemory32(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::A32ReadMemory64: HandleA32ReadMemory64(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::A32WriteMemory8: HandleA32WriteMemory8(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::A32WriteMemory16: HandleA32WriteMemory16(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::A32WriteMemory32: HandleA32WriteMemory32(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::A32WriteMemory64: HandleA32WriteMemory64(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::A32ClearExclusive: HandleA32ClearExclusive(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::A32ExclusiveReadMemory8: HandleA32ExclusiveReadMemory8(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::A32ExclusiveReadMemory16: HandleA32ExclusiveReadMemory16(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::A32ExclusiveReadMemory32: HandleA32ExclusiveReadMemory32(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::A32ExclusiveReadMemory64: HandleA32ExclusiveReadMemory64(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::A32ExclusiveWriteMemory8: HandleA32ExclusiveWriteMemory8(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::A32ExclusiveWriteMemory16: HandleA32ExclusiveWriteMemory16(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::A32ExclusiveWriteMemory32: HandleA32ExclusiveWriteMemory32(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::A32ExclusiveWriteMemory64: HandleA32ExclusiveWriteMemory64(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::A32UpdateUpperLocationDescriptor: HandleA32UpdateUpperLocationDescriptor(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::A32CallSupervisor: HandleA32CallSupervisor(*this, inst, results_ptr, next_pc, branched); break;
+        case IR::Opcode::A32CoprocGetOneWord: {
+            u64 info_raw = inst.args[0].value;
+            u8 coproc_no = info_raw & 0xFF;
+            u8 opc1 = (info_raw >> 16) & 0xFF;
+            u8 CRn = (info_raw >> 24) & 0xFF;
+            u8 CRm = (info_raw >> 32) & 0xFF;
+            u8 opc2 = (info_raw >> 40) & 0xFF;
+            u32 res = 0;
+            if (coproc_no == 15) {
+                if (opc1 == 0 && CRn == 13 && CRm == 0 && opc2 == 2) res = cp15_state.cp15_thread_uprw;
+                else if (opc1 == 0 && CRn == 13 && CRm == 0 && opc2 == 3) res = cp15_state.cp15_thread_uro;
+            }
+            results_ptr[inst.result_index] = res;
+        } break;
+        case IR::Opcode::A32CoprocSendOneWord: {
+            u64 info_raw = inst.args[0].value;
+            u8 coproc_no = info_raw & 0xFF;
+            u8 opc1 = (info_raw >> 16) & 0xFF;
+            u8 CRn = (info_raw >> 24) & 0xFF;
+            u8 CRm = (info_raw >> 32) & 0xFF;
+            u8 opc2 = (info_raw >> 40) & 0xFF;
+            u32 val = (u32)GetArg(inst, results_ptr, 1);
+            if (coproc_no == 15) {
+                if (opc1 == 0 && CRn == 13 && CRm == 0 && opc2 == 2) cp15_state.cp15_thread_uprw = val;
+                else if (opc1 == 0 && CRn == 13 && CRm == 0 && opc2 == 3) cp15_state.cp15_thread_uro = val;
+            }
+        } break;
         case IR::Opcode::A32DataSynchronizationBarrier:
         case IR::Opcode::A32DataMemoryBarrier:
-        case IR::Opcode::A32InstructionSynchronizationBarrier: HandleBarrier(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::A32GetFpscr: HandleA32GetFpscr(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::A32SetFpscr: HandleA32SetFpscr(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::A32GetFpscrNZCV: HandleA32GetFpscrNZCV(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::A32SetFpscrNZCV: HandleA32SetFpscrNZCV(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::ConditionalSelect64: HandleConditionalSelect(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::SignExtendByteToWord: HandleSignExtendByteToWord(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::SignExtendHalfToWord: HandleSignExtendHalfToWord(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::ZeroExtendByteToWord: HandleZeroExtendByteToWord(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::ZeroExtendHalfToWord: HandleZeroExtendHalfToWord(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::SignExtendByteToLong: HandleSignExtendByteToLong(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::SignExtendHalfToLong: HandleSignExtendHalfToLong(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::SignExtendWordToLong: HandleSignExtendWordToLong(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::ZeroExtendByteToLong: HandleZeroExtendByteToLong(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::ZeroExtendHalfToLong: HandleZeroExtendHalfToLong(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::ZeroExtendWordToLong: HandleZeroExtendWordToLong(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::UnsignedSaturation: HandleUnsignedSaturation(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::SignedSaturation: HandleSignedSaturation(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::ByteReverseWord: HandleByteReverseWord(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::ByteReverseHalf: HandleByteReverseHalf(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::RotateRight32: HandleRotateRight32(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::RotateRight64: HandleRotateRight64(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::CountLeadingZeros32: HandleCountLeadingZeros32(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::CountLeadingZeros64: HandleCountLeadingZeros64(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::Pack2x32To1x64: HandlePack2x32To1x64(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::LeastSignificantWord: HandleLeastSignificantWord(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::LeastSignificantHalf: HandleLeastSignificantHalf(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::LeastSignificantByte: HandleLeastSignificantByte(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::MostSignificantWord: HandleMostSignificantWord(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::A32GetExtendedRegister64: HandleA32GetExtendedRegister64(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::A32SetExtendedRegister64: HandleA32SetExtendedRegister64(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::MaxSigned32: HandleMaxSigned32(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::MaxUnsigned32: HandleMaxUnsigned32(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::MinSigned32: HandleMinSigned32(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::MinUnsigned32: HandleMinUnsigned32(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::IsZero32: HandleIsZero32(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::TestBit: HandleTestBit(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::GetCarryFromOp: HandleGetCarryFromOp(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::GetOverflowFromOp: HandleGetOverflowFromOp(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::RotateRightExtended: HandleRotateRightExtended(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::NZCVFromPackedFlags: HandleNZCVFromPackedFlags(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::FPAdd32: HandleFPAdd32(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::FPAdd64: HandleFPAdd64(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::FPSub32: HandleFPSub32(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::FPSub64: HandleFPSub64(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::FPMul32: HandleFPMul32(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::FPMul64: HandleFPMul64(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::FPMulAdd32: HandleFPMulAdd32(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::FPMulAdd64: HandleFPMulAdd64(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::FPMulSub32: HandleFPMulSub32(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::FPMulSub64: HandleFPMulSub64(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::FPDiv32: HandleFPDiv32(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::FPDiv64: HandleFPDiv64(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::FPMax32: HandleFPMax32(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::FPMax64: HandleFPMax64(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::FPMin32: HandleFPMin32(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::FPMin64: HandleFPMin64(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::FPAbs32: HandleFPAbs32(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::FPAbs64: HandleFPAbs64(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::FPNeg32: HandleFPNeg32(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::FPNeg64: HandleFPNeg64(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::FPSqrt32: HandleFPSqrt32(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::FPSqrt64: HandleFPSqrt64(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::FPCompare32: HandleFPCompare32(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::FPCompare64: HandleFPCompare64(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::FPSingleToFixedS32: HandleFPSingleToFixedS32(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::FPSingleToFixedU32: HandleFPSingleToFixedU32(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::FPDoubleToFixedS64: HandleFPDoubleToFixedS64(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::FPDoubleToFixedU64: HandleFPDoubleToFixedU64(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::FPFixedS32ToSingle: HandleFPFixedS32ToSingle(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::FPFixedU32ToSingle: HandleFPFixedU32ToSingle(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::FPFixedS64ToDouble: HandleFPFixedS64ToDouble(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::FPFixedU64ToDouble: HandleFPFixedU64ToDouble(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::FPDoubleToSingle: HandleFPDoubleToSingle(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::FPSingleToDouble: HandleFPSingleToDouble(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::SignedSaturatedAdd32: HandleSignedSaturatedAdd32(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::SignedSaturatedSub32: HandleSignedSaturatedSub32(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::UnsignedSaturatedAdd32: HandleUnsignedSaturatedAdd32(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::UnsignedSaturatedSub32: HandleUnsignedSaturatedSub32(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::GetCFlagFromNZCV: HandleGetCFlagFromNZCV(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::ConditionalSelectNZCV: HandleConditionalSelectNZCV(*this, inst, results_ptr, next_pc, branched); break;
+        case IR::Opcode::A32InstructionSynchronizationBarrier: break;
+        case IR::Opcode::ConditionalSelectNZCV: {
+            u32 nzcv = (u32)GetArg(inst, results_ptr, 0);
+            IR::Cond cond = (IR::Cond)inst.args[1].value;
+            bool cond_met = CheckCondition(nzcv << 28, cond);
+            results_ptr[inst.result_index] = cond_met ? GetArg(inst, results_ptr, 2) : GetArg(inst, results_ptr, 3);
+        } break;
+        case IR::Opcode::Void: break;
+
+        // Optimized hot-path opcodes
+        case IR::Opcode::A32BXWritePC: {
+            u32 val = (u32)GetArg(inst, results_ptr, 0);
+            next_pc = val & ~1;
+            if (val & 1) cpsr |= 0x20; else cpsr &= ~0x20;
+            branched = true;
+        } break;
+        case IR::Opcode::A32ReadMemory8: results_ptr[inst.result_index] = cb->MemoryRead8((u32)GetArg(inst, results_ptr, 1)); break;
+        case IR::Opcode::A32ReadMemory16: results_ptr[inst.result_index] = cb->MemoryRead16((u32)GetArg(inst, results_ptr, 1)); break;
+        case IR::Opcode::A32ReadMemory32: results_ptr[inst.result_index] = cb->MemoryRead32((u32)GetArg(inst, results_ptr, 1)); break;
+        case IR::Opcode::A32ReadMemory64: results_ptr[inst.result_index] = cb->MemoryRead64((u32)GetArg(inst, results_ptr, 1)); break;
+        case IR::Opcode::A32WriteMemory8: cb->MemoryWrite8((u32)GetArg(inst, results_ptr, 1), (u8)GetArg(inst, results_ptr, 2)); break;
+        case IR::Opcode::A32WriteMemory16: cb->MemoryWrite16((u32)GetArg(inst, results_ptr, 1), (u16)GetArg(inst, results_ptr, 2)); break;
+        case IR::Opcode::A32WriteMemory32: cb->MemoryWrite32((u32)GetArg(inst, results_ptr, 1), (u32)GetArg(inst, results_ptr, 2)); break;
+        case IR::Opcode::A32WriteMemory64: cb->MemoryWrite64((u32)GetArg(inst, results_ptr, 1), (u64)GetArg(inst, results_ptr, 2)); break;
+        case IR::Opcode::A32ClearExclusive: exclusive_monitor.ClearExclusive(config.processor_id); break;
+        case IR::Opcode::A32ExclusiveReadMemory8: results_ptr[inst.result_index] = exclusive_monitor.ExclusiveRead8(config.processor_id, (u32)GetArg(inst, results_ptr, 1)); break;
+        case IR::Opcode::A32ExclusiveReadMemory16: results_ptr[inst.result_index] = exclusive_monitor.ExclusiveRead16(config.processor_id, (u32)GetArg(inst, results_ptr, 1)); break;
+        case IR::Opcode::A32ExclusiveReadMemory32: results_ptr[inst.result_index] = exclusive_monitor.ExclusiveRead32(config.processor_id, (u32)GetArg(inst, results_ptr, 1)); break;
+        case IR::Opcode::A32ExclusiveReadMemory64: results_ptr[inst.result_index] = exclusive_monitor.ExclusiveRead64(config.processor_id, (u32)GetArg(inst, results_ptr, 1)); break;
+        case IR::Opcode::A32ExclusiveWriteMemory8: results_ptr[inst.result_index] = exclusive_monitor.ExclusiveWrite8(config.processor_id, (u32)GetArg(inst, results_ptr, 1), (u8)GetArg(inst, results_ptr, 2)) ? 0 : 1; break;
+        case IR::Opcode::A32ExclusiveWriteMemory16: results_ptr[inst.result_index] = exclusive_monitor.ExclusiveWrite16(config.processor_id, (u32)GetArg(inst, results_ptr, 1), (u16)GetArg(inst, results_ptr, 2)) ? 0 : 1; break;
+        case IR::Opcode::A32ExclusiveWriteMemory32: results_ptr[inst.result_index] = exclusive_monitor.ExclusiveWrite32(config.processor_id, (u32)GetArg(inst, results_ptr, 1), (u32)GetArg(inst, results_ptr, 2)) ? 0 : 1; break;
+        case IR::Opcode::A32ExclusiveWriteMemory64: results_ptr[inst.result_index] = exclusive_monitor.ExclusiveWrite64(config.processor_id, (u32)GetArg(inst, results_ptr, 1), (u64)GetArg(inst, results_ptr, 2)) ? 0 : 1; break;
+        case IR::Opcode::A32SetCheckBit: break;
+        case IR::Opcode::A32UpdateUpperLocationDescriptor: break;
+        case IR::Opcode::A32CallSupervisor: cb->CallSVC((u32)inst.args[0].value); break;
+        case IR::Opcode::A32ExceptionRaised: cb->ExceptionRaised(regs[15], (Dynarmic::A32::Exception)GetArg(inst, results_ptr, 1)); break;
+        case IR::Opcode::SignedDiv32: {
+            s32 a = (s32)GetArg(inst, results_ptr, 0);
+            s32 b = (s32)GetArg(inst, results_ptr, 1);
+            results_ptr[inst.result_index] = (u32)(b == 0 ? 0 : a / b);
+        } break;
+        case IR::Opcode::UnsignedDiv32: {
+            u32 a = (u32)GetArg(inst, results_ptr, 0);
+            u32 b = (u32)GetArg(inst, results_ptr, 1);
+            results_ptr[inst.result_index] = (b == 0 ? 0 : a / b);
+        } break;
+        case IR::Opcode::And64: results_ptr[inst.result_index] = GetArg(inst, results_ptr, 0) & GetArg(inst, results_ptr, 1); break;
+        case IR::Opcode::AndNot64: results_ptr[inst.result_index] = GetArg(inst, results_ptr, 0) & ~GetArg(inst, results_ptr, 1); break;
+        case IR::Opcode::Or64: results_ptr[inst.result_index] = GetArg(inst, results_ptr, 0) | GetArg(inst, results_ptr, 1); break;
+        case IR::Opcode::Eor64: results_ptr[inst.result_index] = GetArg(inst, results_ptr, 0) ^ GetArg(inst, results_ptr, 1); break;
+        case IR::Opcode::Not64: results_ptr[inst.result_index] = ~GetArg(inst, results_ptr, 0); break;
+        case IR::Opcode::LogicalShiftLeft64: results_ptr[inst.result_index] = GetArg(inst, results_ptr, 0) << (GetArg(inst, results_ptr, 1) & 63); break;
+        case IR::Opcode::LogicalShiftRight64: results_ptr[inst.result_index] = GetArg(inst, results_ptr, 0) >> (GetArg(inst, results_ptr, 1) & 63); break;
+        case IR::Opcode::ArithmeticShiftRight64: results_ptr[inst.result_index] = (u64)((s64)GetArg(inst, results_ptr, 0) >> (GetArg(inst, results_ptr, 1) & 63)); break;
+        case IR::Opcode::LogicalShiftLeftMasked32: results_ptr[inst.result_index] = (u32)GetArg(inst, results_ptr, 0) << (GetArg(inst, results_ptr, 1) & 31); break;
+        case IR::Opcode::LogicalShiftRightMasked32: results_ptr[inst.result_index] = (u32)GetArg(inst, results_ptr, 0) >> (GetArg(inst, results_ptr, 1) & 31); break;
+        case IR::Opcode::ArithmeticShiftRightMasked32: results_ptr[inst.result_index] = (u32)((s32)GetArg(inst, results_ptr, 0) >> (GetArg(inst, results_ptr, 1) & 31)); break;
+        case IR::Opcode::RotateRightMasked32: {
+            u32 val = (u32)GetArg(inst, results_ptr, 0);
+            u32 amount = (u32)GetArg(inst, results_ptr, 1) & 31;
+            results_ptr[inst.result_index] = amount == 0 ? val : (val >> amount) | (val << (32 - amount));
+        } break;
+        case IR::Opcode::ConditionalSelect64: results_ptr[inst.result_index] = CheckCondition(cpsr, (IR::Cond)inst.args[0].value) ? GetArg(inst, results_ptr, 1) : GetArg(inst, results_ptr, 2); break;
+        case IR::Opcode::SignExtendByteToWord: results_ptr[inst.result_index] = (u32)(s32)(s8)GetArg(inst, results_ptr, 0); break;
+        case IR::Opcode::SignExtendHalfToWord: results_ptr[inst.result_index] = (u32)(s32)(s16)GetArg(inst, results_ptr, 0); break;
+        case IR::Opcode::ZeroExtendByteToWord: results_ptr[inst.result_index] = (u32)(u8)GetArg(inst, results_ptr, 0); break;
+        case IR::Opcode::ZeroExtendHalfToWord: results_ptr[inst.result_index] = (u32)(u16)GetArg(inst, results_ptr, 0); break;
+        case IR::Opcode::SignExtendByteToLong: results_ptr[inst.result_index] = (u64)(s64)(s8)GetArg(inst, results_ptr, 0); break;
+        case IR::Opcode::SignExtendHalfToLong: results_ptr[inst.result_index] = (u64)(s64)(s16)GetArg(inst, results_ptr, 0); break;
+        case IR::Opcode::SignExtendWordToLong: results_ptr[inst.result_index] = (u64)(s64)(s32)GetArg(inst, results_ptr, 0); break;
+        case IR::Opcode::ZeroExtendByteToLong: results_ptr[inst.result_index] = (u8)GetArg(inst, results_ptr, 0); break;
+        case IR::Opcode::ZeroExtendHalfToLong: results_ptr[inst.result_index] = (u16)GetArg(inst, results_ptr, 0); break;
+        case IR::Opcode::ZeroExtendWordToLong: results_ptr[inst.result_index] = (u32)GetArg(inst, results_ptr, 0); break;
+        case IR::Opcode::UnsignedSaturation: {
+            u32 val = (u32)GetArg(inst, results_ptr, 0);
+            u32 bits = (u32)GetArg(inst, results_ptr, 1);
+            u32 max = (bits >= 32) ? 0xFFFFFFFF : ((1U << bits) - 1);
+            u32 res = std::min(val, max);
+            results_ptr[inst.result_index] = res;
+            if (res != val) cpsr |= (1 << 27);
+        } break;
+        case IR::Opcode::SignedSaturation: {
+            s32 val = (s32)GetArg(inst, results_ptr, 0);
+            u32 bits = (u32)GetArg(inst, results_ptr, 1);
+            s32 max = (1LL << (bits - 1)) - 1;
+            s32 min = -(1LL << (bits - 1));
+            s32 res = std::clamp(val, min, max);
+            results_ptr[inst.result_index] = (u32)res;
+            if (res != val) cpsr |= (1 << 27);
+        } break;
+        case IR::Opcode::ByteReverseWord: {
+            u32 val = (u32)GetArg(inst, results_ptr, 0);
+            results_ptr[inst.result_index] = ((val & 0xFF) << 24) | ((val & 0xFF00) << 8) | ((val & 0xFF0000) >> 8) | ((val >> 24) & 0xFF);
+        } break;
+        case IR::Opcode::ByteReverseHalf: {
+            u16 val = (u16)GetArg(inst, results_ptr, 0);
+            results_ptr[inst.result_index] = (u16)((val >> 8) | (val << 8));
+        } break;
+        case IR::Opcode::RotateRight32: {
+            u32 val = (u32)GetArg(inst, results_ptr, 0);
+            u32 amount = (u32)GetArg(inst, results_ptr, 1) & 31;
+            results_ptr[inst.result_index] = amount == 0 ? val : (val >> amount) | (val << (32 - amount));
+        } break;
+        case IR::Opcode::RotateRight64: {
+            u64 val = GetArg(inst, results_ptr, 0);
+            u64 amount = GetArg(inst, results_ptr, 1) & 63;
+            results_ptr[inst.result_index] = amount == 0 ? val : (val >> amount) | (val << (64 - amount));
+        } break;
+        case IR::Opcode::CountLeadingZeros32: {
+            u32 val = (u32)GetArg(inst, results_ptr, 0);
+            results_ptr[inst.result_index] = val == 0 ? 32 : (u32)std::countl_zero(val);
+        } break;
+        case IR::Opcode::CountLeadingZeros64: {
+            u64 val = GetArg(inst, results_ptr, 0);
+            results_ptr[inst.result_index] = val == 0 ? 64 : (u32)std::countl_zero(val);
+        } break;
+        case IR::Opcode::LeastSignificantWord: results_ptr[inst.result_index] = GetArg(inst, results_ptr, 0) & 0xFFFFFFFF; break;
+        case IR::Opcode::LeastSignificantHalf: results_ptr[inst.result_index] = (u16)GetArg(inst, results_ptr, 0); break;
+        case IR::Opcode::LeastSignificantByte: results_ptr[inst.result_index] = (u8)GetArg(inst, results_ptr, 0); break;
+        case IR::Opcode::MostSignificantWord: results_ptr[inst.result_index] = GetArg(inst, results_ptr, 0) >> 32; break;
+        case IR::Opcode::MaxSigned32: results_ptr[inst.result_index] = (u32)std::max((s32)GetArg(inst, results_ptr, 0), (s32)GetArg(inst, results_ptr, 1)); break;
+        case IR::Opcode::MaxUnsigned32: results_ptr[inst.result_index] = (u32)std::max((u32)GetArg(inst, results_ptr, 0), (u32)GetArg(inst, results_ptr, 1)); break;
+        case IR::Opcode::MinSigned32: results_ptr[inst.result_index] = (u32)std::min((s32)GetArg(inst, results_ptr, 0), (s32)GetArg(inst, results_ptr, 1)); break;
+        case IR::Opcode::MinUnsigned32: results_ptr[inst.result_index] = (u32)std::min((u32)GetArg(inst, results_ptr, 0), (u32)GetArg(inst, results_ptr, 1)); break;
+        case IR::Opcode::IsZero32: results_ptr[inst.result_index] = (u32)GetArg(inst, results_ptr, 0) == 0; break;
+        case IR::Opcode::TestBit: results_ptr[inst.result_index] = (GetArg(inst, results_ptr, 0) >> (u8)GetArg(inst, results_ptr, 1)) & 1; break;
+        case IR::Opcode::GetCarryFromOp: results_ptr[inst.result_index] = (flags_buffer[inst.args[0].value] >> 1) & 1; break;
+        case IR::Opcode::GetOverflowFromOp: results_ptr[inst.result_index] = flags_buffer[inst.args[0].value] & 1; break;
+        case IR::Opcode::RotateRightExtended: {
+            u32 val = (u32)GetArg(inst, results_ptr, 0);
+            u32 carry = (u32)GetArg(inst, results_ptr, 1) & 1;
+            results_ptr[inst.result_index] = (val >> 1) | (carry << 31);
+        } break;
+        case IR::Opcode::NZCVFromPackedFlags: results_ptr[inst.result_index] = (u32)GetArg(inst, results_ptr, 0) >> 28; break;
+        case IR::Opcode::FPAdd32: {
+            float a = std::bit_cast<float>((u32)GetArg(inst, results_ptr, 0));
+            float b = std::bit_cast<float>((u32)GetArg(inst, results_ptr, 1));
+            results_ptr[inst.result_index] = std::bit_cast<u32>(a + b);
+        } break;
+        case IR::Opcode::FPAdd64: {
+            double a = std::bit_cast<double>(GetArg(inst, results_ptr, 0));
+            double b = std::bit_cast<double>(GetArg(inst, results_ptr, 1));
+            results_ptr[inst.result_index] = std::bit_cast<u64>(a + b);
+        } break;
+        case IR::Opcode::FPSub32: {
+            float a = std::bit_cast<float>((u32)GetArg(inst, results_ptr, 0));
+            float b = std::bit_cast<float>((u32)GetArg(inst, results_ptr, 1));
+            results_ptr[inst.result_index] = std::bit_cast<u32>(a - b);
+        } break;
+        case IR::Opcode::FPSub64: {
+            double a = std::bit_cast<double>(GetArg(inst, results_ptr, 0));
+            double b = std::bit_cast<double>(GetArg(inst, results_ptr, 1));
+            results_ptr[inst.result_index] = std::bit_cast<u64>(a - b);
+        } break;
+        case IR::Opcode::FPMul32: {
+            float a = std::bit_cast<float>((u32)GetArg(inst, results_ptr, 0));
+            float b = std::bit_cast<float>((u32)GetArg(inst, results_ptr, 1));
+            results_ptr[inst.result_index] = std::bit_cast<u32>(a * b);
+        } break;
+        case IR::Opcode::FPMul64: {
+            double a = std::bit_cast<double>(GetArg(inst, results_ptr, 0));
+            double b = std::bit_cast<double>(GetArg(inst, results_ptr, 1));
+            results_ptr[inst.result_index] = std::bit_cast<u64>(a * b);
+        } break;
+        case IR::Opcode::FPMulAdd32: {
+            float a = std::bit_cast<float>((u32)GetArg(inst, results_ptr, 0));
+            float b = std::bit_cast<float>((u32)GetArg(inst, results_ptr, 1));
+            float c = std::bit_cast<float>((u32)GetArg(inst, results_ptr, 2));
+            results_ptr[inst.result_index] = std::bit_cast<u32>(a + (b * c));
+        } break;
+        case IR::Opcode::FPMulAdd64: {
+            double a = std::bit_cast<double>(GetArg(inst, results_ptr, 0));
+            double b = std::bit_cast<double>(GetArg(inst, results_ptr, 1));
+            double c = std::bit_cast<double>(GetArg(inst, results_ptr, 2));
+            results_ptr[inst.result_index] = std::bit_cast<u64>(a + (b * c));
+        } break;
+        case IR::Opcode::FPMulSub32: {
+            float a = std::bit_cast<float>((u32)GetArg(inst, results_ptr, 0));
+            float b = std::bit_cast<float>((u32)GetArg(inst, results_ptr, 1));
+            float c = std::bit_cast<float>((u32)GetArg(inst, results_ptr, 2));
+            results_ptr[inst.result_index] = std::bit_cast<u32>(a - (b * c));
+        } break;
+        case IR::Opcode::FPMulSub64: {
+            double a = std::bit_cast<double>(GetArg(inst, results_ptr, 0));
+            double b = std::bit_cast<double>(GetArg(inst, results_ptr, 1));
+            double c = std::bit_cast<double>(GetArg(inst, results_ptr, 2));
+            results_ptr[inst.result_index] = std::bit_cast<u64>(a - (b * c));
+        } break;
+        case IR::Opcode::FPDiv32: {
+            float a = std::bit_cast<float>((u32)GetArg(inst, results_ptr, 0));
+            float b = std::bit_cast<float>((u32)GetArg(inst, results_ptr, 1));
+            results_ptr[inst.result_index] = std::bit_cast<u32>(a / b);
+        } break;
+        case IR::Opcode::FPDiv64: {
+            double a = std::bit_cast<double>(GetArg(inst, results_ptr, 0));
+            double b = std::bit_cast<double>(GetArg(inst, results_ptr, 1));
+            results_ptr[inst.result_index] = std::bit_cast<u64>(a / b);
+        } break;
+        case IR::Opcode::FPMax32: {
+            float a = std::bit_cast<float>((u32)GetArg(inst, results_ptr, 0));
+            float b = std::bit_cast<float>((u32)GetArg(inst, results_ptr, 1));
+            results_ptr[inst.result_index] = std::bit_cast<u32>(std::max(a, b));
+        } break;
+        case IR::Opcode::FPMax64: {
+            double a = std::bit_cast<double>(GetArg(inst, results_ptr, 0));
+            double b = std::bit_cast<double>(GetArg(inst, results_ptr, 1));
+            results_ptr[inst.result_index] = std::bit_cast<u64>(std::max(a, b));
+        } break;
+        case IR::Opcode::FPMin32: {
+            float a = std::bit_cast<float>((u32)GetArg(inst, results_ptr, 0));
+            float b = std::bit_cast<float>((u32)GetArg(inst, results_ptr, 1));
+            results_ptr[inst.result_index] = std::bit_cast<u32>(std::min(a, b));
+        } break;
+        case IR::Opcode::FPMin64: {
+            double a = std::bit_cast<double>(GetArg(inst, results_ptr, 0));
+            double b = std::bit_cast<double>(GetArg(inst, results_ptr, 1));
+            results_ptr[inst.result_index] = std::bit_cast<u64>(std::min(a, b));
+        } break;
+        case IR::Opcode::FPAbs32: results_ptr[inst.result_index] = (u32)GetArg(inst, results_ptr, 0) & 0x7FFFFFFF; break;
+        case IR::Opcode::FPAbs64: results_ptr[inst.result_index] = GetArg(inst, results_ptr, 0) & 0x7FFFFFFFFFFFFFFFULL; break;
+        case IR::Opcode::FPNeg32: results_ptr[inst.result_index] = (u32)GetArg(inst, results_ptr, 0) ^ 0x80000000; break;
+        case IR::Opcode::FPNeg64: results_ptr[inst.result_index] = GetArg(inst, results_ptr, 0) ^ 0x8000000000000000ULL; break;
+        case IR::Opcode::FPSqrt32: {
+            float a = std::bit_cast<float>((u32)GetArg(inst, results_ptr, 0));
+            results_ptr[inst.result_index] = std::bit_cast<u32>(std::sqrt(a));
+        } break;
+        case IR::Opcode::FPSqrt64: {
+            double a = std::bit_cast<double>(GetArg(inst, results_ptr, 0));
+            results_ptr[inst.result_index] = std::bit_cast<u64>(std::sqrt(a));
+        } break;
+        case IR::Opcode::FPCompare32: {
+            float a = std::bit_cast<float>((u32)GetArg(inst, results_ptr, 0));
+            float b = std::bit_cast<float>((u32)GetArg(inst, results_ptr, 1));
+            if (std::isnan(a) || std::isnan(b)) results_ptr[inst.result_index] = 3;
+            else if (a == b) results_ptr[inst.result_index] = 0;
+            else if (a < b) results_ptr[inst.result_index] = 1;
+            else results_ptr[inst.result_index] = 2;
+        } break;
+        case IR::Opcode::FPCompare64: {
+            double a = std::bit_cast<double>(GetArg(inst, results_ptr, 0));
+            double b = std::bit_cast<double>(GetArg(inst, results_ptr, 1));
+            if (std::isnan(a) || std::isnan(b)) results_ptr[inst.result_index] = 3;
+            else if (a == b) results_ptr[inst.result_index] = 0;
+            else if (a < b) results_ptr[inst.result_index] = 1;
+            else results_ptr[inst.result_index] = 2;
+        } break;
+        case IR::Opcode::FPDoubleToSingle: results_ptr[inst.result_index] = std::bit_cast<u32>((float)std::bit_cast<double>(GetArg(inst, results_ptr, 0))); break;
+        case IR::Opcode::FPSingleToDouble: results_ptr[inst.result_index] = std::bit_cast<u64>((double)std::bit_cast<float>((u32)GetArg(inst, results_ptr, 0))); break;
+        case IR::Opcode::SignedSaturatedAdd32: {
+            s32 a = (s32)GetArg(inst, results_ptr, 0);
+            s32 b = (s32)GetArg(inst, results_ptr, 1);
+            s32 res;
+            if (__builtin_add_overflow(a, b, &res)) {
+                res = (a < 0) ? std::numeric_limits<s32>::min() : std::numeric_limits<s32>::max();
+                cpsr |= (1 << 27);
+            }
+            results_ptr[inst.result_index] = (u32)res;
+        } break;
+        case IR::Opcode::SignedSaturatedSub32: {
+            s32 a = (s32)GetArg(inst, results_ptr, 0);
+            s32 b = (s32)GetArg(inst, results_ptr, 1);
+            s32 res;
+            if (__builtin_sub_overflow(a, b, &res)) {
+                res = (a < 0) ? std::numeric_limits<s32>::min() : std::numeric_limits<s32>::max();
+                cpsr |= (1 << 27);
+            }
+            results_ptr[inst.result_index] = (u32)res;
+        } break;
+        case IR::Opcode::UnsignedSaturatedAdd32: {
+            u32 a = (u32)GetArg(inst, results_ptr, 0);
+            u32 b = (u32)GetArg(inst, results_ptr, 1);
+            u32 res;
+            if (__builtin_add_overflow(a, b, &res)) {
+                res = 0xFFFFFFFF;
+                cpsr |= (1 << 27);
+            }
+            results_ptr[inst.result_index] = res;
+        } break;
+        case IR::Opcode::UnsignedSaturatedSub32: {
+            u32 a = (u32)GetArg(inst, results_ptr, 0);
+            u32 b = (u32)GetArg(inst, results_ptr, 1);
+            if (a < b) {
+                results_ptr[inst.result_index] = 0;
+                cpsr |= (1 << 27);
+            } else {
+                results_ptr[inst.result_index] = a - b;
+            }
+        } break;
+        case IR::Opcode::GetCFlagFromNZCV: results_ptr[inst.result_index] = (GetArg(inst, results_ptr, 0) >> 1) & 1; break;
         default:
             LOG_TRACE(Core_ARM11, "Unimplemented IR opcode: {}", (int)inst.op);
             break;
