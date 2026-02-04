@@ -40,6 +40,7 @@ SOURCES_CXX += libretro/src/libretro.cpp
 SOURCES_CXX += libretro/src/libretro_emu_window.cpp
 SOURCES_CXX += libretro/src/libretro_sink.cpp
 SOURCES_CXX += libretro/src/libretro_input.cpp
+SOURCES_CXX += libretro/src/libretro_mic.cpp
 
 # Externals
 SOURCES_CXX += $(EXTERNAL_BASE)/fmt/src/format.cc

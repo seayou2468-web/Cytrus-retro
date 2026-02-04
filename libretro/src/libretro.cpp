@@ -29,6 +29,7 @@ namespace SwRenderer {
 void LibretroRenderOptimized(Core::System& system, u32* output_data, u32 output_pitch, bool side_by_side);
 }
 
+retro_environment_t g_environ_cb;
 static retro_environment_t environ_cb;
 static retro_video_refresh_t video_cb;
 static retro_audio_sample_t audio_cb;
@@ -59,7 +60,7 @@ static bool gyro_enabled = false;
 
 static const struct retro_subsystem_rom_info update_subsystem_roms[] = {
     { "Game", "3ds|cci|cxi|app", false, false, true, nullptr, 0 },
-    { "Update", "cia", false, false, true, nullptr, 0 },
+    { "Update", "cia|firm|luma", false, false, true, nullptr, 0 },
 };
 
 static const struct retro_subsystem_info subsystems[] = {
@@ -114,7 +115,7 @@ unsigned retro_api_version(void) { return RETRO_API_VERSION; }
 
 void retro_get_system_info(struct retro_system_info *info) {
     memset(info, 0, sizeof(*info));
-    info->library_name = "Cytrus";
+    info->library_name = "Cytrus IR";
     info->library_version = "v1.1";
     info->need_fullpath = true;
     info->valid_extensions = "3ds|3dsx|cci|cia|cxi|app|elf|axf";
@@ -146,6 +147,7 @@ void retro_get_system_av_info(struct retro_system_av_info *info) {
 
 void retro_set_environment(retro_environment_t cb) {
     environ_cb = cb;
+    g_environ_cb = cb;
 
     struct retro_log_callback log;
     if (environ_cb(RETRO_ENVIRONMENT_GET_LOG_INTERFACE, &log)) {
@@ -163,9 +165,9 @@ void retro_set_environment(retro_environment_t cb) {
         {
             "cytrus_model",
             "Console Model",
-            "Emulation > Console Model",
+            nullptr,
             "Select which 3DS model to emulate. New 3DS has more RAM and a faster CPU.",
-            "Choose between Old 3DS and New 3DS.",
+            nullptr,
             "emulation",
             {
                 { "Old 3DS", nullptr },
@@ -177,9 +179,9 @@ void retro_set_environment(retro_environment_t cb) {
         {
             "cytrus_region",
             "Console Region",
-            "Emulation > Console Region",
+            nullptr,
             "Select the region of the console. 'Auto' will use the game's region.",
-            "Simulate a console from a specific region.",
+            nullptr,
             "emulation",
             {
                 { "Auto", nullptr },
@@ -197,9 +199,9 @@ void retro_set_environment(retro_environment_t cb) {
         {
             "cytrus_layout",
             "Screen Layout",
-            "Video > Screen Layout",
+            nullptr,
             "Select how the two screens are displayed.",
-            "Change display arrangement of the two 3DS screens.",
+            nullptr,
             "video",
             {
                 { "Vertical", nullptr },
@@ -207,22 +209,6 @@ void retro_set_environment(retro_environment_t cb) {
                 { nullptr, nullptr },
             },
             "Vertical"
-        },
-        {
-            "cytrus_cpu_speed",
-            "CPU Clock Percentage",
-            "Emulation > CPU Speed",
-            "Select the CPU clock speed percentage.",
-            "Overclocking or underclocking the guest CPU.",
-            "emulation",
-            {
-                { "100%", nullptr },
-                { "150%", nullptr },
-                { "200%", nullptr },
-                { "50%", nullptr },
-                { nullptr, nullptr },
-            },
-            "100%"
         },
         { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, { { nullptr, nullptr } }, nullptr }
     };
@@ -286,10 +272,35 @@ bool retro_load_game(const struct retro_game_info *game) {
     if (!game) return false;
 
     const char* system_dir = nullptr;
+    const char* save_dir = nullptr;
+    std::string sys_path = "./cytrus/";
     if (environ_cb(RETRO_ENVIRONMENT_GET_SYSTEM_DIRECTORY, &system_dir) && system_dir) {
-        FileUtil::SetUserPath(std::string(system_dir) + "/citra-emu/");
-    } else {
-        FileUtil::SetUserPath("./citra-emu/");
+        sys_path = std::string(system_dir) + "/cytrus/";
+    }
+    FileUtil::SetUserPath(sys_path);
+    FileUtil::CreateFullPath(sys_path);
+    // User requested font file to be directly in system/cytrus/
+    FileUtil::UpdateUserPath(FileUtil::UserPath::SysDataDir, sys_path);
+
+    if (environ_cb(RETRO_ENVIRONMENT_GET_SAVE_DIRECTORY, &save_dir) && save_dir) {
+        std::string user_save_path = std::string(save_dir) + "/cytrus/";
+        FileUtil::CreateFullPath(user_save_path);
+
+        std::string nand_path = user_save_path + "nand/";
+        FileUtil::CreateFullPath(nand_path);
+        FileUtil::UpdateUserPath(FileUtil::UserPath::NANDDir, nand_path);
+
+        std::string sdmc_path = user_save_path + "sdmc/";
+        FileUtil::CreateFullPath(sdmc_path);
+        FileUtil::UpdateUserPath(FileUtil::UserPath::SDMCDir, sdmc_path);
+
+        std::string config_path = user_save_path + "config/";
+        FileUtil::CreateFullPath(config_path);
+        FileUtil::UpdateUserPath(FileUtil::UserPath::ConfigDir, config_path);
+
+        std::string cheats_path = user_save_path + "cheats/";
+        FileUtil::CreateFullPath(cheats_path);
+        FileUtil::UpdateUserPath(FileUtil::UserPath::CheatsDir, cheats_path);
     }
 
     // Set pixel format
@@ -319,12 +330,6 @@ bool retro_load_game(const struct retro_game_info *game) {
         else if (string_is_equal(var_region.value, "China")) Settings::values.region_value.SetValue(4);
         else if (string_is_equal(var_region.value, "Korea")) Settings::values.region_value.SetValue(5);
         else if (string_is_equal(var_region.value, "Taiwan")) Settings::values.region_value.SetValue(6);
-    }
-
-    struct retro_variable var_cpu = { "cytrus_cpu_speed", nullptr };
-    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var_cpu) && var_cpu.value) {
-        int speed = atoi(var_cpu.value);
-        if (speed > 0) Settings::values.cpu_clock_percentage.SetValue(speed);
     }
 
     // Configure Input
@@ -370,7 +375,16 @@ bool retro_load_game_special(unsigned type, const struct retro_game_info *info, 
     if (type != 1 || num_info < 1) return false; // Only support "update" subsystem
     if (!retro_load_game(&info[0])) return false;
     if (num_info > 1) {
-        LOG_INFO(Loader, "Subsystem update CIA provided: {}. Note: Standard build handles system updates.", info[1].path);
+        const char* ext = strrchr(info[1].path, '.');
+        if (ext && (string_is_equal(ext + 1, "cia") || string_is_equal(ext + 1, "CIA"))) {
+            LOG_INFO(Loader, "Installing subsystem update CIA: {}", info[1].path);
+            Service::AM::InstallCIA(info[1].path);
+        } else if (ext && (string_is_equal(ext + 1, "firm") || string_is_equal(ext + 1, "luma"))) {
+            LOG_INFO(Loader, "Applying CFW update: {}", info[1].path);
+            // Just copy it to NAND for now if it's boot.firm/luma
+            std::string nand_path = FileUtil::GetUserPath(FileUtil::UserPath::NANDDir);
+            FileUtil::Copy(info[1].path, nand_path + "boot.firm");
+        }
     }
     return true;
 }
@@ -382,9 +396,9 @@ void retro_unload_game(void) {
 void retro_run(void) {
     bool updated = false;
     if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE, &updated) && updated) {
-        struct retro_variable var = { "cytrus_layout", nullptr };
-        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value) {
-            bool side_by_side = string_is_equal(var.value, "Side-by-Side");
+        struct retro_variable var_layout = { "cytrus_layout", nullptr };
+        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var_layout) && var_layout.value) {
+            bool side_by_side = string_is_equal(var_layout.value, "Side-by-Side");
             struct retro_game_geometry geometry;
             if (side_by_side) {
                 geometry.base_width = 720;
@@ -398,6 +412,15 @@ void retro_run(void) {
             geometry.max_width = 800;
             geometry.max_height = 800;
             environ_cb(RETRO_ENVIRONMENT_SET_GEOMETRY, &geometry);
+        }
+
+        struct retro_variable var_model = { "cytrus_model", nullptr };
+        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var_model) && var_model.value) {
+            bool is_n3ds = string_is_equal(var_model.value, "New 3DS");
+            if (is_n3ds != Settings::values.is_new_3ds) {
+                Settings::values.is_new_3ds = is_n3ds;
+                LOG_INFO(Frontend, "Model changed to {}. Restart required for full effect.", var_model.value);
+            }
         }
     }
 
@@ -483,10 +506,7 @@ void retro_run(void) {
         Input::LibretroSetTouch(0, 0, false);
     }
 
-    Core::System::ResultStatus status = system_instance->RunLoop(true);
-    if (status == Core::System::ResultStatus::ShutdownRequested) {
-        environ_cb(RETRO_ENVIRONMENT_SHUTDOWN, nullptr);
-    } else if (status != Core::System::ResultStatus::Success) {
+    if (system_instance->RunLoop(true) != Core::System::ResultStatus::Success) {
         LOG_ERROR(Frontend, "RunLoop failed!");
     }
 
@@ -571,10 +591,25 @@ bool retro_unserialize(const void *data, size_t size) {
 }
 
 void retro_cheat_reset(void) {
-    system_instance->CheatEngine().LoadCheatFile(0);
+    if (!system_instance) return;
+    auto& engine = system_instance->CheatEngine();
+    auto cheats = engine.GetCheats();
+    for (size_t i = 0; i < cheats.size(); i++) {
+        engine.RemoveCheat(0);
+    }
 }
 
 void retro_cheat_set(unsigned index, bool enabled, const char *code) {
+    if (!system_instance || !code) return;
+    auto& engine = system_instance->CheatEngine();
+
+    // Gateway codes are usually 2 hex words
+    std::string code_str(code);
+    auto gateway_cheats = Cheats::GatewayCheat::ParseString(code_str);
+    for (auto& cheat : gateway_cheats) {
+        cheat->SetEnabled(enabled);
+        engine.AddCheat(std::move(cheat));
+    }
 }
 
 void* retro_get_memory_data(unsigned id) {

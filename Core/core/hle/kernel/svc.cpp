@@ -2184,12 +2184,7 @@ Result SVC::GetProcessList(s32* process_count, VAddr out_process_array,
 
 Result SVC::GetThreadList(s32* thread_count, VAddr out_thread_array, s32 out_thread_array_count,
                           Handle process_handle) {
-    std::shared_ptr<Process> process;
-    if (process_handle == CurrentProcess) {
-        process = kernel.GetCurrentProcess();
-    } else {
-        process = kernel.GetCurrentProcess()->handle_table.Get<Process>(process_handle);
-    }
+    auto process = kernel.GetCurrentProcess()->handle_table.Get<Process>(process_handle);
     R_UNLESS(process, ResultInvalidHandle);
     R_UNLESS(memory.IsValidVirtualAddress(*kernel.GetCurrentProcess(), out_thread_array),
              ResultInvalidPointer);

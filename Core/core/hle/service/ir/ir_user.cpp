@@ -275,6 +275,25 @@ void IR_USER::PutToReceive(std::span<const u8> payload) {
     }
 }
 
+void IR_USER::InitializeIrNop(Kernel::HLERequestContext& ctx) {
+    IPC::RequestParser rp(ctx);
+    const u32 recv_buff_size = rp.Pop<u32>();
+    const u32 recv_buff_packet_count = rp.Pop<u32>();
+    const u32 send_buff_size = rp.Pop<u32>();
+    const u32 send_buff_packet_count = rp.Pop<u32>();
+    const u8 baud_rate = rp.Pop<u8>();
+
+    IPC::RequestBuilder rb = rp.MakeBuilder(1, 0);
+
+    // In this mode, the shared memory is managed internally or not used for direct header access
+    shared_memory = system.Kernel().CreateSharedMemory(nullptr, recv_buff_size + send_buff_size + 0x100, Kernel::MemoryPermission::ReadWrite, Kernel::MemoryPermission::ReadWrite, 0, Kernel::MemoryRegion::BASE, "IR_USER:internal").Unwrap();
+
+    receive_buffer = std::make_unique<BufferManager>(shared_memory, 0, 0, recv_buff_packet_count, recv_buff_size);
+
+    rb.Push(ResultSuccess);
+    LOG_INFO(Service_IR, "called (non-shared)");
+}
+
 void IR_USER::InitializeIrNopShared(Kernel::HLERequestContext& ctx) {
     IPC::RequestParser rp(ctx);
     const u32 shared_buff_size = rp.Pop<u32>();
@@ -431,7 +450,7 @@ void IR_USER::ReleaseReceivedData(Kernel::HLERequestContext& ctx) {
 IR_USER::IR_USER(Core::System& system) : ServiceFramework("ir:USER", 1) {
     const FunctionInfo functions[] = {
         // clang-format off
-        {0x0001, nullptr, "InitializeIrNop"},
+        {0x0001, &IR_USER::InitializeIrNop, "InitializeIrNop"},
         {0x0002, &IR_USER::FinalizeIrNop, "FinalizeIrNop"},
         {0x0003, nullptr, "ClearReceiveBuffer"},
         {0x0004, nullptr, "ClearSendBuffer"},

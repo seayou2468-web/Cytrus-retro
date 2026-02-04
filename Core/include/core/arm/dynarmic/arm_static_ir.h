@@ -71,7 +71,7 @@ public:
 
     struct Instruction {
         Dynarmic::IR::Opcode op;
-        std::array<Operand, 5> args;
+        std::array<Operand, 6> args;
         u8 arg_count;
         u16 result_index;
     };
@@ -115,7 +115,7 @@ private:
     };
     std::array<FastCacheEntry, FAST_BLOCK_CACHE_SIZE> fast_block_cache;
 
-    std::vector<u64> results_buffer;
+    std::vector<unsigned __int128> results_buffer;
 
 public:
     std::vector<u32> flags_buffer;

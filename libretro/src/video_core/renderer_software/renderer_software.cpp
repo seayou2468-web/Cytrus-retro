@@ -55,13 +55,11 @@ void RendererSoftware::PrepareRenderTarget() {
 }
 
 template <typename DecodeFunc>
-static void RenderScreen(u32* output_data, const u8* src_data, u32 width, u32 height, u32 stride, u32 bpp, u32 dest_x, u32 dest_y, u32 dest_pitch, DecodeFunc decode) {
-    for (u32 ly = 0; ly < height; ly++) {
+static void RenderScreen(u32* output_data, const u8* src_data, u32 logical_width, u32 logical_height, u32 physical_stride, u32 bpp, u32 dest_x, u32 dest_y, u32 dest_pitch, DecodeFunc decode) {
+    for (u32 ly = 0; ly < logical_height; ly++) {
         u32* dest_row = output_data + (dest_y + ly) * (dest_pitch / 4) + dest_x;
-        for (u32 lx = 0; lx < width; lx++) {
-            // 3DS is column-major: Landscape(lx, ly) = Portrait(239 - ly, lx)
-            // Offset = lx * 240 + (239 - ly)
-            const u8* pixel = src_data + (lx * height + (height - 1 - ly)) * bpp;
+        for (u32 lx = 0; lx < logical_width; lx++) {
+            const u8* pixel = src_data + (lx * physical_stride + (physical_stride - 1 - ly)) * bpp;
             dest_row[lx] = decode(pixel);
         }
     }
@@ -94,40 +92,46 @@ void LibretroRenderOptimized(Core::System& system, u32* output_data, u32 output_
         }
 
         u32 bpp = Pica::BytesPerPixel(state.format);
+        // Logical dimensions: width=400/320, height=240.
+        // Physical dimensions in VRAM: width=240, height=400/320.
+        u32 logical_width = state.width;   // 400 or 320
+        u32 logical_height = state.height; // 240
+        u32 physical_stride = state.height; // 240
+
         switch (state.format) {
         case Pica::PixelFormat::RGBA8:
-            RenderScreen(output_data, src_data, state.width, state.height, state.stride, bpp, dx, dy, output_pitch, [](const u8* p) {
-                return (p[3] << 0) | (p[2] << 8) | (p[1] << 16) | (p[0] << 24);
+            RenderScreen(output_data, src_data, logical_width, logical_height, physical_stride, bpp, dx, dy, output_pitch, [](const u8* p) {
+                return (p[2] << 0) | (p[1] << 8) | (p[0] << 16) | (p[3] << 24);
             });
             break;
         case Pica::PixelFormat::RGB8:
-            RenderScreen(output_data, src_data, state.width, state.height, state.stride, bpp, dx, dy, output_pitch, [](const u8* p) {
+            RenderScreen(output_data, src_data, logical_width, logical_height, physical_stride, bpp, dx, dy, output_pitch, [](const u8* p) {
                 return (p[2] << 0) | (p[1] << 8) | (p[0] << 16) | (255 << 24);
             });
             break;
         case Pica::PixelFormat::RGB565:
-            RenderScreen(output_data, src_data, state.width, state.height, state.stride, bpp, dx, dy, output_pitch, [](const u8* p) {
+            RenderScreen(output_data, src_data, logical_width, logical_height, physical_stride, bpp, dx, dy, output_pitch, [](const u8* p) {
                 u16_le pixel; std::memcpy(&pixel, p, 2);
-                return (Common::Color::Convert5To8((pixel >> 11) & 0x1F) << 0) |
+                return (Common::Color::Convert5To8((pixel >> 11) & 0x1F) << 16) |
                        (Common::Color::Convert6To8((pixel >> 5) & 0x3F) << 8) |
-                       (Common::Color::Convert5To8(pixel & 0x1F) << 16) | (255 << 24);
+                       (Common::Color::Convert5To8(pixel & 0x1F) << 0) | (255 << 24);
             });
             break;
         case Pica::PixelFormat::RGB5A1:
-            RenderScreen(output_data, src_data, state.width, state.height, state.stride, bpp, dx, dy, output_pitch, [](const u8* p) {
+            RenderScreen(output_data, src_data, logical_width, logical_height, physical_stride, bpp, dx, dy, output_pitch, [](const u8* p) {
                 u16_le pixel; std::memcpy(&pixel, p, 2);
-                return (Common::Color::Convert5To8((pixel >> 11) & 0x1F) << 0) |
+                return (Common::Color::Convert5To8((pixel >> 11) & 0x1F) << 16) |
                        (Common::Color::Convert5To8((pixel >> 6) & 0x1F) << 8) |
-                       (Common::Color::Convert5To8((pixel >> 1) & 0x1F) << 16) |
+                       (Common::Color::Convert5To8((pixel >> 1) & 0x1F) << 0) |
                        (Common::Color::Convert1To8(pixel & 0x1) << 24);
             });
             break;
         case Pica::PixelFormat::RGBA4:
-            RenderScreen(output_data, src_data, state.width, state.height, state.stride, bpp, dx, dy, output_pitch, [](const u8* p) {
+            RenderScreen(output_data, src_data, logical_width, logical_height, physical_stride, bpp, dx, dy, output_pitch, [](const u8* p) {
                 u16_le pixel; std::memcpy(&pixel, p, 2);
-                return (Common::Color::Convert4To8((pixel >> 12) & 0xF) << 0) |
+                return (Common::Color::Convert4To8((pixel >> 12) & 0xF) << 16) |
                        (Common::Color::Convert4To8((pixel >> 8) & 0xF) << 8) |
-                       (Common::Color::Convert4To8((pixel >> 4) & 0xF) << 16) |
+                       (Common::Color::Convert4To8((pixel >> 4) & 0xF) << 0) |
                        (Common::Color::Convert4To8(pixel & 0xF) << 24);
             });
             break;

@@ -231,6 +231,18 @@ private:
     /// This triggers handling of the GX command written to the command buffer in shared memory.
     void TriggerCmdReqQueue(Kernel::HLERequestContext& ctx);
 
+    void WriteHWRegRepeat(Kernel::HLERequestContext& ctx);
+
+    void SetCommandList(Kernel::HLERequestContext& ctx);
+
+    void RequestDma(Kernel::HLERequestContext& ctx);
+
+    void SetDisplayTransfer(Kernel::HLERequestContext& ctx);
+
+    void SetTextureCopy(Kernel::HLERequestContext& ctx);
+
+    void SetMemoryFill(Kernel::HLERequestContext& ctx);
+
     /**
      * GSP_GPU::SetAxiConfigQoSMode service function
      *  Inputs:

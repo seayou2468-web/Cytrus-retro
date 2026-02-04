@@ -255,6 +255,81 @@ void GSP_GPU::SetBufferSwap(Kernel::HLERequestContext& ctx) {
     rb.Push(ResultSuccess);
 }
 
+void GSP_GPU::WriteHWRegRepeat(Kernel::HLERequestContext& ctx) {
+    IPC::RequestParser rp(ctx);
+    u32 reg_addr = rp.Pop<u32>();
+    u32 size = rp.Pop<u32>();
+    u32 count = rp.Pop<u32>();
+    const auto src_data = rp.PopStaticBuffer();
+
+    for (u32 i = 0; i < count; ++i) {
+        GSP::WriteHWRegs(reg_addr + i * size, size, src_data, system.GPU());
+    }
+
+    IPC::RequestBuilder rb = rp.MakeBuilder(1, 0);
+    rb.Push(ResultSuccess);
+}
+
+void GSP_GPU::SetCommandList(Kernel::HLERequestContext& ctx) {
+    IPC::RequestParser rp(ctx);
+    Command command;
+    command.id = CommandId::SubmitCmdList;
+    command.submit_gpu_cmdlist = rp.PopRaw<SubmitCmdListCommand>();
+
+    system.GPU().Execute(command);
+
+    IPC::RequestBuilder rb = rp.MakeBuilder(1, 0);
+    rb.Push(ResultSuccess);
+}
+
+void GSP_GPU::RequestDma(Kernel::HLERequestContext& ctx) {
+    IPC::RequestParser rp(ctx);
+    Command command;
+    command.id = CommandId::RequestDma;
+    command.dma_request = rp.PopRaw<DmaCommand>();
+
+    system.GPU().Execute(command);
+
+    IPC::RequestBuilder rb = rp.MakeBuilder(1, 0);
+    rb.Push(ResultSuccess);
+}
+
+void GSP_GPU::SetDisplayTransfer(Kernel::HLERequestContext& ctx) {
+    IPC::RequestParser rp(ctx);
+    Command command;
+    command.id = CommandId::DisplayTransfer;
+    command.display_transfer = rp.PopRaw<DisplayTransferCommand>();
+
+    system.GPU().Execute(command);
+
+    IPC::RequestBuilder rb = rp.MakeBuilder(1, 0);
+    rb.Push(ResultSuccess);
+}
+
+void GSP_GPU::SetTextureCopy(Kernel::HLERequestContext& ctx) {
+    IPC::RequestParser rp(ctx);
+    Command command;
+    command.id = CommandId::TextureCopy;
+    command.texture_copy = rp.PopRaw<TextureCopyCommand>();
+
+    system.GPU().Execute(command);
+
+    IPC::RequestBuilder rb = rp.MakeBuilder(1, 0);
+    rb.Push(ResultSuccess);
+}
+
+void GSP_GPU::SetMemoryFill(Kernel::HLERequestContext& ctx) {
+    IPC::RequestParser rp(ctx);
+    Command command;
+    command.id = CommandId::MemoryFill;
+    command.memory_fill = rp.PopRaw<MemoryFillCommand>();
+
+    system.GPU().Execute(command);
+
+    IPC::RequestBuilder rb = rp.MakeBuilder(1, 0);
+    rb.Push(ResultSuccess);
+}
+
 void GSP_GPU::FlushDataCache(Kernel::HLERequestContext& ctx) {
     IPC::RequestParser rp(ctx);
     [[maybe_unused]] u32 address = rp.Pop<u32>();
@@ -826,19 +901,19 @@ GSP_GPU::GSP_GPU(Core::System& system) : ServiceFramework("gsp::Gpu", 4), system
         // clang-format off
         {0x0001, &GSP_GPU::WriteHWRegs, "WriteHWRegs"},
         {0x0002, &GSP_GPU::WriteHWRegsWithMask, "WriteHWRegsWithMask"},
-        {0x0003, nullptr, "WriteHWRegRepeat"},
+        {0x0003, &GSP_GPU::WriteHWRegRepeat, "WriteHWRegRepeat"},
         {0x0004, &GSP_GPU::ReadHWRegs, "ReadHWRegs"},
         {0x0005, &GSP_GPU::SetBufferSwap, "SetBufferSwap"},
-        {0x0006, nullptr, "SetCommandList"},
-        {0x0007, nullptr, "RequestDma"},
+        {0x0006, &GSP_GPU::SetCommandList, "SetCommandList"},
+        {0x0007, &GSP_GPU::RequestDma, "RequestDma"},
         {0x0008, &GSP_GPU::FlushDataCache, "FlushDataCache"},
         {0x0009, &GSP_GPU::InvalidateDataCache, "InvalidateDataCache"},
         {0x000A, nullptr, "RegisterInterruptEvents"},
         {0x000B, &GSP_GPU::SetLcdForceBlack, "SetLcdForceBlack"},
         {0x000C, &GSP_GPU::TriggerCmdReqQueue, "TriggerCmdReqQueue"},
-        {0x000D, nullptr, "SetDisplayTransfer"},
-        {0x000E, nullptr, "SetTextureCopy"},
-        {0x000F, nullptr, "SetMemoryFill"},
+        {0x000D, &GSP_GPU::SetDisplayTransfer, "SetDisplayTransfer"},
+        {0x000E, &GSP_GPU::SetTextureCopy, "SetTextureCopy"},
+        {0x000F, &GSP_GPU::SetMemoryFill, "SetMemoryFill"},
         {0x0010, &GSP_GPU::SetAxiConfigQoSMode, "SetAxiConfigQoSMode"},
         {0x0011, nullptr, "SetPerfLogMode"},
         {0x0012, nullptr, "GetPerfLog"},

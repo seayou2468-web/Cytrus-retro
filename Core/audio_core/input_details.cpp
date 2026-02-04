@@ -11,6 +11,9 @@
 #include "audio_core/static_input.h"
 #ifndef __LIBRETRO__
 #include "audio_core/openal_input.h"
+#else
+#include "libretro_mic.h"
+extern bool (*g_libretro_get_mic_interface)(retro_microphone_interface*);
 #endif
 #include "common/logging/log.h"
 #include "core/core.h"
@@ -30,6 +33,13 @@ constexpr std::array input_details = {
                      return std::make_unique<OpenALInput>(std::string(device_id));
                  },
                  &ListOpenALInputDevices},
+#else
+    InputDetails{InputType::Auto, "Libretro Microphone", true,
+                 [](Core::System& system, std::string_view device_id) -> std::unique_ptr<Input> {
+                     extern retro_environment_t g_environ_cb;
+                     return std::make_unique<LibretroMic>(g_environ_cb);
+                 },
+                 [] { return std::vector<std::string>{"Libretro Microphone"}; }},
 #endif
     InputDetails{InputType::Static, "Static Noise", false,
                  [](Core::System& system, std::string_view device_id) -> std::unique_ptr<Input> {
