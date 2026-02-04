@@ -14,6 +14,9 @@
 #include "video_core/gpu.h"
 #include "audio_core/dsp_interface.h"
 #include "audio_core/hle/hle.h"
+#include "core/hle/service/am/am.h"
+#include "core/hle/service/nfc/nfc.h"
+#include "core/hle/service/sm/sm.h"
 #include "libretro_sink.h"
 #include "libretro_input.h"
 #include "common/logging/backend.h"
@@ -29,6 +32,7 @@ namespace SwRenderer {
 void LibretroRenderOptimized(Core::System& system, u32* output_data, u32 output_pitch, bool side_by_side);
 }
 
+retro_environment_t g_environ_cb;
 static retro_environment_t environ_cb;
 static retro_video_refresh_t video_cb;
 static retro_audio_sample_t audio_cb;
@@ -59,7 +63,7 @@ static bool gyro_enabled = false;
 
 static const struct retro_subsystem_rom_info update_subsystem_roms[] = {
     { "Game", "3ds|cci|cxi|app", false, false, true, nullptr, 0 },
-    { "Update", "cia", false, false, true, nullptr, 0 },
+    { "Update", "cia|firm|luma", false, false, true, nullptr, 0 },
 };
 
 static const struct retro_subsystem_info subsystems[] = {
@@ -114,10 +118,10 @@ unsigned retro_api_version(void) { return RETRO_API_VERSION; }
 
 void retro_get_system_info(struct retro_system_info *info) {
     memset(info, 0, sizeof(*info));
-    info->library_name = "Nintendo - 3DS (Cytrus)";
+    info->library_name = "Cytrus IR";
     info->library_version = "v1.1";
     info->need_fullpath = true;
-    info->valid_extensions = "3ds|3dsx|cci|cia|cxi|app|elf|axf";
+    info->valid_extensions = "3ds|3dsx|cci|cia|cxi|app|elf|axf|bin|srl";
 }
 
 void retro_get_system_av_info(struct retro_system_av_info *info) {
@@ -146,6 +150,7 @@ void retro_get_system_av_info(struct retro_system_av_info *info) {
 
 void retro_set_environment(retro_environment_t cb) {
     environ_cb = cb;
+    g_environ_cb = cb;
 
     struct retro_log_callback log;
     if (environ_cb(RETRO_ENVIRONMENT_GET_LOG_INTERFACE, &log)) {
@@ -173,6 +178,23 @@ void retro_set_environment(retro_environment_t cb) {
                 { nullptr, nullptr },
             },
             "Old 3DS"
+        },
+        {
+            "cytrus_cpu_clock",
+            "CPU Clock Percentage",
+            nullptr,
+            "Overclock or underclock the CPU. Higher values can improve performance in some games but may cause glitches.",
+            nullptr,
+            "emulation",
+            {
+                { "25%", nullptr },
+                { "50%", nullptr },
+                { "100%", nullptr },
+                { "200%", nullptr },
+                { "400%", nullptr },
+                { nullptr, nullptr },
+            },
+            "100%"
         },
         {
             "cytrus_region",
@@ -207,6 +229,22 @@ void retro_set_environment(retro_environment_t cb) {
                 { nullptr, nullptr },
             },
             "Vertical"
+        },
+        {
+            "cytrus_amiibo_path",
+            "Amiibo File Path",
+            nullptr,
+            "Path to an Amiibo .bin file to mount. The file should be in the 'save/cytrus/' directory.",
+            nullptr,
+            "emulation",
+            {
+                { "None", nullptr },
+                { "amiibo.bin", nullptr },
+                { "amiibo0.bin", nullptr },
+                { "amiibo1.bin", nullptr },
+                { nullptr, nullptr },
+            },
+            "None"
         },
         { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, { { nullptr, nullptr } }, nullptr }
     };
@@ -270,10 +308,35 @@ bool retro_load_game(const struct retro_game_info *game) {
     if (!game) return false;
 
     const char* system_dir = nullptr;
+    const char* save_dir = nullptr;
+    std::string sys_path = "./cytrus/";
     if (environ_cb(RETRO_ENVIRONMENT_GET_SYSTEM_DIRECTORY, &system_dir) && system_dir) {
-        FileUtil::SetUserPath(std::string(system_dir) + "/citra-emu/");
-    } else {
-        FileUtil::SetUserPath("./citra-emu/");
+        sys_path = std::string(system_dir) + "/cytrus/";
+    }
+    FileUtil::SetUserPath(sys_path);
+    FileUtil::CreateFullPath(sys_path);
+    // User requested font file to be directly in system/cytrus/
+    FileUtil::UpdateUserPath(FileUtil::UserPath::SysDataDir, sys_path);
+
+    if (environ_cb(RETRO_ENVIRONMENT_GET_SAVE_DIRECTORY, &save_dir) && save_dir) {
+        std::string user_save_path = std::string(save_dir) + "/cytrus/";
+        FileUtil::CreateFullPath(user_save_path);
+
+        std::string nand_path = user_save_path + "nand/";
+        FileUtil::CreateFullPath(nand_path);
+        FileUtil::UpdateUserPath(FileUtil::UserPath::NANDDir, nand_path);
+
+        std::string sdmc_path = user_save_path + "sdmc/";
+        FileUtil::CreateFullPath(sdmc_path);
+        FileUtil::UpdateUserPath(FileUtil::UserPath::SDMCDir, sdmc_path);
+
+        std::string config_path = user_save_path + "config/";
+        FileUtil::CreateFullPath(config_path);
+        FileUtil::UpdateUserPath(FileUtil::UserPath::ConfigDir, config_path);
+
+        std::string cheats_path = user_save_path + "cheats/";
+        FileUtil::CreateFullPath(cheats_path);
+        FileUtil::UpdateUserPath(FileUtil::UserPath::CheatsDir, cheats_path);
     }
 
     // Set pixel format
@@ -284,12 +347,25 @@ bool retro_load_game(const struct retro_game_info *game) {
     }
 
     struct retro_variable var_model = { "cytrus_model", nullptr };
-    Settings::values.is_new_3ds = false;
-    Settings::values.cpu_clock_percentage.SetValue(100);
+    Settings::values.is_new_3ds.SetValue(false);
     if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var_model) && var_model.value) {
         if (string_is_equal(var_model.value, "New 3DS")) {
-            Settings::values.is_new_3ds = true;
-            Settings::values.cpu_clock_percentage.SetValue(100);
+            Settings::values.is_new_3ds.SetValue(true);
+        }
+    }
+
+    struct retro_variable var_cpu = { "cytrus_cpu_clock", nullptr };
+    Settings::values.cpu_clock_percentage.SetValue(100);
+    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var_cpu) && var_cpu.value) {
+        Settings::values.cpu_clock_percentage.SetValue(atoi(var_cpu.value));
+    }
+
+    struct retro_variable var_amiibo = { "cytrus_amiibo_path", nullptr };
+    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var_amiibo) && var_amiibo.value && !string_is_equal(var_amiibo.value, "None")) {
+        std::string path = FileUtil::GetUserPath(FileUtil::UserPath::ConfigDir) + "../" + var_amiibo.value;
+        auto nfc = system_instance->ServiceManager().GetService<Service::NFC::Module::Interface>("nfc:u");
+        if (nfc) {
+            nfc->LoadAmiibo(path);
         }
     }
 
@@ -348,7 +424,18 @@ bool retro_load_game_special(unsigned type, const struct retro_game_info *info, 
     if (type != 1 || num_info < 1) return false; // Only support "update" subsystem
     if (!retro_load_game(&info[0])) return false;
     if (num_info > 1) {
-        LOG_INFO(Loader, "Subsystem update CIA provided: {}. Note: Standard build handles system updates.", info[1].path);
+        const char* ext = strrchr(info[1].path, '.');
+        if (ext && (string_is_equal(ext + 1, "cia") || string_is_equal(ext + 1, "CIA"))) {
+            LOG_INFO(Loader, "Installing subsystem update CIA: {}", info[1].path);
+            if (Service::AM::InstallCIA(info[1].path) != Service::AM::InstallStatus::Success) {
+                LOG_ERROR(Loader, "Failed to install update CIA: {}", info[1].path);
+            }
+        } else if (ext && (string_is_equal(ext + 1, "firm") || string_is_equal(ext + 1, "luma"))) {
+            LOG_INFO(Loader, "Applying CFW update: {}", info[1].path);
+            // Just copy it to NAND for now if it's boot.firm/luma
+            std::string nand_path = FileUtil::GetUserPath(FileUtil::UserPath::NANDDir);
+            FileUtil::Copy(info[1].path, nand_path + "boot.firm");
+        }
     }
     return true;
 }
@@ -357,9 +444,27 @@ void retro_unload_game(void) {
     if (system_instance) system_instance->Shutdown();
 }
 
+static std::string current_amiibo_path;
+
 void retro_run(void) {
     bool updated = false;
     if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE, &updated) && updated) {
+        struct retro_variable var_amiibo = { "cytrus_amiibo_path", nullptr };
+        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var_amiibo) && var_amiibo.value) {
+            if (current_amiibo_path != var_amiibo.value) {
+                current_amiibo_path = var_amiibo.value;
+                auto nfc = system_instance->ServiceManager().GetService<Service::NFC::Module::Interface>("nfc:u");
+                if (nfc) {
+                    if (current_amiibo_path == "None") {
+                        nfc->RemoveAmiibo();
+                    } else {
+                        std::string full_path = FileUtil::GetUserPath(FileUtil::UserPath::ConfigDir) + "../" + current_amiibo_path;
+                        nfc->LoadAmiibo(full_path);
+                    }
+                }
+            }
+        }
+
         struct retro_variable var = { "cytrus_layout", nullptr };
         if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value) {
             bool side_by_side = string_is_equal(var.value, "Side-by-Side");
@@ -461,10 +566,7 @@ void retro_run(void) {
         Input::LibretroSetTouch(0, 0, false);
     }
 
-    Core::System::ResultStatus status = system_instance->RunLoop(true);
-    if (status == Core::System::ResultStatus::ShutdownRequested) {
-        environ_cb(RETRO_ENVIRONMENT_SHUTDOWN, nullptr);
-    } else if (status != Core::System::ResultStatus::Success) {
+    if (system_instance->RunLoop(true) != Core::System::ResultStatus::Success) {
         LOG_ERROR(Frontend, "RunLoop failed!");
     }
 

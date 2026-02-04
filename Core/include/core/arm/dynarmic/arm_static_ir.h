@@ -65,13 +65,13 @@ public:
     void SetPageTable(const std::shared_ptr<Memory::PageTable>& page_table) override;
 
     struct Operand {
-        enum Kind { Immediate, Result, Register, ExtReg, Cond, AccType, CoprocInfo } kind;
+        enum Kind { Immediate, Result, Register, ExtReg, Cond, AccType } kind;
         u64 value;
     };
 
     struct Instruction {
         Dynarmic::IR::Opcode op;
-        std::array<Operand, 5> args;
+        std::array<Operand, 6> args;
         u8 arg_count;
         u16 result_index;
     };
