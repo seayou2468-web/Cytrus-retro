@@ -14,6 +14,9 @@
 #include "video_core/gpu.h"
 #include "audio_core/dsp_interface.h"
 #include "audio_core/hle/hle.h"
+#include "core/hle/service/am/am.h"
+#include "core/hle/service/nfc/nfc.h"
+#include "core/hle/service/sm/sm.h"
 #include "libretro_sink.h"
 #include "libretro_input.h"
 #include "common/logging/backend.h"
@@ -118,7 +121,7 @@ void retro_get_system_info(struct retro_system_info *info) {
     info->library_name = "Cytrus IR";
     info->library_version = "v1.1";
     info->need_fullpath = true;
-    info->valid_extensions = "3ds|3dsx|cci|cia|cxi|app|elf|axf";
+    info->valid_extensions = "3ds|3dsx|cci|cia|cxi|app|elf|axf|bin|srl";
 }
 
 void retro_get_system_av_info(struct retro_system_av_info *info) {
@@ -360,7 +363,10 @@ bool retro_load_game(const struct retro_game_info *game) {
     struct retro_variable var_amiibo = { "cytrus_amiibo_path", nullptr };
     if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var_amiibo) && var_amiibo.value && !string_is_equal(var_amiibo.value, "None")) {
         std::string path = FileUtil::GetUserPath(FileUtil::UserPath::ConfigDir) + "../" + var_amiibo.value;
-        // Load amiibo if it exists. We'll check again in retro_run if it changes.
+        auto nfc = system_instance->ServiceManager().GetService<Service::NFC::Module::Interface>("nfc:u");
+        if (nfc) {
+            nfc->LoadAmiibo(path);
+        }
     }
 
     struct retro_variable var_region = { "cytrus_region", nullptr };
@@ -421,7 +427,9 @@ bool retro_load_game_special(unsigned type, const struct retro_game_info *info, 
         const char* ext = strrchr(info[1].path, '.');
         if (ext && (string_is_equal(ext + 1, "cia") || string_is_equal(ext + 1, "CIA"))) {
             LOG_INFO(Loader, "Installing subsystem update CIA: {}", info[1].path);
-            Service::AM::InstallCIA(info[1].path);
+            if (Service::AM::InstallCIA(info[1].path) != Service::AM::InstallStatus::Success) {
+                LOG_ERROR(Loader, "Failed to install update CIA: {}", info[1].path);
+            }
         } else if (ext && (string_is_equal(ext + 1, "firm") || string_is_equal(ext + 1, "luma"))) {
             LOG_INFO(Loader, "Applying CFW update: {}", info[1].path);
             // Just copy it to NAND for now if it's boot.firm/luma
@@ -436,9 +444,27 @@ void retro_unload_game(void) {
     if (system_instance) system_instance->Shutdown();
 }
 
+static std::string current_amiibo_path;
+
 void retro_run(void) {
     bool updated = false;
     if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE, &updated) && updated) {
+        struct retro_variable var_amiibo = { "cytrus_amiibo_path", nullptr };
+        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var_amiibo) && var_amiibo.value) {
+            if (current_amiibo_path != var_amiibo.value) {
+                current_amiibo_path = var_amiibo.value;
+                auto nfc = system_instance->ServiceManager().GetService<Service::NFC::Module::Interface>("nfc:u");
+                if (nfc) {
+                    if (current_amiibo_path == "None") {
+                        nfc->RemoveAmiibo();
+                    } else {
+                        std::string full_path = FileUtil::GetUserPath(FileUtil::UserPath::ConfigDir) + "../" + current_amiibo_path;
+                        nfc->LoadAmiibo(full_path);
+                    }
+                }
+            }
+        }
+
         struct retro_variable var = { "cytrus_layout", nullptr };
         if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value) {
             bool side_by_side = string_is_equal(var.value, "Side-by-Side");

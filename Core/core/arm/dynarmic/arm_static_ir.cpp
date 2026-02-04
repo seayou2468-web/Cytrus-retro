@@ -287,7 +287,7 @@ OP_HANDLER(Add32) {
     bool v = ((~(a ^ b) & (a ^ res)) >> 31) & 1;
     u32 flags = (n << 3) | (z << 2) | (c << 1) | v;
     self.flags_buffer[inst.result_index] = flags;
-    if (inst.arg_count > 2 && inst.args[2].kind == ARM_StaticIR::Operand::Immediate && inst.args[2].value) {
+    if (inst.arg_count > 2 && GetArg(inst, results, 2)) {
         self.SetCPSR((self.GetCPSR() & 0x0FFFFFFF) | (flags << 28));
     }
 }
@@ -308,7 +308,19 @@ OP_HANDLER(AddWithCarry32) {
         self.SetCPSR((self.GetCPSR() & 0x0FFFFFFF) | (flags << 28));
     }
 }
-OP_HANDLER(Add64) { results[inst.result_index] = GetArg(inst, results, 0) + GetArg(inst, results, 1); }
+OP_HANDLER(Add64) {
+    u64 a = (u64)GetArg(inst, results, 0);
+    u64 b = (u64)GetArg(inst, results, 1);
+    u64 res = a + b;
+    results[inst.result_index] = res;
+    if (inst.arg_count > 2 && GetArg(inst, results, 2)) {
+        bool n = (res >> 63) & 1;
+        bool z = (res == 0);
+        bool c = res < a;
+        bool v = ((~(a ^ b) & (a ^ res)) >> 63) & 1;
+        self.SetCPSR((self.GetCPSR() & 0x0FFFFFFF) | (n << 31) | (z << 30) | (c << 29) | (v << 28));
+    }
+}
 OP_HANDLER(Sub32) {
     u32 a = (u32)GetArg(inst, results, 0);
     u32 b = (u32)GetArg(inst, results, 1);
@@ -320,7 +332,7 @@ OP_HANDLER(Sub32) {
     bool v = (((a ^ b) & (a ^ res)) >> 31) & 1;
     u32 flags = (n << 3) | (z << 2) | (c << 1) | v;
     self.flags_buffer[inst.result_index] = flags;
-    if (inst.arg_count > 2 && inst.args[2].kind == ARM_StaticIR::Operand::Immediate && inst.args[2].value) {
+    if (inst.arg_count > 2 && GetArg(inst, results, 2)) {
         self.SetCPSR((self.GetCPSR() & 0x0FFFFFFF) | (flags << 28));
     }
 }
@@ -341,7 +353,19 @@ OP_HANDLER(SubWithCarry32) {
         self.SetCPSR((self.GetCPSR() & 0x0FFFFFFF) | (flags << 28));
     }
 }
-OP_HANDLER(Sub64) { results[inst.result_index] = GetArg(inst, results, 0) - GetArg(inst, results, 1); }
+OP_HANDLER(Sub64) {
+    u64 a = (u64)GetArg(inst, results, 0);
+    u64 b = (u64)GetArg(inst, results, 1);
+    u64 res = a - b;
+    results[inst.result_index] = res;
+    if (inst.arg_count > 2 && GetArg(inst, results, 2)) {
+        bool n = (res >> 63) & 1;
+        bool z = (res == 0);
+        bool c = a >= b;
+        bool v = (((a ^ b) & (a ^ res)) >> 63) & 1;
+        self.SetCPSR((self.GetCPSR() & 0x0FFFFFFF) | (n << 31) | (z << 30) | (c << 29) | (v << 28));
+    }
+}
 OP_HANDLER(Mul32) { results[inst.result_index] = (u32)GetArg(inst, results, 0) * (u32)GetArg(inst, results, 1); }
 OP_HANDLER(Mul64) { results[inst.result_index] = GetArg(inst, results, 0) * GetArg(inst, results, 1); }
 OP_HANDLER(SignedMultiplyHigh64) {
@@ -458,6 +482,11 @@ OP_HANDLER(A32CoprocSendOneWord) {
         self.SetCP15Register(CP15_THREAD_UPRW, value);
     }
 }
+OP_HANDLER(A32CoprocSendTwoWords) {}
+OP_HANDLER(A32CoprocGetTwoWords) { results[inst.result_index] = 0; }
+OP_HANDLER(A32CoprocLoadWords) {}
+OP_HANDLER(A32CoprocStoreWords) {}
+OP_HANDLER(A32CoprocInternalOperation) {}
 OP_HANDLER(SignedDiv64) {
     s64 a = (s64)GetArg(inst, results, 0);
     s64 b = (s64)GetArg(inst, results, 1);
@@ -861,9 +890,9 @@ void ARM_StaticIR::ExecuteBlock(const TranslatedBlock& block) {
         case IR::Opcode::A32SetCpsr: cpsr = (u32)GetArg(inst, results_ptr, 0); break;
         case IR::Opcode::A32SetCpsrNZCV: cpsr = (cpsr & 0x0FFFFFFF) | ((u32)GetArg(inst, results_ptr, 0) << 28); break;
         case IR::Opcode::A32GetCFlag: results_ptr[inst.result_index] = (cpsr >> 29) & 1; break;
-        case IR::Opcode::Add64: results_ptr[inst.result_index] = GetArg(inst, results_ptr, 0) + GetArg(inst, results_ptr, 1); break;
+        case IR::Opcode::Add64: HandleAdd64(*this, inst, results_ptr, next_pc, branched); break;
         case IR::Opcode::Add32: HandleAdd32(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::Sub64: results_ptr[inst.result_index] = GetArg(inst, results_ptr, 0) - GetArg(inst, results_ptr, 1); break;
+        case IR::Opcode::Sub64: HandleSub64(*this, inst, results_ptr, next_pc, branched); break;
         case IR::Opcode::Sub32: HandleSub32(*this, inst, results_ptr, next_pc, branched); break;
         case IR::Opcode::And32: HandleAnd32(*this, inst, results_ptr, next_pc, branched); break;
         case IR::Opcode::Or32: HandleOr32(*this, inst, results_ptr, next_pc, branched); break;
@@ -885,11 +914,18 @@ void ARM_StaticIR::ExecuteBlock(const TranslatedBlock& block) {
         case IR::Opcode::GetCarryFromOp: results_ptr[inst.result_index] = (flags_buffer[inst.args[0].value] >> 1) & 1; break;
         case IR::Opcode::GetOverflowFromOp: results_ptr[inst.result_index] = flags_buffer[inst.args[0].value] & 1; break;
         case IR::Opcode::Identity: results_ptr[inst.result_index] = GetArg(inst, results_ptr, 0); break;
+        case IR::Opcode::ZeroExtendLongToQuad: results_ptr[inst.result_index] = GetArg(inst, results_ptr, 0); break;
+        case IR::Opcode::Pack2x64To1x128: results_ptr[inst.result_index] = (GetArg(inst, results_ptr, 0) & 0xFFFFFFFFFFFFFFFFULL) | (GetArg(inst, results_ptr, 1) << 64); break;
         case IR::Opcode::Void: break;
 
         // Fallback to handlers for everything else
         case IR::Opcode::A32CoprocGetOneWord: HandleA32CoprocGetOneWord(*this, inst, results_ptr, next_pc, branched); break;
         case IR::Opcode::A32CoprocSendOneWord: HandleA32CoprocSendOneWord(*this, inst, results_ptr, next_pc, branched); break;
+        case IR::Opcode::A32CoprocGetTwoWords: HandleA32CoprocGetTwoWords(*this, inst, results_ptr, next_pc, branched); break;
+        case IR::Opcode::A32CoprocSendTwoWords: HandleA32CoprocSendTwoWords(*this, inst, results_ptr, next_pc, branched); break;
+        case IR::Opcode::A32CoprocLoadWords: HandleA32CoprocLoadWords(*this, inst, results_ptr, next_pc, branched); break;
+        case IR::Opcode::A32CoprocStoreWords: HandleA32CoprocStoreWords(*this, inst, results_ptr, next_pc, branched); break;
+        case IR::Opcode::A32CoprocInternalOperation: HandleA32CoprocInternalOperation(*this, inst, results_ptr, next_pc, branched); break;
         case IR::Opcode::A32SetCpsrNZCVRaw: HandleA32SetCpsrNZCVRaw(*this, inst, results_ptr, next_pc, branched); break;
         case IR::Opcode::A32SetCpsrNZCVQ: HandleA32SetCpsrNZCVQ(*this, inst, results_ptr, next_pc, branched); break;
         case IR::Opcode::A32SetCpsrNZ: HandleA32SetCpsrNZ(*this, inst, results_ptr, next_pc, branched); break;
@@ -981,7 +1017,9 @@ void ARM_StaticIR::ExecuteBlock(const TranslatedBlock& block) {
         case IR::Opcode::MinSigned32: HandleMinSigned32(*this, inst, results_ptr, next_pc, branched); break;
         case IR::Opcode::MinUnsigned32: HandleMinUnsigned32(*this, inst, results_ptr, next_pc, branched); break;
         case IR::Opcode::IsZero32: HandleIsZero32(*this, inst, results_ptr, next_pc, branched); break;
+        case IR::Opcode::IsZero64: results_ptr[inst.result_index] = (u32)GetArg(inst, results_ptr, 0) == 0; break;
         case IR::Opcode::TestBit: HandleTestBit(*this, inst, results_ptr, next_pc, branched); break;
+        case IR::Opcode::MostSignificantBit: results_ptr[inst.result_index] = (u32)GetArg(inst, results_ptr, 0) >> 31; break;
         case IR::Opcode::RotateRightExtended: HandleRotateRightExtended(*this, inst, results_ptr, next_pc, branched); break;
         case IR::Opcode::NZCVFromPackedFlags: HandleNZCVFromPackedFlags(*this, inst, results_ptr, next_pc, branched); break;
         case IR::Opcode::FPAdd32: HandleFPAdd32(*this, inst, results_ptr, next_pc, branched); break;
