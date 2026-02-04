@@ -38,6 +38,9 @@ using namespace Common::Literals;
 static constexpr u64 UPDATE_TID_HIGH = 0x0004000e00000000;
 
 FileType AppLoader_NCCH::IdentifyType(FileUtil::IOFile* file, u32 offset) {
+    if (!file || !file->IsOpen())
+        return FileType::Error;
+
     u32 magic;
     file->Seek(offset + 0x100, SEEK_SET);
     if (1 != file->ReadArray<u32>(&magic, 1))
@@ -53,7 +56,7 @@ FileType AppLoader_NCCH::IdentifyType(FileUtil::IOFile* file, u32 offset) {
         file->Filename(), "rb", HW::UniqueData::UniqueCryptoFileID::NCCH);
 
     if (file_crypto && file_crypto->IsOpen()) {
-        file_crypto->Seek(0x100, SEEK_SET);
+        file_crypto->Seek(offset + 0x100, SEEK_SET);
         if (1 == file_crypto->ReadArray<u32>(&magic, 1)) {
             if (MakeMagic('N', 'C', 'S', 'D') == magic)
                 return FileType::CCI;

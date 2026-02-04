@@ -172,7 +172,7 @@ INCFLAGS += -Ilibretro/externals/openssl/include
 INCFLAGS += -ICore/include/network
 INCFLAGS += -ICore/include/network/artic_base
 # Compiler flags
-CXXFLAGS += -fPIC -O3 -ffast-math -fno-strict-aliasing -flto -std=c++20 -Wno-interference-size $(INCFLAGS)
+CXXFLAGS += -fPIC -O3 -ffast-math -fno-strict-aliasing -flto -std=c++20 $(INCFLAGS)
 CFLAGS   += -fPIC -O3 -ffast-math -fno-strict-aliasing -flto $(INCFLAGS)
 
 # Libretro defines

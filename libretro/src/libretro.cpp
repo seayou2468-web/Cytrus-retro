@@ -114,7 +114,7 @@ unsigned retro_api_version(void) { return RETRO_API_VERSION; }
 
 void retro_get_system_info(struct retro_system_info *info) {
     memset(info, 0, sizeof(*info));
-    info->library_name = "Nintendo - 3DS (Cytrus)";
+    info->library_name = "Cytrus";
     info->library_version = "v1.1";
     info->need_fullpath = true;
     info->valid_extensions = "3ds|3dsx|cci|cia|cxi|app|elf|axf";
@@ -163,9 +163,9 @@ void retro_set_environment(retro_environment_t cb) {
         {
             "cytrus_model",
             "Console Model",
-            nullptr,
+            "Emulation > Console Model",
             "Select which 3DS model to emulate. New 3DS has more RAM and a faster CPU.",
-            nullptr,
+            "Choose between Old 3DS and New 3DS.",
             "emulation",
             {
                 { "Old 3DS", nullptr },
@@ -177,9 +177,9 @@ void retro_set_environment(retro_environment_t cb) {
         {
             "cytrus_region",
             "Console Region",
-            nullptr,
+            "Emulation > Console Region",
             "Select the region of the console. 'Auto' will use the game's region.",
-            nullptr,
+            "Simulate a console from a specific region.",
             "emulation",
             {
                 { "Auto", nullptr },
@@ -197,9 +197,9 @@ void retro_set_environment(retro_environment_t cb) {
         {
             "cytrus_layout",
             "Screen Layout",
-            nullptr,
+            "Video > Screen Layout",
             "Select how the two screens are displayed.",
-            nullptr,
+            "Change display arrangement of the two 3DS screens.",
             "video",
             {
                 { "Vertical", nullptr },
@@ -207,6 +207,22 @@ void retro_set_environment(retro_environment_t cb) {
                 { nullptr, nullptr },
             },
             "Vertical"
+        },
+        {
+            "cytrus_cpu_speed",
+            "CPU Clock Percentage",
+            "Emulation > CPU Speed",
+            "Select the CPU clock speed percentage.",
+            "Overclocking or underclocking the guest CPU.",
+            "emulation",
+            {
+                { "100%", nullptr },
+                { "150%", nullptr },
+                { "200%", nullptr },
+                { "50%", nullptr },
+                { nullptr, nullptr },
+            },
+            "100%"
         },
         { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, { { nullptr, nullptr } }, nullptr }
     };
@@ -303,6 +319,12 @@ bool retro_load_game(const struct retro_game_info *game) {
         else if (string_is_equal(var_region.value, "China")) Settings::values.region_value.SetValue(4);
         else if (string_is_equal(var_region.value, "Korea")) Settings::values.region_value.SetValue(5);
         else if (string_is_equal(var_region.value, "Taiwan")) Settings::values.region_value.SetValue(6);
+    }
+
+    struct retro_variable var_cpu = { "cytrus_cpu_speed", nullptr };
+    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var_cpu) && var_cpu.value) {
+        int speed = atoi(var_cpu.value);
+        if (speed > 0) Settings::values.cpu_clock_percentage.SetValue(speed);
     }
 
     // Configure Input

@@ -123,9 +123,14 @@ static std::unique_ptr<AppLoader> GetFileLoader(Core::System& system, FileUtil::
         FileSys::CIAContainer cia;
         if (cia.Load(&file) == ResultStatus::Success) {
             u32 content0_offset = static_cast<u32>(cia.GetContentOffset(0));
+            if (content0_offset == 0) {
+                LOG_ERROR(Loader, "Failed to find Content 0 in CIA file {}", filepath);
+                return nullptr;
+            }
             return std::make_unique<AppLoader_NCCH>(system, std::move(file), filepath,
                                                     content0_offset);
         }
+        LOG_ERROR(Loader, "Failed to load CIA container for {}", filepath);
         return nullptr;
     }
 
