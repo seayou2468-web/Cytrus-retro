@@ -347,10 +347,10 @@ bool retro_load_game(const struct retro_game_info *game) {
     }
 
     struct retro_variable var_model = { "cytrus_model", nullptr };
-    Settings::values.is_new_3ds = false;
+    Settings::values.is_new_3ds.SetValue(false);
     if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var_model) && var_model.value) {
         if (string_is_equal(var_model.value, "New 3DS")) {
-            Settings::values.is_new_3ds = true;
+            Settings::values.is_new_3ds.SetValue(true);
         }
     }
 
