@@ -64,7 +64,7 @@ FileType AppLoader_NCCH::IdentifyType(FileUtil::IOFile* file, u32 offset) {
     }
 
     std::optional<u32> magic_zstd = FileUtil::Z3DSReadIOFile::GetUnderlyingFileMagic(file);
-    if (!magic_zstd.has_value()) {
+    if (!magic_zstd.has_value() && file_crypto) {
         magic_zstd = FileUtil::Z3DSReadIOFile::GetUnderlyingFileMagic(file_crypto.get());
     }
 

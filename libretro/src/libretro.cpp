@@ -97,6 +97,9 @@ void retro_init(void) {
         dirent_vfs_init(&vfs_info);
     }
 
+    Common::Log::Initialize("cytrus_libretro.log");
+    Common::Log::Start();
+
     system_instance = &Core::System::GetInstance();
     emu_window = new LibretroEmuWindow();
     Input::RegisterLibretroInput();
@@ -108,6 +111,8 @@ void retro_deinit(void) {
     }
     delete emu_window;
     emu_window = nullptr;
+
+    Common::Log::Stop();
 }
 
 unsigned retro_api_version(void) { return RETRO_API_VERSION; }

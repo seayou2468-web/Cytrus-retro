@@ -97,7 +97,7 @@ void LibretroRenderOptimized(Core::System& system, u32* output_data, u32 output_
         switch (state.format) {
         case Pica::PixelFormat::RGBA8:
             RenderScreen(output_data, src_data, state.width, state.height, state.stride, bpp, dx, dy, output_pitch, [](const u8* p) {
-                return (p[3] << 0) | (p[2] << 8) | (p[1] << 16) | (p[0] << 24);
+                return (p[2] << 0) | (p[1] << 8) | (p[0] << 16) | (255 << 24);
             });
             break;
         case Pica::PixelFormat::RGB8:
@@ -108,27 +108,25 @@ void LibretroRenderOptimized(Core::System& system, u32* output_data, u32 output_
         case Pica::PixelFormat::RGB565:
             RenderScreen(output_data, src_data, state.width, state.height, state.stride, bpp, dx, dy, output_pitch, [](const u8* p) {
                 u16_le pixel; std::memcpy(&pixel, p, 2);
-                return (Common::Color::Convert5To8((pixel >> 11) & 0x1F) << 0) |
+                return (Common::Color::Convert5To8(pixel & 0x1F) << 0) |
                        (Common::Color::Convert6To8((pixel >> 5) & 0x3F) << 8) |
-                       (Common::Color::Convert5To8(pixel & 0x1F) << 16) | (255 << 24);
+                       (Common::Color::Convert5To8((pixel >> 11) & 0x1F) << 16) | (255 << 24);
             });
             break;
         case Pica::PixelFormat::RGB5A1:
             RenderScreen(output_data, src_data, state.width, state.height, state.stride, bpp, dx, dy, output_pitch, [](const u8* p) {
                 u16_le pixel; std::memcpy(&pixel, p, 2);
-                return (Common::Color::Convert5To8((pixel >> 11) & 0x1F) << 0) |
+                return (Common::Color::Convert5To8((pixel >> 1) & 0x1F) << 0) |
                        (Common::Color::Convert5To8((pixel >> 6) & 0x1F) << 8) |
-                       (Common::Color::Convert5To8((pixel >> 1) & 0x1F) << 16) |
-                       (Common::Color::Convert1To8(pixel & 0x1) << 24);
+                       (Common::Color::Convert5To8((pixel >> 11) & 0x1F) << 16) | (255 << 24);
             });
             break;
         case Pica::PixelFormat::RGBA4:
             RenderScreen(output_data, src_data, state.width, state.height, state.stride, bpp, dx, dy, output_pitch, [](const u8* p) {
                 u16_le pixel; std::memcpy(&pixel, p, 2);
-                return (Common::Color::Convert4To8((pixel >> 12) & 0xF) << 0) |
+                return (Common::Color::Convert4To8((pixel >> 4) & 0xF) << 0) |
                        (Common::Color::Convert4To8((pixel >> 8) & 0xF) << 8) |
-                       (Common::Color::Convert4To8((pixel >> 4) & 0xF) << 16) |
-                       (Common::Color::Convert4To8(pixel & 0xF) << 24);
+                       (Common::Color::Convert4To8((pixel >> 12) & 0xF) << 16) | (255 << 24);
             });
             break;
         default:
