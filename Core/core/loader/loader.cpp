@@ -68,9 +68,6 @@ FileType GuessFromExtension(const std::string& extension_) {
     if (extension == ".cia" || extension == ".zcia")
         return FileType::CIA;
 
-    if (extension == ".bin" || extension == ".srl")
-        return FileType::CXI; // Treat as CXI/NCCH and let the loader decide
-
     return FileType::Unknown;
 }
 

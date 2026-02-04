@@ -98,7 +98,7 @@ ARM_StaticIR::ARM_StaticIR(Core::System& system_, Memory::MemorySystem& memory_,
     config.define_unpredictable_behaviour = true;
     config.processor_id = core_id_;
     config.global_monitor = &exclusive_monitor.GetMonitor();
-    config.arch_version = Dynarmic::A32::ArchVersion::v6k;
+    config.arch_version = Dynarmic::A32::ArchVersion::v6K;
 }
 
 ARM_StaticIR::~ARM_StaticIR() = default;
@@ -253,14 +253,6 @@ const ARM_StaticIR::TranslatedBlock& ARM_StaticIR::GetOrTranslateBlock(u32 pc) {
 namespace {
 typedef void (*OpHandler)(ARM_StaticIR& self, const ARM_StaticIR::Instruction& inst, unsigned __int128* results, u32& next_pc, bool& branched);
 
-typedef union {
-    unsigned __int128 v;
-    u64 u64l[2];
-    u32 u32l[4];
-    u16 u16l[8];
-    u8 u8l[16];
-} VectorReg;
-
 static inline unsigned __int128 GetArg(const ARM_StaticIR::Instruction& inst, const unsigned __int128* results, size_t i) {
     if (inst.args[i].kind == ARM_StaticIR::Operand::Immediate) return inst.args[i].value;
     return results[inst.args[i].value];
@@ -287,16 +279,17 @@ OP_HANDLER(A32GetCFlag) { results[inst.result_index] = (self.GetCPSR() >> 29) & 
 OP_HANDLER(Add32) {
     u32 a = (u32)GetArg(inst, results, 0);
     u32 b = (u32)GetArg(inst, results, 1);
-    u32 carry_in = (inst.arg_count > 2) ? ((u32)GetArg(inst, results, 2) & 1) : 0;
-    u64 res_wide = (u64)a + b + carry_in;
-    u32 res = (u32)res_wide;
+    u32 res = a + b;
     results[inst.result_index] = res;
     bool n = (res >> 31) & 1;
     bool z = (res == 0);
-    bool c = (res_wide >> 32) & 1;
+    bool c = res < a;
     bool v = ((~(a ^ b) & (a ^ res)) >> 31) & 1;
     u32 flags = (n << 3) | (z << 2) | (c << 1) | v;
     self.flags_buffer[inst.result_index] = flags;
+    if (inst.arg_count > 2 && inst.args[2].kind == ARM_StaticIR::Operand::Immediate && inst.args[2].value) {
+        self.SetCPSR((self.GetCPSR() & 0x0FFFFFFF) | (flags << 28));
+    }
 }
 OP_HANDLER(AddWithCarry32) {
     u32 a = (u32)GetArg(inst, results, 0);
@@ -319,16 +312,17 @@ OP_HANDLER(Add64) { results[inst.result_index] = GetArg(inst, results, 0) + GetA
 OP_HANDLER(Sub32) {
     u32 a = (u32)GetArg(inst, results, 0);
     u32 b = (u32)GetArg(inst, results, 1);
-    u32 carry_in = (inst.arg_count > 2) ? ((u32)GetArg(inst, results, 2) & 1) : 1;
-    u64 res_wide = (u64)a - b - (1 - carry_in);
-    u32 res = (u32)res_wide;
+    u32 res = a - b;
     results[inst.result_index] = res;
     bool n = (res >> 31) & 1;
     bool z = (res == 0);
-    bool c = (res_wide >> 32) == 0;
+    bool c = a >= b;
     bool v = (((a ^ b) & (a ^ res)) >> 31) & 1;
     u32 flags = (n << 3) | (z << 2) | (c << 1) | v;
     self.flags_buffer[inst.result_index] = flags;
+    if (inst.arg_count > 2 && inst.args[2].kind == ARM_StaticIR::Operand::Immediate && inst.args[2].value) {
+        self.SetCPSR((self.GetCPSR() & 0x0FFFFFFF) | (flags << 28));
+    }
 }
 OP_HANDLER(SubWithCarry32) {
     u32 a = (u32)GetArg(inst, results, 0);
@@ -860,14 +854,7 @@ void ARM_StaticIR::ExecuteBlock(const TranslatedBlock& block) {
         executed_count++;
         switch (inst.op) {
         case IR::Opcode::A32GetRegister: results_ptr[inst.result_index] = regs[(int)inst.args[0].value]; break;
-        case IR::Opcode::A32SetRegister: {
-            u32 val = (u32)GetArg(inst, results_ptr, 1);
-            regs[(int)inst.args[0].value] = val;
-            if ((int)inst.args[0].value == 15) {
-                next_pc = val;
-                branched = true;
-            }
-        } break;
+        case IR::Opcode::A32SetRegister: regs[(int)inst.args[0].value] = (u32)GetArg(inst, results_ptr, 1); break;
         case IR::Opcode::A32GetExtendedRegister32: results_ptr[inst.result_index] = vfp_regs[(int)inst.args[0].value]; break;
         case IR::Opcode::A32SetExtendedRegister32: vfp_regs[(int)inst.args[0].value] = (u32)GetArg(inst, results_ptr, 1); break;
         case IR::Opcode::A32GetCpsr: results_ptr[inst.result_index] = cpsr; break;
@@ -902,12 +889,6 @@ void ARM_StaticIR::ExecuteBlock(const TranslatedBlock& block) {
         case IR::Opcode::LogicalShiftLeft32: results_ptr[inst.result_index] = (u32)GetArg(inst, results_ptr, 0) << (GetArg(inst, results_ptr, 1) & 31); break;
         case IR::Opcode::LogicalShiftRight32: results_ptr[inst.result_index] = (u32)GetArg(inst, results_ptr, 0) >> (GetArg(inst, results_ptr, 1) & 31); break;
         case IR::Opcode::ArithmeticShiftRight32: results_ptr[inst.result_index] = (u32)((s32)GetArg(inst, results_ptr, 0) >> (GetArg(inst, results_ptr, 1) & 31)); break;
-        case IR::Opcode::A32ReadMemory8: results_ptr[inst.result_index] = memory.Read8((u32)GetArg(inst, results_ptr, 0)); break;
-        case IR::Opcode::A32ReadMemory16: results_ptr[inst.result_index] = memory.Read16((u32)GetArg(inst, results_ptr, 0)); break;
-        case IR::Opcode::A32ReadMemory32: results_ptr[inst.result_index] = memory.Read32((u32)GetArg(inst, results_ptr, 0)); break;
-        case IR::Opcode::A32WriteMemory8: memory.Write8((u32)GetArg(inst, results_ptr, 0), (u8)GetArg(inst, results_ptr, 1)); break;
-        case IR::Opcode::A32WriteMemory16: memory.Write16((u32)GetArg(inst, results_ptr, 0), (u16)GetArg(inst, results_ptr, 1)); break;
-        case IR::Opcode::A32WriteMemory32: memory.Write32((u32)GetArg(inst, results_ptr, 0), (u32)GetArg(inst, results_ptr, 1)); break;
         case IR::Opcode::A32BXWritePC: {
             u32 val = (u32)GetArg(inst, results_ptr, 0);
             next_pc = val & ~1;
@@ -923,52 +904,6 @@ void ARM_StaticIR::ExecuteBlock(const TranslatedBlock& block) {
         case IR::Opcode::GetOverflowFromOp: results_ptr[inst.result_index] = flags_buffer[inst.args[0].value] & 1; break;
         case IR::Opcode::Identity: results_ptr[inst.result_index] = GetArg(inst, results_ptr, 0); break;
         case IR::Opcode::Void: break;
-
-        case IR::Opcode::VectorAnd: results_ptr[inst.result_index] = GetArg(inst, results_ptr, 0) & GetArg(inst, results_ptr, 1); break;
-        case IR::Opcode::VectorOr: results_ptr[inst.result_index] = GetArg(inst, results_ptr, 0) | GetArg(inst, results_ptr, 1); break;
-        case IR::Opcode::VectorEor: results_ptr[inst.result_index] = GetArg(inst, results_ptr, 0) ^ GetArg(inst, results_ptr, 1); break;
-        case IR::Opcode::VectorAndNot: results_ptr[inst.result_index] = GetArg(inst, results_ptr, 0) & ~GetArg(inst, results_ptr, 1); break;
-
-        case IR::Opcode::VectorAdd8: {
-            VectorReg a = {GetArg(inst, results_ptr, 0)}, b = {GetArg(inst, results_ptr, 1)}, res;
-            for(int i=0; i<16; ++i) res.u8l[i] = a.u8l[i] + b.u8l[i];
-            results_ptr[inst.result_index] = res.v;
-        } break;
-        case IR::Opcode::VectorAdd16: {
-            VectorReg a = {GetArg(inst, results_ptr, 0)}, b = {GetArg(inst, results_ptr, 1)}, res;
-            for(int i=0; i<8; ++i) res.u16l[i] = a.u16l[i] + b.u16l[i];
-            results_ptr[inst.result_index] = res.v;
-        } break;
-        case IR::Opcode::VectorAdd32: {
-            VectorReg a = {GetArg(inst, results_ptr, 0)}, b = {GetArg(inst, results_ptr, 1)}, res;
-            for(int i=0; i<4; ++i) res.u32l[i] = a.u32l[i] + b.u32l[i];
-            results_ptr[inst.result_index] = res.v;
-        } break;
-        case IR::Opcode::VectorAdd64: {
-            VectorReg a = {GetArg(inst, results_ptr, 0)}, b = {GetArg(inst, results_ptr, 1)}, res;
-            for(int i=0; i<2; ++i) res.u64l[i] = a.u64l[i] + b.u64l[i];
-            results_ptr[inst.result_index] = res.v;
-        } break;
-        case IR::Opcode::VectorSub8: {
-            VectorReg a = {GetArg(inst, results_ptr, 0)}, b = {GetArg(inst, results_ptr, 1)}, res;
-            for(int i=0; i<16; ++i) res.u8l[i] = a.u8l[i] - b.u8l[i];
-            results_ptr[inst.result_index] = res.v;
-        } break;
-        case IR::Opcode::VectorSub16: {
-            VectorReg a = {GetArg(inst, results_ptr, 0)}, b = {GetArg(inst, results_ptr, 1)}, res;
-            for(int i=0; i<8; ++i) res.u16l[i] = a.u16l[i] - b.u16l[i];
-            results_ptr[inst.result_index] = res.v;
-        } break;
-        case IR::Opcode::VectorSub32: {
-            VectorReg a = {GetArg(inst, results_ptr, 0)}, b = {GetArg(inst, results_ptr, 1)}, res;
-            for(int i=0; i<4; ++i) res.u32l[i] = a.u32l[i] - b.u32l[i];
-            results_ptr[inst.result_index] = res.v;
-        } break;
-        case IR::Opcode::VectorSub64: {
-            VectorReg a = {GetArg(inst, results_ptr, 0)}, b = {GetArg(inst, results_ptr, 1)}, res;
-            for(int i=0; i<2; ++i) res.u64l[i] = a.u64l[i] - b.u64l[i];
-            results_ptr[inst.result_index] = res.v;
-        } break;
 
         // Fallback to handlers for everything else
         case IR::Opcode::A32CoprocGetOneWord: HandleA32CoprocGetOneWord(*this, inst, results_ptr, next_pc, branched); break;
@@ -1007,7 +942,13 @@ void ARM_StaticIR::ExecuteBlock(const TranslatedBlock& block) {
         case IR::Opcode::LogicalShiftRightMasked32: HandleLogicalShiftRightMasked32(*this, inst, results_ptr, next_pc, branched); break;
         case IR::Opcode::ArithmeticShiftRightMasked32: HandleArithmeticShiftRightMasked32(*this, inst, results_ptr, next_pc, branched); break;
         case IR::Opcode::RotateRightMasked32: HandleRotateRightMasked32(*this, inst, results_ptr, next_pc, branched); break;
+        case IR::Opcode::A32ReadMemory8: HandleA32ReadMemory8(*this, inst, results_ptr, next_pc, branched); break;
+        case IR::Opcode::A32ReadMemory16: HandleA32ReadMemory16(*this, inst, results_ptr, next_pc, branched); break;
+        case IR::Opcode::A32ReadMemory32: HandleA32ReadMemory32(*this, inst, results_ptr, next_pc, branched); break;
         case IR::Opcode::A32ReadMemory64: HandleA32ReadMemory64(*this, inst, results_ptr, next_pc, branched); break;
+        case IR::Opcode::A32WriteMemory8: HandleA32WriteMemory8(*this, inst, results_ptr, next_pc, branched); break;
+        case IR::Opcode::A32WriteMemory16: HandleA32WriteMemory16(*this, inst, results_ptr, next_pc, branched); break;
+        case IR::Opcode::A32WriteMemory32: HandleA32WriteMemory32(*this, inst, results_ptr, next_pc, branched); break;
         case IR::Opcode::A32WriteMemory64: HandleA32WriteMemory64(*this, inst, results_ptr, next_pc, branched); break;
         case IR::Opcode::A32ClearExclusive: HandleA32ClearExclusive(*this, inst, results_ptr, next_pc, branched); break;
         case IR::Opcode::A32ExclusiveReadMemory8: HandleA32ExclusiveReadMemory8(*this, inst, results_ptr, next_pc, branched); break;
@@ -1059,8 +1000,6 @@ void ARM_StaticIR::ExecuteBlock(const TranslatedBlock& block) {
         case IR::Opcode::MinUnsigned32: HandleMinUnsigned32(*this, inst, results_ptr, next_pc, branched); break;
         case IR::Opcode::IsZero32: HandleIsZero32(*this, inst, results_ptr, next_pc, branched); break;
         case IR::Opcode::TestBit: HandleTestBit(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::GetCarryFromOp: HandleGetCarryFromOp(*this, inst, results_ptr, next_pc, branched); break;
-        case IR::Opcode::GetOverflowFromOp: HandleGetOverflowFromOp(*this, inst, results_ptr, next_pc, branched); break;
         case IR::Opcode::RotateRightExtended: HandleRotateRightExtended(*this, inst, results_ptr, next_pc, branched); break;
         case IR::Opcode::NZCVFromPackedFlags: HandleNZCVFromPackedFlags(*this, inst, results_ptr, next_pc, branched); break;
         case IR::Opcode::FPAdd32: HandleFPAdd32(*this, inst, results_ptr, next_pc, branched); break;
@@ -1112,7 +1051,7 @@ void ARM_StaticIR::ExecuteBlock(const TranslatedBlock& block) {
     regs[15] = next_pc;
     u64 ticks = std::max<u64>(1, (u64)executed_count);
     double scale = 100.0 / static_cast<double>(Settings::values.cpu_clock_percentage.GetValue());
-    cb->AddTicks(static_cast<u64>(static_cast<double>(ticks) * scale));
+    cb->AddTicks(static_cast<u64>(static_cast<double>(ticks) * 2.0 * scale));
 }
 
 } // namespace Core

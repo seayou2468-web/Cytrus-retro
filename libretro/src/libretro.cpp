@@ -396,9 +396,9 @@ void retro_unload_game(void) {
 void retro_run(void) {
     bool updated = false;
     if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE, &updated) && updated) {
-        struct retro_variable var_layout = { "cytrus_layout", nullptr };
-        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var_layout) && var_layout.value) {
-            bool side_by_side = string_is_equal(var_layout.value, "Side-by-Side");
+        struct retro_variable var = { "cytrus_layout", nullptr };
+        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value) {
+            bool side_by_side = string_is_equal(var.value, "Side-by-Side");
             struct retro_game_geometry geometry;
             if (side_by_side) {
                 geometry.base_width = 720;
@@ -412,15 +412,6 @@ void retro_run(void) {
             geometry.max_width = 800;
             geometry.max_height = 800;
             environ_cb(RETRO_ENVIRONMENT_SET_GEOMETRY, &geometry);
-        }
-
-        struct retro_variable var_model = { "cytrus_model", nullptr };
-        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var_model) && var_model.value) {
-            bool is_n3ds = string_is_equal(var_model.value, "New 3DS");
-            if (is_n3ds != Settings::values.is_new_3ds) {
-                Settings::values.is_new_3ds = is_n3ds;
-                LOG_INFO(Frontend, "Model changed to {}. Restart required for full effect.", var_model.value);
-            }
         }
     }
 
@@ -591,25 +582,10 @@ bool retro_unserialize(const void *data, size_t size) {
 }
 
 void retro_cheat_reset(void) {
-    if (!system_instance) return;
-    auto& engine = system_instance->CheatEngine();
-    auto cheats = engine.GetCheats();
-    for (size_t i = 0; i < cheats.size(); i++) {
-        engine.RemoveCheat(0);
-    }
+    system_instance->CheatEngine().LoadCheatFile(0);
 }
 
 void retro_cheat_set(unsigned index, bool enabled, const char *code) {
-    if (!system_instance || !code) return;
-    auto& engine = system_instance->CheatEngine();
-
-    // Gateway codes are usually 2 hex words
-    std::string code_str(code);
-    auto gateway_cheats = Cheats::GatewayCheat::ParseString(code_str);
-    for (auto& cheat : gateway_cheats) {
-        cheat->SetEnabled(enabled);
-        engine.AddCheat(std::move(cheat));
-    }
 }
 
 void* retro_get_memory_data(unsigned id) {
