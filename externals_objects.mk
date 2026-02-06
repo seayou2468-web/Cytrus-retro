@@ -133,6 +133,14 @@ EXTERNAL_OBJECTS := \
     $(CORE_DIR)/libretro/azahar/externals/zstd/lib/decompress/huf_decompress.o \
     $(CORE_DIR)/libretro/azahar/externals/zstd/contrib/seekable_format/zstdseek_compress.o \
     $(CORE_DIR)/libretro/azahar/externals/zstd/contrib/seekable_format/zstdseek_decompress.o \
+    $(CORE_DIR)/libretro/azahar/externals/enet/peer.o \
+    $(CORE_DIR)/libretro/azahar/externals/enet/packet.o \
+    $(CORE_DIR)/libretro/azahar/externals/enet/compress.o \
+    $(CORE_DIR)/libretro/azahar/externals/enet/host.o \
+    $(CORE_DIR)/libretro/azahar/externals/enet/protocol.o \
+    $(CORE_DIR)/libretro/azahar/externals/enet/callbacks.o \
+    $(CORE_DIR)/libretro/azahar/externals/enet/unix.o \
+    $(CORE_DIR)/libretro/azahar/externals/enet/list.o \
     $(CORE_DIR)/libretro/azahar/externals/lodepng/lodepng/lodepng.o \
     $(CORE_DIR)/libretro/azahar/externals/lodepng/lodepng/lodepng_util.o \
     $(CORE_DIR)/libretro/azahar/externals/boost/libs/serialization/src/xml_grammar.o \
