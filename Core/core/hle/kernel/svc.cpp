@@ -2606,6 +2606,13 @@ const SVC::FunctionDef* SVC::GetSVCInfo(u32 func_num) {
 MICROPROFILE_DEFINE(Kernel_SVC, "Kernel", "SVC", MP_RGB(70, 200, 70));
 
 void SVC::CallSVC(u32 immediate) {
+    // Fast path for common SVCs to bypass overhead
+    if (immediate == 0x32) { // SendSyncRequest
+        std::scoped_lock lock{kernel.GetHLELock()};
+        this->SendSyncRequest(static_cast<Handle>(this->GetReg(0)));
+        return;
+    }
+
     MICROPROFILE_SCOPE(Kernel_SVC);
     system.perf_stats->BeginSVCProcessing();
 
@@ -2616,7 +2623,6 @@ void SVC::CallSVC(u32 immediate) {
                      "Running threads from exiting processes is unimplemented");
 
     const FunctionDef* info = GetSVCInfo(immediate);
-    LOG_TRACE(Kernel_SVC, "calling {}", info->name);
     if (info) {
         if (info->func) {
             system.GetRunningCore().GetTimer().AddTicks(info->cycles);

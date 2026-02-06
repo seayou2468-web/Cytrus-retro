@@ -18,9 +18,7 @@
 #include "core/hle/service/cam/cam.h"
 #include "core/hle/service/hid/hid.h"
 #include "core/hle/service/ir/ir_user.h"
-#if CITRA_ARCH(x86_64) || CITRA_ARCH(arm64)
-#include "core/arm/dynarmic/arm_static_ir.h"
-#endif
+#include "core/arm/hybrid_cpu.h"
 #include "core/arm/dyncom/arm_dyncom.h"
 #include "core/cheats/cheats.h"
 #include "core/core.h"
@@ -467,18 +465,15 @@ System::ResultStatus System::Init(Frontend::EmuWindow& emu_window,
     exclusive_monitor = MakeExclusiveMonitor(*memory, num_cores);
     cpu_cores.reserve(num_cores);
 
-#if CITRA_ARCH(x86_64) || CITRA_ARCH(arm64)
-    // Strictly No-JIT: Use Static IR for maximum performance without native code generation
+    // Use Hybrid CPU architecture for balanced performance and precision
     for (u32 i = 0; i < num_cores; ++i) {
-        cpu_cores.push_back(std::make_shared<ARM_StaticIR>(
-            *this, *memory, i, timing->GetTimer(i), *exclusive_monitor));
+        auto cpu = std::make_shared<ARM_HybridCPU>(*this, *memory, i, timing->GetTimer(i),
+                                                   *exclusive_monitor);
+        // Default IR regions for critical timing-sensitive code
+        cpu->SetIRRegion(0xFFFF0000, 0x00010000); // Exception vectors and KProcess hooks
+        cpu->SetIRRegion(0x1FF00000, 0x00100000); // DSP/MMIO range for precise IO timing
+        cpu_cores.push_back(std::move(cpu));
     }
-#else
-    for (u32 i = 0; i < num_cores; ++i) {
-        cpu_cores.push_back(
-            std::make_shared<ARM_DynCom>(*this, *memory, USER32MODE, i, timing->GetTimer(i)));
-    }
-#endif
     running_core = cpu_cores[0].get();
 
     kernel->SetCPUs(cpu_cores);

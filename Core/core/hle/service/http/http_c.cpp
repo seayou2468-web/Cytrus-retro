@@ -7,6 +7,11 @@
 #include <tuple>
 #include <unordered_map>
 #include <boost/algorithm/string/replace.hpp>
+#if 0
+#include <openssl/ssl.h>
+#include <openssl/x509.h>
+#include <openssl/err.h>
+#endif
 #include <cryptopp/aes.h>
 #include <cryptopp/modes.h>
 #include <fmt/format.h>
@@ -291,7 +296,37 @@ void Context::MakeRequest() {
         {RequestMethod::PutEmpty, "PUT"},
     };
 
-    URLInfo url_info = SplitUrl(url);
+    std::string final_url = url;
+    int net_provider = Settings::values.network_provider.GetValue();
+    int mii_provider = Settings::values.miiverse_provider.GetValue();
+
+    // Redirection logic
+    if (final_url.find("conntest.nintendowifi.net") != std::string::npos) {
+        final_url = "http://google.com/generate_204";
+    }
+
+    if (final_url.find("nintendo.net") != std::string::npos || final_url.find("nintendo.jp") != std::string::npos) {
+        if (final_url.find("olv.nintendo.net") != std::string::npos) {
+            // Miiverse specific redirection (Juxtaposition)
+            if (mii_provider == 1) { // Juxtaposition
+                boost::replace_all(final_url, "olv.nintendo.net", "juxt.b9s.pw");
+            } else if (net_provider == 1) { // Fallback to Pretendo Miiverse if Juxtaposition not selected
+                boost::replace_all(final_url, "nintendo.net", "pretendo.cc");
+                boost::replace_all(final_url, "nintendo.jp", "pretendo.cc");
+            }
+        } else {
+            // General Nintendo Network redirection
+            if (net_provider == 1) { // Pretendo
+                boost::replace_all(final_url, "nintendo.net", "pretendo.cc");
+                boost::replace_all(final_url, "nintendo.jp", "pretendo.cc");
+            } else if (net_provider == 2) { // Plustendo
+                boost::replace_all(final_url, "nintendo.net", "plustendo.online");
+                boost::replace_all(final_url, "nintendo.jp", "plustendo.online");
+            }
+        }
+    }
+
+    URLInfo url_info = SplitUrl(final_url);
 
     httplib::Request request;
     std::vector<Context::RequestHeader> pending_headers;
@@ -393,61 +428,9 @@ void Context::MakeRequestNonSSL(httplib::Request& request, const URLInfo& url_in
 }
 
 void Context::MakeRequestSSL(httplib::Request& request, const URLInfo& url_info,
-                             std::vector<Context::RequestHeader>& pending_headers) {
-    httplib::Error error{-1};
-    X509* cert = nullptr;
-    EVP_PKEY* key = nullptr;
-    const unsigned char* cert_data = nullptr;
-    const unsigned char* key_data = nullptr;
-    long cert_size = 0;
-    long key_size = 0;
-    SCOPE_EXIT({
-        if (cert) {
-            X509_free(cert);
-        }
-        if (key) {
-            EVP_PKEY_free(key);
-        }
-    });
-
-    if (uses_default_client_cert) {
-        cert_data = clcert_data->certificate.data();
-        key_data = clcert_data->private_key.data();
-        cert_size = static_cast<long>(clcert_data->certificate.size());
-        key_size = static_cast<long>(clcert_data->private_key.size());
-    } else if (auto client_cert = ssl_config.client_cert_ctx.lock()) {
-        cert_data = client_cert->certificate.data();
-        key_data = client_cert->private_key.data();
-        cert_size = static_cast<long>(client_cert->certificate.size());
-        key_size = static_cast<long>(client_cert->private_key.size());
-    }
-
-    std::unique_ptr<httplib::SSLClient> client;
-    if (cert_data && key_data) {
-        cert = d2i_X509(nullptr, &cert_data, cert_size);
-        key = d2i_PrivateKey(EVP_PKEY_RSA, nullptr, &key_data, key_size);
-        client = std::make_unique<httplib::SSLClient>(url_info.host, url_info.port, cert, key);
-    } else {
-        client = std::make_unique<httplib::SSLClient>(url_info.host, url_info.port);
-    }
-
-    // TODO(B3N30): Check for SSLOptions-Bits and set the verify method accordingly
-    // https://www.3dbrew.org/wiki/SSL_Services#SSLOpt
-    // Hack: Since for now RootCerts are not implemented we set the VerifyMode to None.
-    client->enable_server_certificate_verification(false);
-
-    client->set_header_writer(
-        [this, &pending_headers](httplib::Stream& strm, httplib::Headers& httplib_headers) {
-            return HandleHeaderWrite(pending_headers, strm, httplib_headers);
-        });
-
-    if (!client->send(request, response, error)) {
-        LOG_ERROR(Service_HTTP, "Request failed: {}: {}", error, httplib::to_string(error));
-        state = RequestState::Completed;
-    } else {
-        LOG_DEBUG(Service_HTTP, "Request successful");
-        state = RequestState::ReceivingBody;
-    }
+                             std::vector<Context::RequestHeader>& pending_headers)
+{
+    LOG_ERROR(Service_HTTP, "SSL not supported");
 }
 
 bool Context::ContentProvider(size_t offset, size_t length, httplib::DataSink& sink) {

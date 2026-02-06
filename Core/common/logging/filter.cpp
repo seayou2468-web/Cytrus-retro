@@ -6,6 +6,7 @@
 
 #include "common/assert.h"
 #include "common/logging/filter.h"
+#include "common/logging/log.h"
 #include "common/string_util.h"
 
 namespace Common::Log {

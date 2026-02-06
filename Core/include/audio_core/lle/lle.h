@@ -4,8 +4,13 @@
 
 #pragma once
 
+#include <functional>
 #include <span>
 #include "audio_core/dsp_interface.h"
+
+namespace Teakra {
+class Teakra;
+}
 
 namespace Core {
 class Timing;
@@ -38,6 +43,9 @@ public:
 
     void LoadComponent(const std::span<const u8> buffer) override;
     void UnloadComponent() override;
+
+    using HLEFunction = std::function<void(Teakra::Teakra&)>;
+    void RegisterHLEFunction(u32 address, HLEFunction func);
 
 private:
     struct Impl;

@@ -13,31 +13,25 @@
 #include "common/common_types.h"
 #include "core/arm/arm_interface.h"
 #include "core/arm/dynarmic/arm_dynarmic_cp15.h"
-#include "core/hle/kernel/svc.h"
 
 namespace Memory {
 struct PageTable;
 class MemorySystem;
-} // namespace Memory
-
-namespace Dynarmic::IR {
-class Block;
-class Inst;
 }
 
 namespace Core {
 
-class ARM_StaticIR_Callbacks;
+class ARM_IRBackend_Callbacks;
 class DynarmicExclusiveMonitor;
 class ExclusiveMonitor;
 class System;
 
-class ARM_StaticIR final : public ARM_Interface {
+class ARM_IRBackend final : public ARM_Interface {
 public:
-    explicit ARM_StaticIR(Core::System& system_, Memory::MemorySystem& memory_, u32 core_id_,
-                          std::shared_ptr<Core::Timing::Timer> timer,
-                          Core::ExclusiveMonitor& exclusive_monitor_);
-    ~ARM_StaticIR() override;
+    explicit ARM_IRBackend(Core::System& system_, Memory::MemorySystem& memory_, u32 core_id_,
+                           std::shared_ptr<Core::Timing::Timer> timer,
+                           Core::ExclusiveMonitor& exclusive_monitor_);
+    ~ARM_IRBackend() override;
 
     void Run() override;
     void Step() override;
@@ -65,6 +59,11 @@ public:
     void ClearExclusiveState() override;
     void SetPageTable(const std::shared_ptr<Memory::PageTable>& page_table) override;
 
+    using HLEFunction = std::function<void(ARM_Interface&)>;
+    void RegisterHLEFunction(u32 address, HLEFunction func);
+
+    ARM_IRBackend_Callbacks& GetCallbacks();
+
     struct Operand {
         enum Kind { Immediate, Result, Register, ExtReg, Cond, AccType, CoprocInfo } kind;
         u64 value;
@@ -77,16 +76,11 @@ public:
         u16 result_index;
     };
 
-    ARM_StaticIR_Callbacks& GetCallbacks();
-
-    using HLEFunction = std::function<void(ARM_StaticIR&)>;
-    void RegisterHLEFunction(u32 address, HLEFunction func);
-
 protected:
     std::shared_ptr<Memory::PageTable> GetPageTable() const override;
 
-private:
-    friend class ARM_StaticIR_Callbacks;
+public:
+    friend class ARM_IRBackend_Callbacks;
 
     struct TranslatedBlock {
         std::vector<Instruction> instructions;
@@ -98,7 +92,7 @@ private:
 
     Core::System& system;
     Memory::MemorySystem& memory;
-    std::unique_ptr<ARM_StaticIR_Callbacks> cb;
+    std::unique_ptr<ARM_IRBackend_Callbacks> cb;
 
     u32 regs[16] = {0};
     u32 vfp_regs[64] = {0};
@@ -112,7 +106,6 @@ private:
     std::unordered_map<u32, TranslatedBlock> block_cache;
     std::unordered_map<u32, HLEFunction> hle_functions;
 
-    // Fast-path cache
     static constexpr size_t FAST_BLOCK_CACHE_SIZE = 4096;
     struct FastCacheEntry {
         u32 pc = 0xFFFFFFFF;
@@ -121,8 +114,6 @@ private:
     std::array<FastCacheEntry, FAST_BLOCK_CACHE_SIZE> fast_block_cache;
 
     std::vector<unsigned __int128> results_buffer;
-
-public:
     std::vector<u32> flags_buffer;
     Dynarmic::A32::UserConfig config;
 };

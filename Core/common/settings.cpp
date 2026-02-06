@@ -6,6 +6,7 @@
 #include <utility>
 #include "audio_core/dsp_interface.h"
 #include "common/file_util.h"
+#include "common/logging/log.h"
 #include "common/settings.h"
 
 namespace Settings {

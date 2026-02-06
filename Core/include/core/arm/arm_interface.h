@@ -198,7 +198,7 @@ public:
         return id;
     }
 
-protected:
+public:
     // This us used for serialization. Returning nullptr is valid if page tables are not used.
     virtual std::shared_ptr<Memory::PageTable> GetPageTable() const = 0;
 
