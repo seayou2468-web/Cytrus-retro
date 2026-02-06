@@ -18,7 +18,7 @@
 #include "common/logging/log.h"
 #include "core/arm/dynarmic/arm_dynarmic_cp15.h"
 #include "core/arm/dynarmic/arm_exclusive_monitor.h"
-#include "core/arm/dynarmic/arm_static_ir.h"
+#include "core/arm/ir_backend.h"
 #include "core/arm/dynarmic/arm_tick_counts.h"
 #include "core/core.h"
 #include "core/core_timing.h"
@@ -29,9 +29,9 @@ namespace Core {
 
 using namespace Dynarmic;
 
-class ARM_StaticIR_Callbacks final : public Dynarmic::A32::UserCallbacks {
+class ARM_IRBackend_Callbacks final : public Dynarmic::A32::UserCallbacks {
 public:
-    explicit ARM_StaticIR_Callbacks(ARM_StaticIR& parent)
+    explicit ARM_IRBackend_Callbacks(ARM_IRBackend& parent)
         : parent(parent), memory(parent.memory), svc_context(parent.system) {}
 
     std::uint8_t MemoryRead8(Dynarmic::A32::VAddr vaddr) override { return memory.Read8(vaddr); }
@@ -82,16 +82,16 @@ public:
         return Core::TicksForInstruction(is_thumb, instruction);
     }
 
-    ARM_StaticIR& parent;
+    ARM_IRBackend& parent;
     Memory::MemorySystem& memory;
     Kernel::SVCContext svc_context;
 };
 
-ARM_StaticIR::ARM_StaticIR(Core::System& system_, Memory::MemorySystem& memory_, u32 core_id_,
+ARM_IRBackend::ARM_IRBackend(Core::System& system_, Memory::MemorySystem& memory_, u32 core_id_,
                            std::shared_ptr<Core::Timing::Timer> timer_,
                            Core::ExclusiveMonitor& exclusive_monitor_)
     : ARM_Interface(core_id_, timer_), system(system_), memory(memory_),
-      cb(std::make_unique<ARM_StaticIR_Callbacks>(*this)),
+      cb(std::make_unique<ARM_IRBackend_Callbacks>(*this)),
       exclusive_monitor{dynamic_cast<Core::DynarmicExclusiveMonitor&>(exclusive_monitor_)} {
 
     config.callbacks = cb.get();
@@ -100,11 +100,11 @@ ARM_StaticIR::ARM_StaticIR(Core::System& system_, Memory::MemorySystem& memory_,
     config.global_monitor = &exclusive_monitor.GetMonitor();
 }
 
-ARM_StaticIR::~ARM_StaticIR() = default;
+ARM_IRBackend::~ARM_IRBackend() = default;
 
-ARM_StaticIR_Callbacks& ARM_StaticIR::GetCallbacks() { return *cb; }
+ARM_IRBackend_Callbacks& ARM_IRBackend::GetCallbacks() { return *cb; }
 
-void ARM_StaticIR::Run() {
+void ARM_IRBackend::Run() {
     while (system.IsPoweredOn()) {
         auto it = hle_functions.find(regs[15]);
         if (it != hle_functions.end()) {
@@ -123,7 +123,7 @@ void ARM_StaticIR::Run() {
     }
 }
 
-void ARM_StaticIR::Step() {
+void ARM_IRBackend::Step() {
     auto it = hle_functions.find(regs[15]);
     if (it != hle_functions.end()) {
         it->second(*this);
@@ -134,40 +134,40 @@ void ARM_StaticIR::Step() {
     ExecuteBlock(block);
 }
 
-void ARM_StaticIR::RegisterHLEFunction(u32 address, HLEFunction func) {
+void ARM_IRBackend::RegisterHLEFunction(u32 address, HLEFunction func) {
     hle_functions[address] = std::move(func);
     // Invalidate cache for this address to ensure hook is checked
     InvalidateCacheRange(address, 4);
 }
 
-void ARM_StaticIR::SetPC(u32 pc) { regs[15] = pc; }
-u32 ARM_StaticIR::GetPC() const { return regs[15]; }
-u32 ARM_StaticIR::GetReg(int index) const { return regs[index]; }
-void ARM_StaticIR::SetReg(int index, u32 value) { regs[index] = value; }
-u32 ARM_StaticIR::GetVFPReg(int index) const { return vfp_regs[index]; }
-void ARM_StaticIR::SetVFPReg(int index, u32 value) { vfp_regs[index] = value; }
-u32 ARM_StaticIR::GetVFPSystemReg(VFPSystemRegister reg) const {
+void ARM_IRBackend::SetPC(u32 pc) { regs[15] = pc; }
+u32 ARM_IRBackend::GetPC() const { return regs[15]; }
+u32 ARM_IRBackend::GetReg(int index) const { return regs[index]; }
+void ARM_IRBackend::SetReg(int index, u32 value) { regs[index] = value; }
+u32 ARM_IRBackend::GetVFPReg(int index) const { return vfp_regs[index]; }
+void ARM_IRBackend::SetVFPReg(int index, u32 value) { vfp_regs[index] = value; }
+u32 ARM_IRBackend::GetVFPSystemReg(VFPSystemRegister reg) const {
     if (reg == VFP_FPSCR) return fpscr;
     if (reg == VFP_FPEXC) return fpexc;
     return 0;
 }
-void ARM_StaticIR::SetVFPSystemReg(VFPSystemRegister reg, u32 value) {
+void ARM_IRBackend::SetVFPSystemReg(VFPSystemRegister reg, u32 value) {
     if (reg == VFP_FPSCR) fpscr = value;
     else if (reg == VFP_FPEXC) fpexc = value;
 }
-u32 ARM_StaticIR::GetCPSR() const { return cpsr; }
-void ARM_StaticIR::SetCPSR(u32 cpsr_) { cpsr = cpsr_; }
-u32 ARM_StaticIR::GetCP15Register(CP15Register reg) const {
+u32 ARM_IRBackend::GetCPSR() const { return cpsr; }
+void ARM_IRBackend::SetCPSR(u32 cpsr_) { cpsr = cpsr_; }
+u32 ARM_IRBackend::GetCP15Register(CP15Register reg) const {
     if (reg == CP15_THREAD_UPRW) return cp15_state.cp15_thread_uprw;
     if (reg == CP15_THREAD_URO) return cp15_state.cp15_thread_uro;
     return 0;
 }
-void ARM_StaticIR::SetCP15Register(CP15Register reg, u32 value) {
+void ARM_IRBackend::SetCP15Register(CP15Register reg, u32 value) {
     if (reg == CP15_THREAD_UPRW) cp15_state.cp15_thread_uprw = value;
     else if (reg == CP15_THREAD_URO) cp15_state.cp15_thread_uro = value;
 }
 
-void ARM_StaticIR::SaveContext(ThreadContext& ctx) {
+void ARM_IRBackend::SaveContext(ThreadContext& ctx) {
     std::memcpy(ctx.cpu_registers.data(), regs, sizeof(regs));
     ctx.cpsr = cpsr;
     std::memcpy(ctx.fpu_registers.data(), vfp_regs, sizeof(vfp_regs));
@@ -175,7 +175,7 @@ void ARM_StaticIR::SaveContext(ThreadContext& ctx) {
     ctx.fpexc = fpexc;
 }
 
-void ARM_StaticIR::LoadContext(const ThreadContext& ctx) {
+void ARM_IRBackend::LoadContext(const ThreadContext& ctx) {
     std::memcpy(regs, ctx.cpu_registers.data(), sizeof(regs));
     cpsr = ctx.cpsr;
     std::memcpy(vfp_regs, ctx.fpu_registers.data(), sizeof(vfp_regs));
@@ -183,12 +183,12 @@ void ARM_StaticIR::LoadContext(const ThreadContext& ctx) {
     fpexc = ctx.fpexc;
 }
 
-void ARM_StaticIR::PrepareReschedule() {}
-void ARM_StaticIR::ClearInstructionCache() {
+void ARM_IRBackend::PrepareReschedule() {}
+void ARM_IRBackend::ClearInstructionCache() {
     block_cache.clear();
     for (auto& entry : fast_block_cache) entry.pc = 0xFFFFFFFF;
 }
-void ARM_StaticIR::InvalidateCacheRange(u32 start_address, std::size_t length) {
+void ARM_IRBackend::InvalidateCacheRange(u32 start_address, std::size_t length) {
     for (auto it = block_cache.begin(); it != block_cache.end(); ) {
         if (it->first >= start_address && it->first < start_address + length) {
             it = block_cache.erase(it);
@@ -202,13 +202,13 @@ void ARM_StaticIR::InvalidateCacheRange(u32 start_address, std::size_t length) {
         }
     }
 }
-void ARM_StaticIR::ClearExclusiveState() {}
-void ARM_StaticIR::SetPageTable(const std::shared_ptr<Memory::PageTable>& page_table) {
+void ARM_IRBackend::ClearExclusiveState() {}
+void ARM_IRBackend::SetPageTable(const std::shared_ptr<Memory::PageTable>& page_table) {
     current_page_table = page_table;
 }
-std::shared_ptr<Memory::PageTable> ARM_StaticIR::GetPageTable() const { return current_page_table; }
+std::shared_ptr<Memory::PageTable> ARM_IRBackend::GetPageTable() const { return current_page_table; }
 
-const ARM_StaticIR::TranslatedBlock& ARM_StaticIR::GetOrTranslateBlock(u32 pc) {
+const ARM_IRBackend::TranslatedBlock& ARM_IRBackend::GetOrTranslateBlock(u32 pc) {
     const u32 index = (pc >> 2) & (FAST_BLOCK_CACHE_SIZE - 1);
     if (fast_block_cache[index].pc == pc) return *fast_block_cache[index].block;
 
@@ -277,14 +277,14 @@ const ARM_StaticIR::TranslatedBlock& ARM_StaticIR::GetOrTranslateBlock(u32 pc) {
 }
 
 namespace {
-typedef void (*OpHandler)(ARM_StaticIR& self, const ARM_StaticIR::Instruction& inst, unsigned __int128* results, u32& next_pc, bool& branched);
+typedef void (*OpHandler)(ARM_IRBackend& self, const ARM_IRBackend::Instruction& inst, unsigned __int128* results, u32& next_pc, bool& branched);
 
-static inline unsigned __int128 GetArg(const ARM_StaticIR::Instruction& inst, const unsigned __int128* results, size_t i) {
-    if (inst.args[i].kind == ARM_StaticIR::Operand::Immediate) return inst.args[i].value;
+static inline unsigned __int128 GetArg(const ARM_IRBackend::Instruction& inst, const unsigned __int128* results, size_t i) {
+    if (inst.args[i].kind == ARM_IRBackend::Operand::Immediate) return inst.args[i].value;
     return results[inst.args[i].value];
 }
 
-#define OP_HANDLER(name) static void Handle##name(ARM_StaticIR& self, const ARM_StaticIR::Instruction& inst, unsigned __int128* results, u32& next_pc, bool& branched)
+#define OP_HANDLER(name) static void Handle##name(ARM_IRBackend& self, const ARM_IRBackend::Instruction& inst, unsigned __int128* results, u32& next_pc, bool& branched)
 
 OP_HANDLER(A32GetRegister) { results[inst.result_index] = self.GetReg((int)inst.args[0].value); }
 OP_HANDLER(A32SetRegister) { self.SetReg((int)inst.args[0].value, (u32)GetArg(inst, results, 1)); }
@@ -312,7 +312,7 @@ OP_HANDLER(Add32) {
     bool v = (~(a ^ b) & (a ^ res)) >> 31;
     u32 flags = (n << 3) | (z << 2) | (c << 1) | v;
     self.flags_buffer[inst.result_index] = flags;
-    if (inst.arg_count > 2 && inst.args[2].kind == ARM_StaticIR::Operand::Immediate && inst.args[2].value) {
+    if (inst.arg_count > 2 && inst.args[2].kind == ARM_IRBackend::Operand::Immediate && inst.args[2].value) {
         self.SetCPSR((self.GetCPSR() & 0x0FFFFFFF) | (flags << 28));
     }
 }
@@ -328,7 +328,7 @@ OP_HANDLER(Sub32) {
     bool v = ((a ^ b) & (a ^ res)) >> 31;
     u32 flags = (n << 3) | (z << 2) | (c << 1) | v;
     self.flags_buffer[inst.result_index] = flags;
-    if (inst.arg_count > 2 && inst.args[2].kind == ARM_StaticIR::Operand::Immediate && inst.args[2].value) {
+    if (inst.arg_count > 2 && inst.args[2].kind == ARM_IRBackend::Operand::Immediate && inst.args[2].value) {
         self.SetCPSR((self.GetCPSR() & 0x0FFFFFFF) | (flags << 28));
     }
 }
@@ -799,7 +799,7 @@ OP_HANDLER(ConditionalSelectNZCV) {
 
 } // namespace
 
-void ARM_StaticIR::ExecuteBlock(const TranslatedBlock& block) {
+void ARM_IRBackend::ExecuteBlock(const TranslatedBlock& block) {
     size_t num_insts = block.instructions.size();
     if (results_buffer.size() < num_insts) {
         results_buffer.resize(std::max<size_t>(num_insts, 1024));

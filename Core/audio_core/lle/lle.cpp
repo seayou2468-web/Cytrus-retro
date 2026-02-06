@@ -6,7 +6,9 @@
 #include <array>
 #include <atomic>
 #include <thread>
+#include <unordered_map>
 #include <teakra/teakra.h>
+#include <teakra/impl/register.h>
 #include "audio_core/lle/lle.h"
 #include "common/assert.h"
 #include "common/bit_field.h"
@@ -122,7 +124,12 @@ static u8 PipeIndexToSlotIndex(u8 pipe_index, PipeDirection direction) {
 }
 
 struct DspLle::Impl final {
-    Impl(Core::Timing& timing, bool multithread) : core_timing(timing), multithread(multithread) {
+    Impl(Core::Timing& timing, bool multithread) : core_timing(timing), multithread(multithread),
+        teakra([this] {
+            Teakra::UserConfig config;
+            config.dsp_memory = dsp_memory.data();
+            return config;
+        }()) {
         teakra_slice_event = core_timing.RegisterEvent(
             "DSP slice", [this](u64, int late) { TeakraSliceEvent(static_cast<u64>(late)); });
     }
@@ -131,6 +138,7 @@ struct DspLle::Impl final {
         StopTeakraThread();
     }
 
+    std::array<u8, Memory::DSP_RAM_SIZE> dsp_memory{};
     Teakra::Teakra teakra;
     u16 pipe_base_waddr = 0;
 
@@ -140,6 +148,8 @@ struct DspLle::Impl final {
     Core::Timing& core_timing;
     Core::TimingEventType* teakra_slice_event;
     std::atomic<bool> loaded = false;
+
+    std::unordered_map<u32, DspLle::HLEFunction> hle_functions;
 
     const bool multithread;
     std::thread teakra_thread;
@@ -172,6 +182,13 @@ struct DspLle::Impl final {
     }
 
     void RunTeakraSlice() {
+        u32 pc = teakra.GetRegisterState().pc;
+        auto it = hle_functions.find(pc);
+        if (it != hle_functions.end()) {
+            it->second(teakra);
+            return;
+        }
+
         if (multithread) {
             teakra_slice_barrier.Sync();
         } else {
@@ -190,13 +207,11 @@ struct DspLle::Impl final {
     }
 
     u8* GetDspDataPointer(u32 baddr) {
-        auto& memory = teakra.GetDspMemory();
-        return &memory[DspDataOffset + baddr];
+        return &dsp_memory[DspDataOffset + baddr];
     }
 
     const u8* GetDspDataPointer(u32 baddr) const {
-        auto& memory = teakra.GetDspMemory();
-        return &memory[DspDataOffset + baddr];
+        return &dsp_memory[DspDataOffset + baddr];
     }
 
     PipeStatus GetPipeStatus(u8 pipe_index, PipeDirection direction) const {
@@ -313,7 +328,6 @@ struct DspLle::Impl final {
         teakra.Reset();
 
         Dsp1 dsp(buffer);
-        auto& dsp_memory = teakra.GetDspMemory();
         u8* program = dsp_memory.data();
         u8* data = dsp_memory.data() + DspDataOffset;
         for (const auto& segment : dsp.segments) {
@@ -405,7 +419,7 @@ void DspLle::PipeWrite(DspPipe pipe_number, std::span<const u8> buffer) {
 }
 
 std::array<u8, Memory::DSP_RAM_SIZE>& DspLle::GetDspMemory() {
-    return impl->teakra.GetDspMemory();
+    return impl->dsp_memory;
 }
 
 void DspLle::SetInterruptHandler(
@@ -463,6 +477,10 @@ void DspLle::LoadComponent(std::span<const u8> buffer) {
 
 void DspLle::UnloadComponent() {
     impl->UnloadComponent();
+}
+
+void DspLle::RegisterHLEFunction(u32 address, HLEFunction func) {
+    impl->hle_functions[address] = std::move(func);
 }
 
 DspLle::DspLle(Core::System& system, bool multithread)

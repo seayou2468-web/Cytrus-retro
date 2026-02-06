@@ -1,0 +1,111 @@
+DEBUG = 0
+STATIC_LINKING = 0
+
+ifeq ($(platform),)
+platform = unix
+ifeq ($(shell uname -a),)
+   platform = win
+else ifneq ($(findstring MINGW,$(shell uname -a)),)
+   platform = win
+else ifneq ($(findstring Darwin,$(shell uname -a)),)
+   platform = osx
+else ifneq ($(findstring iOS,$(shell uname -a)),)
+   platform = ios
+endif
+endif
+
+CORE_DIR := .
+LIBRETRO_DIR := $(CORE_DIR)/libretro/core
+COMMON_DIR := $(CORE_DIR)/Core/common
+CORE_SRC_DIR := $(CORE_DIR)/Core
+
+TARGET_NAME := cytrus
+
+ifeq ($(platform), unix)
+   TARGET := $(TARGET_NAME)_libretro.so
+   fpic := -fPIC
+   SHARED := -shared -Wl,--no-undefined
+else ifeq ($(platform), osx)
+   TARGET := $(TARGET_NAME)_libretro.dylib
+   fpic := -fPIC
+   SHARED := -dynamiclib
+else ifneq (,$(findstring ios,$(platform)))
+   TARGET := $(TARGET_NAME)_libretro_ios.dylib
+   fpic := -fPIC
+   SHARED := -dynamiclib
+   CC = clang
+   CXX = clang++
+   MIN_IOS_VERSION = -miphoneos-version-min=11.0
+   CFLAGS += $(MIN_IOS_VERSION) -arch arm64
+   CXXFLAGS += $(MIN_IOS_VERSION) -arch arm64
+   LDFLAGS += $(MIN_IOS_VERSION) -arch arm64
+endif
+
+#include $(CORE_DIR)/libretro/libretro-common/Makefile.common
+
+INCFLAGS := -I$(CORE_DIR)/libretro/libretro-common/include \
+            -I$(CORE_SRC_DIR)/include \
+            -I$(CORE_SRC_DIR) \
+            -I$(CORE_SRC_DIR)/core \
+            -I$(CORE_SRC_DIR)/video_core \
+            -I$(LIBRETRO_DIR) \
+            -I$(CORE_DIR)/libretro/azahar/externals/fmt/include \
+            -I$(CORE_DIR)/libretro/azahar/externals/boost \
+            -I$(CORE_DIR)/libretro/azahar/externals/cryptopp \
+            -I$(CORE_DIR)/libretro/azahar/externals \
+            -I$(CORE_DIR)/libretro/azahar/externals/teakra/include \
+            -I$(CORE_DIR)/libretro/azahar/externals/teakra/include/teakra/impl \
+            -I$(CORE_DIR)/libretro/azahar/externals/teakra/src \
+            -I$(CORE_DIR)/libretro/azahar/externals/microprofile \
+            -I$(CORE_DIR)/libretro/azahar/externals/zstd/lib \
+            -I$(CORE_DIR)/libretro/azahar/externals/zstd/lib/common \
+            -I$(CORE_DIR)/libretro/azahar/externals/zstd/lib/compress \
+            -I$(CORE_DIR)/libretro/azahar/externals/zstd/lib/decompress \
+            -I$(CORE_DIR)/libretro/azahar/externals/zstd/contrib \
+            -I$(CORE_DIR)/libretro/azahar/externals/nihstro/include \
+            -I$(CORE_DIR)/libretro/azahar/externals/json \
+            -I$(CORE_DIR)/libretro/azahar/externals/dds-ktx \
+            -I$(CORE_DIR)/libretro/azahar/externals/soundtouch/include \
+            -I$(CORE_DIR)/libretro/azahar/externals/httplib \
+            -I$(CORE_DIR)/libretro/dynarmic/src \
+            -I$(CORE_DIR)/libretro/dynarmic/externals/mcl/include \
+            -I$(CORE_DIR)/libretro/dynarmic/externals/robin-map/include \
+            -I$(CORE_DIR)/libretro/azahar/externals/lodepng/lodepng \
+            -I$(CORE_DIR)/libretro/azahar/externals/xxHash
+
+include core_objects.mk
+include externals_objects.mk
+
+OBJECTS := $(LIBRETRO_DIR)/libretro.o \
+           $(LIBRETRO_DIR)/libretro_sink.o \
+           $(LIBRETRO_DIR)/libretro_emu_window.o \
+           $(LIBRETRO_DIR)/libretro_input.o \
+           $(LIBRETRO_DIR)/cryptopp_glue.o \
+           $(LIBRETRO_DIR)/dynarmic_glue.o \
+           $(LIBRETRO_DIR)/stubs.o \
+           $(CORE_OBJECTS) \
+           $(EXTERNAL_OBJECTS)
+
+CRYPTOPP_DISABLE := -DCRYPTOPP_DISABLE_ASM -DCRYPTOPP_DISABLE_SSSE3 -DCRYPTOPP_DISABLE_SSE4 -DCRYPTOPP_DISABLE_AESNI -DCRYPTOPP_DISABLE_CLMUL -DCRYPTOPP_DISABLE_SHA -DCRYPTOPP_DISABLE_AVX -DCRYPTOPP_DISABLE_AVX2 -DCRYPTOPP_DISABLE_RIJNDAEL_ASM
+SOUNDTOUCH_DISABLE := -DSOUNDTOUCH_DISABLE_X86_OPTIMIZATIONS -USOUNDTOUCH_ALLOW_X86_OPTIMIZATIONS -USOUNDTOUCH_ALLOW_SSE -USOUNDTOUCH_ALLOW_MMX
+CFLAGS += $(fpic) $(INCFLAGS) -D__LIBRETRO__ -DNDEBUG -DENABLE_SOFTWARE_RENDERER -DZSTD_DISABLE_ASM $(CRYPTOPP_DISABLE) $(SOUNDTOUCH_DISABLE)
+CXXFLAGS += $(fpic) $(INCFLAGS) -D__LIBRETRO__ -DNDEBUG -std=c++20 -DENABLE_SOFTWARE_RENDERER -include common/logging/log.h -DZSTD_DISABLE_ASM $(CRYPTOPP_DISABLE) $(SOUNDTOUCH_DISABLE)
+
+all: $(TARGET)
+
+$(TARGET): $(OBJECTS)
+	$(CXX) $(OBJECTS) $(LDFLAGS) $(SHARED) -o $@
+
+%.o: %.cpp
+	$(CXX) -c -o $@ $< $(CXXFLAGS)
+
+%.o: %.cc
+	$(CXX) -c -o $@ $< $(CXXFLAGS)
+
+%.o: %.c
+	$(CC) -c -o $@ $< $(CFLAGS)
+
+clean:
+	rm -f $(OBJECTS) $(TARGET)
+
+.PHONY: clean all

@@ -602,6 +602,11 @@ struct Values {
     Setting<std::string> log_filter{"*:Info", "log_filter"};
     Setting<std::string> log_regex_filter{"", "log_regex_filter"};
 
+    // Network
+    Setting<int> network_provider{0, "network_provider"};
+    Setting<int> miiverse_provider{0, "miiverse_provider"};
+    Setting<int> ssl_verification{0, "ssl_verification"};
+
     // Video Dumping
     std::string output_format;
     std::string format_options;
