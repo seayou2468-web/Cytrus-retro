@@ -12,9 +12,7 @@
 namespace Core {
 
 class ExclusiveMonitor;
-class ARM_IRBackend;
-class ARM_DynCom;
-using ARM_HLEBackend = ARM_DynCom;
+class ARM_Hybrid;
 
 class ARM_HybridCPU final : public ARM_Interface {
 public:
@@ -49,7 +47,7 @@ public:
     void ClearExclusiveState() override;
     void SetPageTable(const std::shared_ptr<Memory::PageTable>& page_table) override;
 
-    // Region management
+    // Region management (Forwarded to backend if necessary)
     void SetIRRegion(u32 start, u32 size);
     void SetHLERegion(u32 start, u32 size);
 
@@ -57,19 +55,8 @@ public:
     std::shared_ptr<Memory::PageTable> GetPageTable() const override;
 
 private:
-    bool UseIR(u32 pc) const;
-    void SyncState(ARM_Interface& from, ARM_Interface& to);
-
     Core::System& system;
-    std::unique_ptr<ARM_IRBackend> ir_backend;
-    std::unique_ptr<ARM_HLEBackend> hle_backend;
-    ARM_Interface* current_active_backend;
-
-    struct Region {
-        u32 start;
-        u32 end;
-    };
-    std::vector<Region> ir_regions;
+    std::unique_ptr<ARM_Hybrid> backend;
 };
 
 } // namespace Core

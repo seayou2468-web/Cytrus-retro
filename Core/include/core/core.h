@@ -317,7 +317,11 @@ public:
     }
 
     [[nodiscard]] const std::string& GetCartridge() const {
-        return m_filepath;
+        return m_cartridge_path.empty() ? m_filepath : m_cartridge_path;
+    }
+
+    void SetCartridge(const std::string& filepath) {
+        m_cartridge_path = filepath;
     }
 
     /// Frontend Applets
@@ -469,6 +473,7 @@ private:
     Frontend::EmuWindow* m_emu_window;
     Frontend::EmuWindow* m_secondary_window;
     std::string m_filepath;
+    std::string m_cartridge_path;
     std::string m_chainloadpath;
     std::optional<u8> m_mem_mode_override;
     u64 title_id;

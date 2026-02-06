@@ -313,10 +313,9 @@ CORE_OBJECTS := \
     $(CORE_DIR)/Core/core/dumping/backend.o \
     $(CORE_DIR)/Core/core/arm/exclusive_monitor.o \
     $(CORE_DIR)/Core/core/arm/hybrid_cpu.o \
-    $(CORE_DIR)/Core/core/arm/ir_backend.o \
     $(CORE_DIR)/Core/core/arm/dynarmic/arm_exclusive_monitor.o \
     $(CORE_DIR)/Core/core/arm/dynarmic/arm_tick_counts.o \
-    $(CORE_DIR)/Core/core/arm/dynarmic/arm_static_ir.o \
+    $(CORE_DIR)/Core/core/arm/dynarmic/arm_hybrid.o \
     $(CORE_DIR)/Core/core/arm/dyncom/arm_dyncom_trans.o \
     $(CORE_DIR)/Core/core/arm/dyncom/arm_dyncom_interpreter.o \
     $(CORE_DIR)/Core/core/arm/dyncom/arm_dyncom_dec.o \

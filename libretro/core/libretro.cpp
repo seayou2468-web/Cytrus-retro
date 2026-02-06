@@ -6,6 +6,8 @@
 #include "common/logging/backend.h"
 #include "common/settings.h"
 #include "common/file_util.h"
+#include "core/system_titles.h"
+#include "core/hw/unique_data.h"
 #include "libretro_emu_window.h"
 #include "libretro_sink.h"
 #include "libretro_input.h"
@@ -87,6 +89,56 @@ void retro_set_environment(retro_environment_t cb) {
                 { NULL, NULL },
             },
             "enabled"
+        },
+        {
+            "cytrus_region",
+            "Region",
+            "Select the console region.",
+            {
+                { "auto", "Auto" },
+                { "japan", "Japan" },
+                { "usa", "USA" },
+                { "europe", "Europe" },
+                { "australia", "Australia" },
+                { "china", "China" },
+                { "korea", "Korea" },
+                { "taiwan", "Taiwan" },
+                { NULL, NULL },
+            },
+            "auto"
+        },
+        {
+            "cytrus_model",
+            "System Model",
+            "Select the console model.",
+            {
+                { "new_3ds", "New 3DS" },
+                { "old_3ds", "Old 3DS" },
+                { NULL, NULL },
+            },
+            "new_3ds"
+        },
+        {
+            "cytrus_boot_home_menu",
+            "Boot Home Menu",
+            "Boot to Home Menu if available in NAND.",
+            {
+                { "enabled", "Enabled" },
+                { "disabled", "Disabled" },
+                { NULL, NULL },
+            },
+            "enabled"
+        },
+        {
+            "cytrus_audio_emulation",
+            "Audio Emulation",
+            "Select the audio emulation mode.",
+            {
+                { "hle", "HLE" },
+                { "lle", "LLE" },
+                { NULL, NULL },
+            },
+            "hle"
         },
         { NULL, NULL, NULL, { { NULL, NULL } }, NULL },
     };
@@ -188,7 +240,6 @@ void retro_cheat_set(unsigned index, bool enabled, const char *code) {
 
 static void setup_settings() {
     Settings::values.graphics_api.SetValue(Settings::GraphicsAPI::Software);
-    Settings::values.audio_emulation.SetValue(Settings::AudioEmulation::HLE);
 
     char system_dir[1024];
     const char* dir = nullptr;
@@ -200,10 +251,25 @@ static void setup_settings() {
         std::string nand_dir = std::string(system_dir) + "/nand";
         if (!FileUtil::Exists(nand_dir)) {
             FileUtil::CreateDir(nand_dir);
-            FileUtil::CreateDir(nand_dir + "/data");
+            std::string system_id = "00000000000000000000000000000000";
+            FileUtil::CreateFullPath(nand_dir + "/" + system_id + "/title");
+            FileUtil::CreateFullPath(nand_dir + "/data/" + system_id + "/extdata");
+            FileUtil::CreateFullPath(nand_dir + "/data/" + system_id + "/sysdata");
             FileUtil::CreateDir(nand_dir + "/private");
             FileUtil::CreateDir(nand_dir + "/ro");
             FileUtil::CreateDir(nand_dir + "/sysdata");
+            FileUtil::CreateFullPath(nand_dir + "/dbs/ticket.db");
+        }
+
+        // Auto-setup SDMC structure
+        std::string sdmc_dir = std::string(system_dir) + "/sdmc";
+        if (!FileUtil::Exists(sdmc_dir)) {
+            FileUtil::CreateDir(sdmc_dir);
+            std::string system_id = "00000000000000000000000000000000";
+            std::string sd_id = "00000000000000000000000000000000";
+            std::string sdmc_base_dir = sdmc_dir + "/Nintendo 3DS/" + system_id + "/" + sd_id;
+            FileUtil::CreateFullPath(sdmc_base_dir + "/title");
+            FileUtil::CreateFullPath(sdmc_base_dir + "/extdata");
         }
 
         // Create keys template if missing
@@ -241,6 +307,30 @@ static void setup_settings() {
         else Settings::values.ssl_verification.SetValue(0);
     }
 
+    var.key = "cytrus_audio_emulation";
+    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value) {
+        if (strcmp(var.value, "lle") == 0) Settings::values.audio_emulation.SetValue(Settings::AudioEmulation::LLE);
+        else Settings::values.audio_emulation.SetValue(Settings::AudioEmulation::HLE);
+    }
+
+    var.key = "cytrus_region";
+    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value) {
+        if (strcmp(var.value, "japan") == 0) Settings::values.region_value.SetValue(HW::UniqueData::Region::JPN);
+        else if (strcmp(var.value, "usa") == 0) Settings::values.region_value.SetValue(HW::UniqueData::Region::USA);
+        else if (strcmp(var.value, "europe") == 0) Settings::values.region_value.SetValue(HW::UniqueData::Region::EUR);
+        else if (strcmp(var.value, "australia") == 0) Settings::values.region_value.SetValue(HW::UniqueData::Region::AUS);
+        else if (strcmp(var.value, "china") == 0) Settings::values.region_value.SetValue(HW::UniqueData::Region::CHN);
+        else if (strcmp(var.value, "korea") == 0) Settings::values.region_value.SetValue(HW::UniqueData::Region::KOR);
+        else if (strcmp(var.value, "taiwan") == 0) Settings::values.region_value.SetValue(HW::UniqueData::Region::TWN);
+        else Settings::values.region_value.SetValue(Settings::REGION_VALUE_AUTO_SELECT);
+    }
+
+    var.key = "cytrus_model";
+    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value) {
+        if (strcmp(var.value, "old_3ds") == 0) Settings::values.is_new_3ds.SetValue(false);
+        else Settings::values.is_new_3ds.SetValue(true);
+    }
+
     // Setup input profile for libretro
     auto& profile = Settings::values.current_input_profile;
     profile.buttons[Settings::NativeButton::A] = "engine:libretro,port:0,id:0"; // RETRO_DEVICE_ID_JOYPAD_B
@@ -268,8 +358,43 @@ bool retro_load_game(const struct retro_game_info *game) {
 
     emu_window = std::make_unique<Frontend::LibretroEmuWindow>();
 
-    if (Core::System::GetInstance().Load(*emu_window, game->path) != Core::System::ResultStatus::Success) {
+    auto& system = Core::System::GetInstance();
+
+    bool boot_home_menu = true;
+    struct retro_variable var;
+    var.key = "cytrus_boot_home_menu";
+    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value) {
+        boot_home_menu = (strcmp(var.value, "enabled") == 0);
+    }
+
+    std::string path_to_load = game->path;
+    bool using_home_menu = false;
+    if (boot_home_menu) {
+        s32 region = Settings::values.region_value.GetValue();
+        if (region == Settings::REGION_VALUE_AUTO_SELECT) {
+            for (u32 i = 0; i < Core::NUM_SYSTEM_TITLE_REGIONS; i++) {
+                std::string p = Core::GetHomeMenuNcchPath(i);
+                if (!p.empty() && FileUtil::Exists(p)) {
+                    path_to_load = p;
+                    using_home_menu = true;
+                    break;
+                }
+            }
+        } else {
+            std::string p = Core::GetHomeMenuNcchPath(static_cast<u32>(region));
+            if (!p.empty() && FileUtil::Exists(p)) {
+                path_to_load = p;
+                using_home_menu = true;
+            }
+        }
+    }
+
+    if (system.Load(*emu_window, path_to_load) != Core::System::ResultStatus::Success) {
         return false;
+    }
+
+    if (using_home_menu) {
+        system.SetCartridge(game->path);
     }
 
     return true;

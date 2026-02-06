@@ -2,7 +2,7 @@ import sys
 import re
 
 def fix_execute_block(content):
-    match = re.search(r'(void ARM_StaticIR::ExecuteBlock\(const TranslatedBlock& block\) \{.*?)(switch \(inst.op\) \{)(.*?)(\}\s+// insts)', content, re.DOTALL)
+    match = re.search(r'(void ARM_Hybrid::ExecuteBlock\(const TranslatedBlock& block\) \{.*?)(switch \(inst.op\) \{)(.*?)(\}\s+// insts)', content, re.DOTALL)
     if not match:
         print("Could not find ExecuteBlock switch")
         return content
@@ -40,7 +40,7 @@ def fix_execute_block(content):
 
     return content[:match.start()] + header + "".join(new_parts) + footer + content[match.end():]
 
-filename = 'Core/core/arm/dynarmic/arm_static_ir.cpp'
+filename = 'Core/core/arm/dynarmic/arm_hybrid.cpp'
 with open(filename, 'r') as f:
     content = f.read()
 
