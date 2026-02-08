@@ -1,0 +1,1053 @@
+    void undefined(u16 opcode) {
+        // STUB
+    }
+    void nop() {
+        // STUB
+    }
+    void norm(Ax a, Rn b, StepZIDS bs) {
+        // STUB
+    }
+    void swap(SwapType swap) {
+        // STUB
+    }
+    void trap() {
+        // STUB
+    }
+    void DoMultiplication(u32 unit, bool x_sign, bool y_sign) {
+        // STUB
+    }
+    void ProductSum(SumBase base, RegName acc, bool sub_p0, bool p0_align, bool sub_p1,
+                    bool p1_align) {
+        // STUB
+    }
+    void AlmGeneric(AlmOp op, u64 a, Ax b) {
+        // STUB
+    }
+    void alm(Alm op, MemImm8 a, Ax b) {
+        // STUB
+    }
+    void alm(Alm op, Rn a, StepZIDS as, Ax b) {
+        // STUB
+    }
+    void alm(Alm op, Register a, Ax b) {
+        // STUB
+    }
+    void alm_r6(Alm op, Ax b) {
+        // STUB
+    }
+    void alu(Alu op, MemImm16 a, Ax b) {
+        // STUB
+    }
+    void alu(Alu op, MemR7Imm16 a, Ax b) {
+        // STUB
+    }
+    void alu(Alu op, Imm16 a, Ax b) {
+        // STUB
+    }
+    void alu(Alu op, Imm8 a, Ax b) {
+        // STUB
+    }
+    void alu(Alu op, MemR7Imm7s a, Ax b) {
+        // STUB
+    }
+    void or_(Ab a, Ax b, Ax c) {
+        // STUB
+    }
+    void or_(Ax a, Bx b, Ax c) {
+        // STUB
+    }
+    void or_(Bx a, Bx b, Ax c) {
+        // STUB
+    }
+    void alb(Alb op, Imm16 a, MemImm8 b) {
+        // STUB
+    }
+    void alb(Alb op, Imm16 a, Rn b, StepZIDS bs) {
+        // STUB
+    }
+    void alb(Alb op, Imm16 a, Register b) {
+        // STUB
+    }
+    void alb_r6(Alb op, Imm16 a) {
+        // STUB
+    }
+    void alb(Alb op, Imm16 a, SttMod b) {
+        // STUB
+    }
+    void add(Ab a, Bx b) {
+        // STUB
+    }
+    void add(Bx a, Ax b) {
+        // STUB
+    }
+    void add_p1(Ax b) {
+        // STUB
+    }
+    void add(Px a, Bx b) {
+        // STUB
+    }
+    void sub(Ab a, Bx b) {
+        // STUB
+    }
+    void sub(Bx a, Ax b) {
+        // STUB
+    }
+    void sub_p1(Ax b) {
+        // STUB
+    }
+    void sub(Px a, Bx b) {
+        // STUB
+    }
+    void app(Ab c, SumBase base, bool sub_p0, bool p0_align, bool sub_p1, bool p1_align) {
+        // STUB
+    }
+    void add_add(ArpRn1 a, ArpStep1 asi, ArpStep1 asj, Ab b) {
+        // STUB
+    }
+    void add_sub(ArpRn1 a, ArpStep1 asi, ArpStep1 asj, Ab b) {
+        // STUB
+    }
+    void sub_add(ArpRn1 a, ArpStep1 asi, ArpStep1 asj, Ab b) {
+        // STUB
+    }
+    void sub_sub(ArpRn1 a, ArpStep1 asi, ArpStep1 asj, Ab b) {
+        // STUB
+    }
+    void add_sub_sv(ArRn1 a, ArStep1 as, Ab b) {
+        // STUB
+    }
+    void sub_add_sv(ArRn1 a, ArStep1 as, Ab b) {
+        // STUB
+    }
+    void sub_add_i_mov_j_sv(ArpRn1 a, ArpStep1 asi, ArpStep1 asj, Ab b) {
+        // STUB
+    }
+    void sub_add_j_mov_i_sv(ArpRn1 a, ArpStep1 asi, ArpStep1 asj, Ab b) {
+        // STUB
+    }
+    void add_sub_i_mov_j(ArpRn1 a, ArpStep1 asi, ArpStep1 asj, Ab b) {
+        // STUB
+    }
+    void add_sub_j_mov_i(ArpRn1 a, ArpStep1 asi, ArpStep1 asj, Ab b) {
+        // STUB
+    }
+    void Moda(ModaOp op, RegName a, Cond cond) {
+        // STUB
+    }
+    void moda4(Moda4 op, Ax a, Cond cond) {
+        // STUB
+    }
+    void moda3(Moda3 op, Bx a, Cond cond) {
+        // STUB
+    }
+    void pacr1(Ax a) {
+        // STUB
+    }
+    void FilterDoubleClr(RegName& a, RegName& b) {
+        // STUB
+    }
+    void clr(Ab a, Ab b) {
+        // STUB
+    }
+    void clrr(Ab a, Ab b) {
+        // STUB
+    }
+    void BlockRepeat(u16 lc, u32 address) {
+        // STUB
+    }
+    void bkrep(Imm8 a, Address16 addr) {
+        // STUB
+    }
+    void bkrep(Register a, Address18_16 addr_low, Address18_2 addr_high) {
+        // STUB
+    }
+    void bkrep_r6(Address18_16 addr_low, Address18_2 addr_high) {
+        // STUB
+    }
+    void RestoreBlockRepeat(u16& address_reg) {
+        // STUB
+    }
+    void StoreBlockRepeat(u16& address_reg) {
+        // STUB
+    }
+    void bkreprst(ArRn2 a) {
+        // STUB
+    }
+    void bkreprst_memsp() {
+        // STUB
+    }
+    void bkrepsto(ArRn2 a) {
+        // STUB
+    }
+    void bkrepsto_memsp() {
+        // STUB
+    }
+    void banke(BankFlags flags) {
+        // STUB
+    }
+    void bankr() {
+        // STUB
+    }
+    void bankr(Ar a) {
+        // STUB
+    }
+    void bankr(Ar a, Arp b) {
+        // STUB
+    }
+    void bankr(Arp a) {
+        // STUB
+    }
+    void bitrev(Rn a) {
+        // STUB
+    }
+    void bitrev_dbrv(Rn a) {
+        // STUB
+    }
+    void bitrev_ebrv(Rn a) {
+        // STUB
+    }
+    void br(Address18_16 addr_low, Address18_2 addr_high, Cond cond) {
+        // STUB
+    }
+    void brr(RelAddr7 addr, Cond cond) {
+        // STUB
+    }
+    void break_() {
+        // STUB
+    }
+    void call(Address18_16 addr_low, Address18_2 addr_high, Cond cond) {
+        // STUB
+    }
+    void calla(Axl a) {
+        // STUB
+    }
+    void calla(Ax a) {
+        // STUB
+    }
+    void callr(RelAddr7 addr, Cond cond) {
+        // STUB
+    }
+    void cntx_s() {
+        // STUB
+    }
+    void cntx_r() {
+        // STUB
+    }
+    void ret(Cond c) {
+        // STUB
+    }
+    void retd() {
+        // STUB
+    }
+    void reti(Cond c) {
+        // STUB
+    }
+    void retic(Cond c) {
+        // STUB
+    }
+    void retid() {
+        // STUB
+    }
+    void retidc() {
+        // STUB
+    }
+    void rets(Imm8 a) {
+        // STUB
+    }
+    void load_ps(Imm2 a) {
+        // STUB
+    }
+    void load_stepi(Imm7s a) {
+        // STUB
+    }
+    void load_stepj(Imm7s a) {
+        // STUB
+    }
+    void load_page(Imm8 a) {
+        // STUB
+    }
+    void load_modi(Imm9 a) {
+        // STUB
+    }
+    void load_modj(Imm9 a) {
+        // STUB
+    }
+    void load_movpd(Imm2 a) {
+        // STUB
+    }
+    void load_ps01(Imm4 a) {
+        // STUB
+    }
+    void push(Imm16 a) {
+        // STUB
+    }
+    void push(Register a) {
+        // STUB
+    }
+    void push(Abe a) {
+        // STUB
+    }
+    void push(ArArpSttMod a) {
+        // STUB
+    }
+    void push_prpage() {
+        // STUB
+    }
+    void push(Px a) {
+        // STUB
+    }
+    void push_r6() {
+        // STUB
+    }
+    void push_repc() {
+        // STUB
+    }
+    void push_x0() {
+        // STUB
+    }
+    void push_x1() {
+        // STUB
+    }
+    void push_y1() {
+        // STUB
+    }
+    void pusha(Ax a) {
+        // STUB
+    }
+    void pusha(Bx a) {
+        // STUB
+    }
+    void pop(Register a) {
+        // STUB
+    }
+    void pop(Abe a) {
+        // STUB
+    }
+    void pop(ArArpSttMod a) {
+        // STUB
+    }
+    void pop(Bx a) {
+        // STUB
+    }
+    void pop_prpage() {
+        // STUB
+    }
+    void pop(Px a) {
+        // STUB
+    }
+    void pop_r6() {
+        // STUB
+    }
+    void pop_repc() {
+        // STUB
+    }
+    void pop_x0() {
+        // STUB
+    }
+    void pop_x1() {
+        // STUB
+    }
+    void pop_y1() {
+        // STUB
+    }
+    void popa(Ab a) {
+        // STUB
+    }
+    void rep(Imm8 a) {
+        // STUB
+    }
+    void rep(Register a) {
+        // STUB
+    }
+    void rep_r6() {
+        // STUB
+    }
+    void shfc(Ab a, Ab b, Cond cond) {
+        // STUB
+    }
+    void shfi(Ab a, Ab b, Imm6s s) {
+        // STUB
+    }
+    void tst4b(ArRn2 b, ArStep2 bs) {
+        // STUB
+    }
+    void tst4b(ArRn2 b, ArStep2 bs, Ax c) {
+        // STUB
+    }
+    void tstb(MemImm8 a, Imm4 b) {
+        // STUB
+    }
+    void tstb(Rn a, StepZIDS as, Imm4 b) {
+        // STUB
+    }
+    void tstb(Register a, Imm4 b) {
+        // STUB
+    }
+    void tstb_r6(Imm4 b) {
+        // STUB
+    }
+    void tstb(SttMod a, Imm16 b) {
+        // STUB
+    }
+    void and_(Ab a, Ab b, Ax c) {
+        // STUB
+    }
+    void dint() {
+        // STUB
+    }
+    void eint() {
+        // STUB
+    }
+    void MulGeneric(MulOp op, Ax a) {
+        // STUB
+    }
+    void mul(Mul3 op, Rn y, StepZIDS ys, Imm16 x, Ax a) {
+        // STUB
+    }
+    void mul_y0(Mul3 op, Rn x, StepZIDS xs, Ax a) {
+        // STUB
+    }
+    void mul_y0(Mul3 op, Register x, Ax a) {
+        // STUB
+    }
+    void mul(Mul3 op, R45 y, StepZIDS ys, R0123 x, StepZIDS xs, Ax a) {
+        // STUB
+    }
+    void mul_y0_r6(Mul3 op, Ax a) {
+        // STUB
+    }
+    void mul_y0(Mul2 op, MemImm8 x, Ax a) {
+        // STUB
+    }
+    void mpyi(Imm8s x) {
+        // STUB
+    }
+    void msu(R45 y, StepZIDS ys, R0123 x, StepZIDS xs, Ax a) {
+        // STUB
+    }
+    void msu(Rn y, StepZIDS ys, Imm16 x, Ax a) {
+        // STUB
+    }
+    void msusu(ArRn2 x, ArStep2 xs, Ax a) {
+        // STUB
+    }
+    void mac_x1to0(Ax a) {
+        // STUB
+    }
+    void mac1(ArpRn1 xy, ArpStep1 xis, ArpStep1 yjs, Ax a) {
+        // STUB
+    }
+    void modr(Rn a, StepZIDS as) {
+        // STUB
+    }
+    void modr_dmod(Rn a, StepZIDS as) {
+        // STUB
+    }
+    void modr_i2(Rn a) {
+        // STUB
+    }
+    void modr_i2_dmod(Rn a) {
+        // STUB
+    }
+    void modr_d2(Rn a) {
+        // STUB
+    }
+    void modr_d2_dmod(Rn a) {
+        // STUB
+    }
+    void modr_eemod(ArpRn2 a, ArpStep2 asi, ArpStep2 asj) {
+        // STUB
+    }
+    void modr_edmod(ArpRn2 a, ArpStep2 asi, ArpStep2 asj) {
+        // STUB
+    }
+    void modr_demod(ArpRn2 a, ArpStep2 asi, ArpStep2 asj) {
+        // STUB
+    }
+    void modr_ddmod(ArpRn2 a, ArpStep2 asi, ArpStep2 asj) {
+        // STUB
+    }
+    void movd(R0123 a, StepZIDS as, R45 b, StepZIDS bs) {
+        // STUB
+    }
+    void movp(Axl a, Register b) {
+        // STUB
+    }
+    void movp(Ax a, Register b) {
+        // STUB
+    }
+    void movp(Rn a, StepZIDS as, R0123 b, StepZIDS bs) {
+        // STUB
+    }
+    void movpdw(Ax a) {
+        // STUB
+    }
+    void mov(Ab a, Ab b) {
+        // STUB
+    }
+    void mov_dvm(Abl a) {
+        // STUB
+    }
+    void mov_x0(Abl a) {
+        // STUB
+    }
+    void mov_x1(Abl a) {
+        // STUB
+    }
+    void mov_y1(Abl a) {
+        // STUB
+    }
+    void StoreToMemory(MemImm8 addr, u16 value) {
+        // STUB
+    }
+    void StoreToMemory(MemImm16 addr, u16 value) {
+        // STUB
+    }
+    void StoreToMemory(MemR7Imm16 addr, u16 value) {
+        // STUB
+    }
+    void StoreToMemory(MemR7Imm7s addr, u16 value) {
+        // STUB
+    }
+    void mov(Ablh a, MemImm8 b) {
+        // STUB
+    }
+    void mov(Axl a, MemImm16 b) {
+        // STUB
+    }
+    void mov(Axl a, MemR7Imm16 b) {
+        // STUB
+    }
+    void mov(Axl a, MemR7Imm7s b) {
+        // STUB
+    }
+    void mov(MemImm16 a, Ax b) {
+        // STUB
+    }
+    void mov(MemImm8 a, Ab b) {
+        // STUB
+    }
+    void mov(MemImm8 a, Ablh b) {
+        // STUB
+    }
+    void mov_eu(MemImm8 a, Axh b) {
+        // STUB
+    }
+    void mov(MemImm8 a, RnOld b) {
+        // STUB
+    }
+    void mov_sv(MemImm8 a) {
+        // STUB
+    }
+    void mov_dvm_to(Ab b) {
+        // STUB
+    }
+    void mov_icr_to(Ab b) {
+        // STUB
+    }
+    void mov(Imm16 a, Bx b) {
+        // STUB
+    }
+    void mov(Imm16 a, Register b) {
+        // STUB
+    }
+    void mov_icr(Imm5 a) {
+        // STUB
+    }
+    void mov(Imm8s a, Axh b) {
+        // STUB
+    }
+    void mov(Imm8s a, RnOld b) {
+        // STUB
+    }
+    void mov_sv(Imm8s a) {
+        // STUB
+    }
+    void mov(Imm8 a, Axl b) {
+        // STUB
+    }
+    void mov(MemR7Imm16 a, Ax b) {
+        // STUB
+    }
+    void mov(MemR7Imm7s a, Ax b) {
+        // STUB
+    }
+    void mov(Rn a, StepZIDS as, Bx b) {
+        // STUB
+    }
+    void mov(Rn a, StepZIDS as, Register b) {
+        // STUB
+    }
+    void mov_memsp_to(Register b) {
+        // STUB
+    }
+    void mov_mixp_to(Register b) {
+        // STUB
+    }
+    void mov(RnOld a, MemImm8 b) {
+        // STUB
+    }
+    void mov_icr(Register a) {
+        // STUB
+    }
+    void mov_mixp(Register a) {
+        // STUB
+    }
+    void mov(Register a, Rn b, StepZIDS bs) {
+        // STUB
+    }
+    void mov(Register a, Bx b) {
+        // STUB
+    }
+    void mov(Register a, Register b) {
+        // STUB
+    }
+    void mov_repc_to(Ab b) {
+        // STUB
+    }
+    void mov_sv_to(MemImm8 b) {
+        // STUB
+    }
+    void mov_x0_to(Ab b) {
+        // STUB
+    }
+    void mov_x1_to(Ab b) {
+        // STUB
+    }
+    void mov_y1_to(Ab b) {
+        // STUB
+    }
+    void mov(Imm16 a, ArArp b) {
+        // STUB
+    }
+    void mov_r6(Imm16 a) {
+        // STUB
+    }
+    void mov_repc(Imm16 a) {
+        // STUB
+    }
+    void mov_stepi0(Imm16 a) {
+        // STUB
+    }
+    void mov_stepj0(Imm16 a) {
+        // STUB
+    }
+    void mov(Imm16 a, SttMod b) {
+        // STUB
+    }
+    void mov_prpage(Imm4 a) {
+        // STUB
+    }
+    void mov_a0h_stepi0() {
+        // STUB
+    }
+    void mov_a0h_stepj0() {
+        // STUB
+    }
+    void mov_stepi0_a0h() {
+        // STUB
+    }
+    void mov_stepj0_a0h() {
+        // STUB
+    }
+    void mov_prpage(Abl a) {
+        // STUB
+    }
+    void mov_repc(Abl a) {
+        // STUB
+    }
+    void mov(Abl a, ArArp b) {
+        // STUB
+    }
+    void mov(Abl a, SttMod b) {
+        // STUB
+    }
+    void mov_prpage_to(Abl b) {
+        // STUB
+    }
+    void mov_repc_to(Abl b) {
+        // STUB
+    }
+    void mov(ArArp a, Abl b) {
+        // STUB
+    }
+    void mov(SttMod a, Abl b) {
+        // STUB
+    }
+    void mov_repc_to(ArRn1 b, ArStep1 bs) {
+        // STUB
+    }
+    void mov(ArArp a, ArRn1 b, ArStep1 bs) {
+        // STUB
+    }
+    void mov(SttMod a, ArRn1 b, ArStep1 bs) {
+        // STUB
+    }
+    void mov_repc(ArRn1 a, ArStep1 as) {
+        // STUB
+    }
+    void mov(ArRn1 a, ArStep1 as, ArArp b) {
+        // STUB
+    }
+    void mov(ArRn1 a, ArStep1 as, SttMod b) {
+        // STUB
+    }
+    void mov_repc_to(MemR7Imm16 b) {
+        // STUB
+    }
+    void mov(ArArpSttMod a, MemR7Imm16 b) {
+        // STUB
+    }
+    void mov_repc(MemR7Imm16 a) {
+        // STUB
+    }
+    void mov(MemR7Imm16 a, ArArpSttMod b) {
+        // STUB
+    }
+    void mov_pc(Ax a) {
+        // STUB
+    }
+    void mov_pc(Bx a) {
+        // STUB
+    }
+    void mov_mixp_to(Bx b) {
+        // STUB
+    }
+    void mov_mixp_r6() {
+        // STUB
+    }
+    void mov_p0h_to(Bx b) {
+        // STUB
+    }
+    void mov_p0h_r6() {
+        // STUB
+    }
+    void mov_p0h_to(Register b) {
+        // STUB
+    }
+    void mov_p0(Ab a) {
+        // STUB
+    }
+    void mov_p1_to(Ab b) {
+        // STUB
+    }
+    void mov2(Px a, ArRn2 b, ArStep2 bs) {
+        // STUB
+    }
+    void mov2s(Px a, ArRn2 b, ArStep2 bs) {
+        // STUB
+    }
+    void mov2(ArRn2 a, ArStep2 as, Px b) {
+        // STUB
+    }
+    void mova(Ab a, ArRn2 b, ArStep2 bs) {
+        // STUB
+    }
+    void mova(ArRn2 a, ArStep2 as, Ab b) {
+        // STUB
+    }
+    void mov_r6_to(Bx b) {
+        // STUB
+    }
+    void mov_r6_mixp() {
+        // STUB
+    }
+    void mov_r6_to(Register b) {
+        // STUB
+    }
+    void mov_r6(Register a) {
+        // STUB
+    }
+    void mov_memsp_r6() {
+        // STUB
+    }
+    void mov_r6_to(Rn b, StepZIDS bs) {
+        // STUB
+    }
+    void mov_r6(Rn a, StepZIDS as) {
+        // STUB
+    }
+    void mov2_axh_m_y0_m(Axh a, ArRn2 b, ArStep2 bs) {
+        // STUB
+    }
+    void mov2_ax_mij(Ab a, ArpRn1 b, ArpStep1 bsi, ArpStep1 bsj) {
+        // STUB
+    }
+    void mov2_ax_mji(Ab a, ArpRn1 b, ArpStep1 bsi, ArpStep1 bsj) {
+        // STUB
+    }
+    void mov2_mij_ax(ArpRn1 a, ArpStep1 asi, ArpStep1 asj, Ab b) {
+        // STUB
+    }
+    void mov2_mji_ax(ArpRn1 a, ArpStep1 asi, ArpStep1 asj, Ab b) {
+        // STUB
+    }
+    void mov2_abh_m(Abh ax, Abh ay, ArRn1 b, ArStep1 bs) {
+        // STUB
+    }
+    void exchange_iaj(Axh a, ArpRn2 b, ArpStep2 bsi, ArpStep2 bsj) {
+        // STUB
+    }
+    void exchange_riaj(Axh a, ArpRn2 b, ArpStep2 bsi, ArpStep2 bsj) {
+        // STUB
+    }
+    void exchange_jai(Axh a, ArpRn2 b, ArpStep2 bsi, ArpStep2 bsj) {
+        // STUB
+    }
+    void exchange_rjai(Axh a, ArpRn2 b, ArpStep2 bsi, ArpStep2 bsj) {
+        // STUB
+    }
+    void movs(MemImm8 a, Ab b) {
+        // STUB
+    }
+    void movs(Rn a, StepZIDS as, Ab b) {
+        // STUB
+    }
+    void movs(Register a, Ab b) {
+        // STUB
+    }
+    void movs_r6_to(Ax b) {
+        // STUB
+    }
+    void movsi(RnOld a, Ab b, Imm5s s) {
+        // STUB
+    }
+    void movr(ArRn2 a, ArStep2 as, Abh b) {
+        // STUB
+    }
+    void movr(Rn a, StepZIDS as, Ax b) {
+        // STUB
+    }
+    void movr(Register a, Ax b) {
+        // STUB
+    }
+    void movr(Bx a, Ax b) {
+        // STUB
+    }
+    void movr_r6_to(Ax b) {
+        // STUB
+    }
+    void exp(Bx a) {
+        // STUB
+    }
+    void exp(Bx a, Ax b) {
+        // STUB
+    }
+    void exp(Rn a, StepZIDS as) {
+        // STUB
+    }
+    void exp(Rn a, StepZIDS as, Ax b) {
+        // STUB
+    }
+    void exp(Register a) {
+        // STUB
+    }
+    void exp(Register a, Ax b) {
+        // STUB
+    }
+    void exp_r6() {
+        // STUB
+    }
+    void exp_r6(Ax b) {
+        // STUB
+    }
+    void lim(Ax a, Ax b) {
+        // STUB
+    }
+    void vtrclr0() {
+        // STUB
+    }
+    void vtrclr1() {
+        // STUB
+    }
+    void vtrclr() {
+        // STUB
+    }
+    void vtrmov0(Axl a) {
+        // STUB
+    }
+    void vtrmov1(Axl a) {
+        // STUB
+    }
+    void vtrmov(Axl a) {
+        // STUB
+    }
+    void vtrshr() {
+        // STUB
+    }
+    void clrp0() {
+        // STUB
+    }
+    void clrp1() {
+        // STUB
+    }
+    void clrp() {
+        // STUB
+    }
+    void max_ge(Ax a, StepZIDS bs) {
+        // STUB
+    }
+    void max_gt(Ax a, StepZIDS bs) {
+        // STUB
+    }
+    void min_le(Ax a, StepZIDS bs) {
+        // STUB
+    }
+    void min_lt(Ax a, StepZIDS bs) {
+        // STUB
+    }
+    void max_ge_r0(Ax a, StepZIDS bs) {
+        // STUB
+    }
+    void max_gt_r0(Ax a, StepZIDS bs) {
+        // STUB
+    }
+    void min_le_r0(Ax a, StepZIDS bs) {
+        // STUB
+    }
+    void min_lt_r0(Ax a, StepZIDS bs) {
+        // STUB
+    }
+    void divs(MemImm8 a, Ax b) {
+        // STUB
+    }
+    void sqr_sqr_add3(Ab a, Ab b) {
+        // STUB
+    }
+    void sqr_sqr_add3(ArRn2 a, ArStep2 as, Ab b) {
+        // STUB
+    }
+    void sqr_mpysu_add3a(Ab a, Ab b) {
+        // STUB
+    }
+    void cmp(Ax a, Bx b) {
+        // STUB
+    }
+    void cmp_b0_b1() {
+        // STUB
+    }
+    void cmp_b1_b0() {
+        // STUB
+    }
+    void cmp(Bx a, Ax b) {
+        // STUB
+    }
+    void cmp_p1_to(Ax b) {
+        // STUB
+    }
+    void MinMaxVtr(RegName a, RegName b, bool min) {
+        // STUB
+    }
+    void max2_vtr(Ax a) {
+        // STUB
+    }
+    void min2_vtr(Ax a) {
+        // STUB
+    }
+    void max2_vtr(Ax a, Bx b) {
+        // STUB
+    }
+    void min2_vtr(Ax a, Bx b) {
+        // STUB
+    }
+    void max2_vtr_movl(Ax a, Bx b, ArRn1 c, ArStep1 cs) {
+        // STUB
+    }
+    void max2_vtr_movh(Ax a, Bx b, ArRn1 c, ArStep1 cs) {
+        // STUB
+    }
+    void max2_vtr_movl(Bx a, Ax b, ArRn1 c, ArStep1 cs) {
+        // STUB
+    }
+    void max2_vtr_movh(Bx a, Ax b, ArRn1 c, ArStep1 cs) {
+        // STUB
+    }
+    void min2_vtr_movl(Ax a, Bx b, ArRn1 c, ArStep1 cs) {
+        // STUB
+    }
+    void min2_vtr_movh(Ax a, Bx b, ArRn1 c, ArStep1 cs) {
+        // STUB
+    }
+    void min2_vtr_movl(Bx a, Ax b, ArRn1 c, ArStep1 cs) {
+        // STUB
+    }
+    void min2_vtr_movh(Bx a, Ax b, ArRn1 c, ArStep1 cs) {
+        // STUB
+    }
+    void max2_vtr_movij(Ax a, Bx b, ArpRn1 c, ArpStep1 csi, ArpStep1 csj) {
+        // STUB
+    }
+    void max2_vtr_movji(Ax a, Bx b, ArpRn1 c, ArpStep1 csi, ArpStep1 csj) {
+        // STUB
+    }
+    void min2_vtr_movij(Ax a, Bx b, ArpRn1 c, ArpStep1 csi, ArpStep1 csj) {
+        // STUB
+    }
+    void min2_vtr_movji(Ax a, Bx b, ArpRn1 c, ArpStep1 csi, ArpStep1 csj) {
+        // STUB
+    }
+    void mov_sv_app(ArRn1 a, ArpStepX as, Bx b, SumBase base, bool sub_p0, bool p0_align,
+                    bool sub_p1, bool p1_align) {
+        // STUB
+    }
+    void cbs(Axh a, CbsCond c) {
+        // STUB
+    }
+    void cbs(Axh a, Bxh b, CbsCond c) {
+        // STUB
+    }
+    void cbs(ArpRn1 a, ArpStep1 asi, ArpStep1 asj, CbsCond c) {
+        // STUB
+    }
+    void mma(RegName a, bool x0_sign, bool y0_sign, bool x1_sign, bool y1_sign, SumBase base,
+             bool sub_p0, bool p0_align, bool sub_p1, bool p1_align) {
+        // STUB
+    }
+    void mma(ArpRnX xy, ArpStepX i, ArpStepX j, bool dmodi, bool dmodj, RegName a, bool x0_sign,
+             bool y0_sign, bool x1_sign, bool y1_sign, SumBase base, bool sub_p0, bool p0_align,
+             bool sub_p1, bool p1_align) {
+        // STUB
+    }
+    void mma_mx_xy(ArRn1 y, ArStep1 ys, RegName a, bool x0_sign, bool y0_sign, bool x1_sign,
+                   bool y1_sign, SumBase base, bool sub_p0, bool p0_align, bool sub_p1,
+                   bool p1_align) {
+        // STUB
+    }
+    void mma_xy_mx(ArRn1 y, ArStep1 ys, RegName a, bool x0_sign, bool y0_sign, bool x1_sign,
+                   bool y1_sign, SumBase base, bool sub_p0, bool p0_align, bool sub_p1,
+                   bool p1_align) {
+        // STUB
+    }
+    void mma_my_my(ArRn1 x, ArStep1 xs, RegName a, bool x0_sign, bool y0_sign, bool x1_sign,
+                   bool y1_sign, SumBase base, bool sub_p0, bool p0_align, bool sub_p1,
+                   bool p1_align) {
+        // STUB
+    }
+    void mma_mov(Axh u, Bxh v, ArRn1 w, ArStep1 ws, RegName a, bool x0_sign, bool y0_sign,
+                 bool x1_sign, bool y1_sign, SumBase base, bool sub_p0, bool p0_align, bool sub_p1,
+                 bool p1_align) {
+        // STUB
+    }
+    void mma_mov(ArRn2 w, ArStep1 ws, RegName a, bool x0_sign, bool y0_sign, bool x1_sign,
+                 bool y1_sign, SumBase base, bool sub_p0, bool p0_align, bool sub_p1,
+                 bool p1_align) {
+        // STUB
+    }
+    void addhp(ArRn2 a, ArStep2 as, Px b, Ax c) {
+        // STUB
+    }
+    void mov_ext0(Imm8s a) {
+        // STUB
+    }
+    void mov_ext1(Imm8s a) {
+        // STUB
+    }
+    void mov_ext2(Imm8s a) {
+        // STUB
+    }
+    void mov_ext3(Imm8s a) {
+        // STUB
+    }
+    void SetState(const State& state) {
+        // STUB
+    }

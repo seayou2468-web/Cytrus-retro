@@ -373,6 +373,10 @@ ResultVal<AppletManager::GetLockHandleResult> AppletManager::GetLockHandle(
                   corrected_attributes.raw);
     }
 
+    if (next_parameter) {
+        corrected_attributes.has_pending_parameter.Assign(1);
+    }
+
     return GetLockHandleResult{corrected_attributes, 0, lock};
 }
 
@@ -1166,6 +1170,16 @@ Result AppletManager::CloseApplication(std::shared_ptr<Kernel::Object> object,
     }
 
     // TODO: Terminate the application process.
+    return ResultSuccess;
+}
+
+Result AppletManager::ReplySleepQuery(AppletId from_applet_id, SleepQueryReply reply) {
+    LOG_DEBUG(Service_APT, "called, from_applet_id={:08X}, reply_value={:08X}", from_applet_id, reply);
+    return ResultSuccess;
+}
+
+Result AppletManager::ReplySleepNotificationComplete(AppletId from_applet_id) {
+    LOG_DEBUG(Service_APT, "called, from_applet_id={:08X}", from_applet_id);
     return ResultSuccess;
 }
 

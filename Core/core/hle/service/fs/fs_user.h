@@ -502,6 +502,12 @@ private:
      */
     void SetPriority(Kernel::HLERequestContext& ctx);
 
+    void EnumerateSystemSaveData(Kernel::HLERequestContext& ctx);
+
+    void GetNandInfo(Kernel::HLERequestContext& ctx);
+
+    void GetMediaType(Kernel::HLERequestContext& ctx);
+
     /**
      * FS_User::GetPriority service function.
      *  Inputs:

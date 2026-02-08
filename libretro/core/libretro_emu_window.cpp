@@ -46,6 +46,8 @@ void LibretroEmuWindow::SwapBuffers() {
             std::memcpy(&framebuffer[(y + 240) * 400 + x_offset], &bottom.pixels[y * bottom.width * 4], 320 * 4);
         }
     }
+
+    frame_done = true;
 }
 
 void LibretroEmuWindow::MakeCurrent() {}

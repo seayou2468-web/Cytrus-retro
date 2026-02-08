@@ -352,12 +352,12 @@ void Module::APTInterface::GetWirelessRebootInfo(Kernel::HLERequestContext& ctx)
 
 void Module::APTInterface::NotifyToWait(Kernel::HLERequestContext& ctx) {
     IPC::RequestParser rp(ctx);
-    const auto app_id = rp.Pop<u32>();
+    [[maybe_unused]] const auto app_id = rp.Pop<u32>();
 
     IPC::RequestBuilder rb = rp.MakeBuilder(1, 0);
     rb.Push(ResultSuccess); // No error
 
-    LOG_WARNING(Service_APT, "(STUBBED) app_id={}", app_id);
+    LOG_DEBUG(Service_APT, "called app_id={}", app_id);
 }
 
 void Module::APTInterface::GetLockHandle(Kernel::HLERequestContext& ctx) {
@@ -706,16 +706,30 @@ void Module::APTInterface::AppletUtility(Kernel::HLERequestContext& ctx) {
     const auto output_size = rp.Pop<u32>();
     [[maybe_unused]] const auto input = rp.PopStaticBuffer();
 
-    LOG_WARNING(Service_APT,
-                "(STUBBED) called command={:#010X}, input_size={:#010X}, output_size={:#010X}",
+    LOG_DEBUG(Service_APT,
+                "called command={:#010X}, input_size={:#010X}, output_size={:#010X}",
                 utility_command, input_size, output_size);
 
-    std::vector<u8> out(output_size);
-    if (utility_command == 0x6 && output_size > 0) {
-        // Command 0x6 (TryLockTransition) expects a boolean return value indicating
-        // whether the attempt succeeded. Since we don't implement any of the transition
-        // locking stuff yet, fake a success result to avoid app crashes.
-        out[0] = true;
+    std::vector<u8> out(output_size, 0);
+    switch (utility_command) {
+    case 0x6: // TryLockTransition
+        if (output_size >= 1) {
+            // Success result
+            out[0] = true;
+        }
+        break;
+    case 0x7: // UnlockTransition
+        // Nothing to do, just succeed
+        break;
+    case 0x4: // SleepIfShellClosed
+        // We don't emulate shell closure for now
+        break;
+    case 0x10: // UnlockCartAndSdSlot
+        // Nothing to do
+        break;
+    default:
+        LOG_WARNING(Service_APT, "(STUBBED) AppletUtility command={:#010X}", utility_command);
+        break;
     }
 
     IPC::RequestBuilder rb = rp.MakeBuilder(2, 2);
@@ -729,7 +743,7 @@ void Module::APTInterface::SetAppCpuTimeLimit(Kernel::HLERequestContext& ctx) {
     const auto must_be_one = rp.Pop<u32>();
     const auto value = rp.Pop<u32>();
 
-    LOG_WARNING(Service_APT, "(STUBBED) called, must_be_one={}, value={}", must_be_one, value);
+    LOG_DEBUG(Service_APT, "called, must_be_one={}, value={}", must_be_one, value);
     if (must_be_one != 1) {
         LOG_ERROR(Service_APT, "This value should be one, but is actually {}!", must_be_one);
     }
@@ -744,7 +758,7 @@ void Module::APTInterface::GetAppCpuTimeLimit(Kernel::HLERequestContext& ctx) {
     IPC::RequestParser rp(ctx);
     const auto must_be_one = rp.Pop<u32>();
 
-    LOG_WARNING(Service_APT, "(STUBBED) called, must_be_one={}", must_be_one);
+    LOG_DEBUG(Service_APT, "called, must_be_one={}", must_be_one);
     if (must_be_one != 1) {
         LOG_ERROR(Service_APT, "This value should be one, but is actually {}!", must_be_one);
     }
@@ -801,7 +815,7 @@ void Module::APTInterface::FinishPreloadingLibraryApplet(Kernel::HLERequestConte
     IPC::RequestBuilder rb = rp.MakeBuilder(1, 0);
     rb.Push(apt->applet_manager->FinishPreloadingLibraryApplet(applet_id));
 
-    LOG_WARNING(Service_APT, "(STUBBED) called, applet_id={:#05X}", applet_id);
+    LOG_DEBUG(Service_APT, "called, applet_id={:#05X}", applet_id);
 }
 
 void Module::APTInterface::StartLibraryApplet(Kernel::HLERequestContext& ctx) {
@@ -966,21 +980,21 @@ void Module::APTInterface::ReplySleepQuery(Kernel::HLERequestContext& ctx) {
     const auto from_app_id = rp.PopEnum<AppletId>();
     const auto reply_value = rp.PopEnum<SleepQueryReply>();
 
-    LOG_WARNING(Service_APT, "(STUBBED) called, from_app_id={:08X}, reply_value={:08X}",
+    LOG_DEBUG(Service_APT, "called, from_app_id={:08X}, reply_value={:08X}",
                 from_app_id, reply_value);
 
     IPC::RequestBuilder rb = rp.MakeBuilder(1, 0);
-    rb.Push(ResultSuccess);
+    rb.Push(apt->applet_manager->ReplySleepQuery(from_app_id, reply_value));
 }
 
 void Module::APTInterface::ReplySleepNotificationComplete(Kernel::HLERequestContext& ctx) {
     IPC::RequestParser rp(ctx);
     const auto from_app_id = rp.PopEnum<AppletId>();
 
-    LOG_WARNING(Service_APT, "(STUBBED) called, from_app_id={:08X}", from_app_id);
+    LOG_DEBUG(Service_APT, "called, from_app_id={:08X}", from_app_id);
 
     IPC::RequestBuilder rb = rp.MakeBuilder(1, 0);
-    rb.Push(ResultSuccess);
+    rb.Push(apt->applet_manager->ReplySleepNotificationComplete(from_app_id));
 }
 
 void Module::APTInterface::PrepareToJumpToHomeMenu(Kernel::HLERequestContext& ctx) {

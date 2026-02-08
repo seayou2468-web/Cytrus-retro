@@ -38,7 +38,11 @@ else ifneq (,$(findstring ios,$(platform)))
    MIN_IOS_VERSION = -miphoneos-version-min=11.0
    CFLAGS += $(MIN_IOS_VERSION) -arch arm64
    CXXFLAGS += $(MIN_IOS_VERSION) -arch arm64
-   LDFLAGS += $(MIN_IOS_VERSION) -arch arm64
+   LDFLAGS += $(MIN_IOS_VERSION) -arch arm64 -framework CoreFoundation
+endif
+
+ifneq (,$(findstring osx,$(platform)))
+   LDFLAGS += -framework CoreFoundation
 endif
 
 #include $(CORE_DIR)/libretro/libretro-common/Makefile.common
@@ -71,7 +75,8 @@ INCFLAGS := -I$(CORE_DIR)/libretro/libretro-common/include \
             -I$(CORE_DIR)/libretro/dynarmic/externals/mcl/include \
             -I$(CORE_DIR)/libretro/dynarmic/externals/robin-map/include \
             -I$(CORE_DIR)/libretro/azahar/externals/lodepng/lodepng \
-            -I$(CORE_DIR)/libretro/azahar/externals/xxHash
+            -I$(CORE_DIR)/libretro/azahar/externals/xxHash \
+            -I$(CORE_DIR)/libretro/azahar/externals/enet/include
 
 include core_objects.mk
 include externals_objects.mk

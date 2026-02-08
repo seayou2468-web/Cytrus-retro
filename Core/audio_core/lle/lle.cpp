@@ -10,6 +10,7 @@
 #include <teakra/teakra.h>
 #include <teakra/impl/register.h>
 #include "audio_core/lle/lle.h"
+
 #include "common/assert.h"
 #include "common/bit_field.h"
 #include "common/swap.h"
@@ -123,6 +124,8 @@ static u8 PipeIndexToSlotIndex(u8 pipe_index, PipeDirection direction) {
     return (pipe_index << 1) + static_cast<u8>(direction);
 }
 
+
+
 struct DspLle::Impl final {
     Impl(Core::Timing& timing, bool multithread) : core_timing(timing), multithread(multithread),
         teakra([this] {
@@ -140,6 +143,7 @@ struct DspLle::Impl final {
 
     std::array<u8, Memory::DSP_RAM_SIZE> dsp_memory{};
     Teakra::Teakra teakra;
+
     u16 pipe_base_waddr = 0;
 
     bool semaphore_signaled = false;

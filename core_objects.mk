@@ -1,5 +1,4 @@
 CORE_OBJECTS := \
-    $(CORE_DIR)/Core/include/core/arm/skyeye_common/vfp/vfpinstr.o \
     $(CORE_DIR)/Core/common/thread.o \
     $(CORE_DIR)/Core/common/play_time_manager.o \
     $(CORE_DIR)/Core/common/microprofile.o \
@@ -311,12 +310,20 @@ CORE_OBJECTS := \
     $(CORE_DIR)/Core/core/file_sys/cia_container.o \
     $(CORE_DIR)/Core/core/file_sys/seed_db.o \
     $(CORE_DIR)/Core/core/dumping/backend.o \
+    $(CORE_DIR)/Core/network/room_member.o \
+    $(CORE_DIR)/Core/network/packet.o \
+    $(CORE_DIR)/Core/network/artic_base/artic_base_client.o \
+    $(CORE_DIR)/Core/network/verify_user.o \
+    $(CORE_DIR)/Core/network/network.o \
+    $(CORE_DIR)/Core/network/announce_multiplayer_session.o \
+    $(CORE_DIR)/Core/network/socket_manager.o \
+    $(CORE_DIR)/Core/network/room.o \
+    $(CORE_DIR)/Core/network/network_settings.o \
     $(CORE_DIR)/Core/core/arm/exclusive_monitor.o \
     $(CORE_DIR)/Core/core/arm/hybrid_cpu.o \
-    $(CORE_DIR)/Core/core/arm/ir_backend.o \
     $(CORE_DIR)/Core/core/arm/dynarmic/arm_exclusive_monitor.o \
     $(CORE_DIR)/Core/core/arm/dynarmic/arm_tick_counts.o \
-    $(CORE_DIR)/Core/core/arm/dynarmic/arm_static_ir.o \
+    $(CORE_DIR)/Core/core/arm/dynarmic/arm_hybrid.o \
     $(CORE_DIR)/Core/core/arm/dyncom/arm_dyncom_trans.o \
     $(CORE_DIR)/Core/core/arm/dyncom/arm_dyncom_interpreter.o \
     $(CORE_DIR)/Core/core/arm/dyncom/arm_dyncom_dec.o \
