@@ -225,4 +225,36 @@ void System::LoadState(u32 slot) {
     ia&* this;
 }
 
+std::vector<u8> System::SaveStateToBuffer() const {
+    if (app_loader && !app_loader->SupportsSaveStates()) return {};
+
+    std::ostringstream sstream{std::ios_base::binary};
+    oarchive oa{sstream};
+    oa&* const_cast<System*>(this);
+
+    const std::string& str{sstream.str()};
+    const auto data = std::span<const u8>{reinterpret_cast<const u8*>(str.data()), str.size()};
+    return Common::Compression::CompressDataZSTDDefault(data);
+}
+
+bool System::LoadStateFromBuffer(std::span<const u8> data) {
+    if (app_loader && !app_loader->SupportsSaveStates()) return false;
+    if (Network::GetRoomMember().lock()->IsConnected()) return false;
+
+    try {
+        std::vector<u8> buffer(data.begin(), data.end());
+        std::vector<u8> decompressed = Common::Compression::DecompressDataZSTD(buffer);
+
+        std::istringstream sstream{
+            std::string{reinterpret_cast<char*>(decompressed.data()), decompressed.size()},
+            std::ios_base::binary};
+
+        iarchive ia{sstream};
+        ia&* this;
+        return true;
+    } catch (...) {
+        return false;
+    }
+}
+
 } // namespace Core

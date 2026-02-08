@@ -99,6 +99,12 @@ public:
     /// Unloads the DSP program
     virtual void UnloadComponent() = 0;
 
+    /// Process one audio frame (160 samples)
+    virtual void Tick() {}
+
+    /// Returns the number of samples currently in the FIFO
+    size_t GetFifoSize() const { return fifo.Size(); }
+
     /// Select the sink to use based on sink type.
     void SetSink(SinkType sink_type, std::string_view audio_device);
     /// Get the current sink

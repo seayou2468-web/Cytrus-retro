@@ -12,6 +12,7 @@
 #include "libretro_sink.h"
 #include "libretro_input.h"
 #include <iostream>
+#include <chrono>
 
 retro_log_printf_t log_cb;
 static retro_video_refresh_t video_cb;
@@ -95,8 +96,8 @@ void retro_set_environment(retro_environment_t cb) {
             "Region",
             "Select the console region.",
             {
-                { "auto", "Auto" },
                 { "japan", "Japan" },
+                { "auto", "Auto" },
                 { "usa", "USA" },
                 { "europe", "Europe" },
                 { "australia", "Australia" },
@@ -105,7 +106,7 @@ void retro_set_environment(retro_environment_t cb) {
                 { "taiwan", "Taiwan" },
                 { NULL, NULL },
             },
-            "auto"
+            "japan"
         },
         {
             "cytrus_model",
@@ -179,8 +180,8 @@ void retro_get_system_av_info(struct retro_system_av_info *info) {
     info->geometry.max_width    = 400;
     info->geometry.max_height   = 480;
     info->geometry.aspect_ratio = 400.0f / 480.0f;
-    info->timing.fps            = 60.0;
-    info->timing.sample_rate    = 32768.0;
+    info->timing.fps            = 60.0; // 3DS is ~59.82Hz
+    info->timing.sample_rate    = 48000.0;
 }
 
 void retro_set_controller_port_device(unsigned port, unsigned device) {
@@ -195,11 +196,27 @@ void retro_reset(void) {
 void retro_run(void) {
     input_poll_cb();
 
-    Core::System::GetInstance().RunLoop();
+    auto& system = Core::System::GetInstance();
 
-    // Audio flush
-    auto& dsp = Core::System::GetInstance().DSP();
-    static_cast<AudioCore::LibretroSink&>(dsp.GetSink()).Flush();
+    s64 starting_ticks = system.CoreTiming().GetGlobalTicks();
+
+    if (emu_window) {
+        emu_window->ResetFrameDone();
+
+        // Run until GPU triggers VBlank (SwapBuffers)
+        while (!emu_window->IsFrameDone()) {
+            system.RunLoop();
+        }
+    } else {
+        system.RunLoop();
+    }
+
+    s64 ending_ticks = system.CoreTiming().GetGlobalTicks();
+    u64 ticks_passed = (u64)(ending_ticks - starting_ticks);
+
+    // Audio Integration: Use emulated cycles to determine how many samples to submit to Libretro.
+    auto& dsp = system.DSP();
+    static_cast<AudioCore::LibretroSink&>(dsp.GetSink()).Flush(ticks_passed);
 
     if (emu_window) {
         video_cb(emu_window->GetFramebuffer(), emu_window->GetWidth(), emu_window->GetHeight(), emu_window->GetWidth() * sizeof(u32));
@@ -207,15 +224,15 @@ void retro_run(void) {
 }
 
 size_t retro_serialize_size(void) {
-    // This is a rough estimate, should be refined.
-    return 32 * 1024 * 1024;
+    return 64 * 1024 * 1024;
 }
 
 bool retro_serialize(void *data, size_t size) {
     try {
-        // Implementation using boost::serialization or similar
-        // Core::System::GetInstance().Serialize(...)
-        return false;
+        auto buffer = Core::System::GetInstance().SaveStateToBuffer();
+        if (buffer.empty() || buffer.size() > size) return false;
+        memcpy(data, buffer.data(), buffer.size());
+        return true;
     } catch (...) {
         return false;
     }
@@ -223,8 +240,7 @@ bool retro_serialize(void *data, size_t size) {
 
 bool retro_unserialize(const void *data, size_t size) {
     try {
-        // Core::System::GetInstance().Unserialize(...)
-        return false;
+        return Core::System::GetInstance().LoadStateFromBuffer({reinterpret_cast<const u8*>(data), size});
     } catch (...) {
         return false;
     }
@@ -258,7 +274,16 @@ static void setup_settings() {
             FileUtil::CreateDir(nand_dir + "/private");
             FileUtil::CreateDir(nand_dir + "/ro");
             FileUtil::CreateDir(nand_dir + "/sysdata");
-            FileUtil::CreateFullPath(nand_dir + "/dbs/ticket.db");
+            FileUtil::CreateFullPath(nand_dir + "/dbs");
+
+            std::string ticket_db_path = nand_dir + "/dbs/ticket.db";
+            if (!FileUtil::Exists(ticket_db_path)) {
+                FileUtil::WriteStringToFile(false, ticket_db_path, "");
+            }
+            std::string title_db_path = nand_dir + "/dbs/title.db";
+            if (!FileUtil::Exists(title_db_path)) {
+                FileUtil::WriteStringToFile(false, title_db_path, "");
+            }
         }
 
         // Auto-setup SDMC structure
@@ -333,10 +358,10 @@ static void setup_settings() {
 
     // Setup input profile for libretro
     auto& profile = Settings::values.current_input_profile;
-    profile.buttons[Settings::NativeButton::A] = "engine:libretro,port:0,id:0"; // RETRO_DEVICE_ID_JOYPAD_B
-    profile.buttons[Settings::NativeButton::B] = "engine:libretro,port:0,id:1"; // RETRO_DEVICE_ID_JOYPAD_Y
-    profile.buttons[Settings::NativeButton::X] = "engine:libretro,port:0,id:8"; // RETRO_DEVICE_ID_JOYPAD_A
-    profile.buttons[Settings::NativeButton::Y] = "engine:libretro,port:0,id:9"; // RETRO_DEVICE_ID_JOYPAD_X
+    profile.buttons[Settings::NativeButton::A] = "engine:libretro,port:0,id:8"; // RETRO_DEVICE_ID_JOYPAD_A
+    profile.buttons[Settings::NativeButton::B] = "engine:libretro,port:0,id:0"; // RETRO_DEVICE_ID_JOYPAD_B
+    profile.buttons[Settings::NativeButton::X] = "engine:libretro,port:0,id:9"; // RETRO_DEVICE_ID_JOYPAD_X
+    profile.buttons[Settings::NativeButton::Y] = "engine:libretro,port:0,id:1"; // RETRO_DEVICE_ID_JOYPAD_Y
     profile.buttons[Settings::NativeButton::Up] = "engine:libretro,port:0,id:2";
     profile.buttons[Settings::NativeButton::Down] = "engine:libretro,port:0,id:3";
     profile.buttons[Settings::NativeButton::Left] = "engine:libretro,port:0,id:4";
@@ -396,6 +421,9 @@ bool retro_load_game(const struct retro_game_info *game) {
     if (using_home_menu) {
         system.SetCartridge(game->path);
     }
+
+    auto& dsp = system.DSP();
+    static_cast<AudioCore::LibretroSink&>(dsp.GetSink()).SetLibretroCallback(audio_batch_cb);
 
     return true;
 }

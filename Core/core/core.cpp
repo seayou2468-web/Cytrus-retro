@@ -797,7 +797,7 @@ void System::serialize(Archive& ar, const unsigned int file_version) {
     } else {
         auto dsp_lle = dynamic_cast<AudioCore::DspLle*>(dsp_core.get());
         if (dsp_lle) {
-            // ar&* dsp_lle; // TODO: Implement DspLle serialization
+            ar&* dsp_lle;
         } else {
             throw std::runtime_error("Unknown DSP core type");
         }

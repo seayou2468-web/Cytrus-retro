@@ -44,8 +44,13 @@ public:
     void LoadComponent(const std::span<const u8> buffer) override;
     void UnloadComponent() override;
 
+    void Tick() override;
+
     using HLEFunction = std::function<void(Teakra::Teakra&)>;
     void RegisterHLEFunction(u32 address, HLEFunction func);
+
+    template <class Archive>
+    void serialize(Archive& ar, const unsigned int version);
 
 private:
     struct Impl;

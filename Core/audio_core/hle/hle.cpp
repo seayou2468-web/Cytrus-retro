@@ -76,7 +76,9 @@ private:
     HLE::SharedMemory& WriteRegion();
 
     StereoFrame16 GenerateCurrentFrame();
+public:
     bool Tick();
+private:
     void AudioTickCallback(s64 cycles_late);
 
     DspState dsp_state = DspState::Off;
@@ -125,7 +127,7 @@ DspHle::Impl::Impl(DspHle& parent_, Memory::MemorySystem& memory, Core::Timing& 
         core_timing.RegisterEvent("AudioCore::DspHle::tick_event", [this](u64, s64 cycles_late) {
             this->AudioTickCallback(cycles_late);
         });
-    core_timing.ScheduleEvent(audio_frame_ticks, tick_event);
+    // core_timing.ScheduleEvent(audio_frame_ticks, tick_event);
 }
 
 DspHle::Impl::~Impl() {
@@ -424,7 +426,7 @@ void DspHle::Impl::AudioTickCallback(s64 cycles_late) {
                        Core::System::GetInstance().GetStableFrameTimeScale())
             : 1.0;
     s64 adjusted_ticks = static_cast<s64>(audio_frame_ticks / time_scale - cycles_late);
-    core_timing.ScheduleEvent(adjusted_ticks, tick_event);
+    // core_timing.ScheduleEvent(adjusted_ticks, tick_event);
 }
 
 DspHle::DspHle(Core::System& system, Memory::MemorySystem& memory, Core::Timing& timing)
@@ -477,6 +479,10 @@ void DspHle::LoadComponent(std::span<const u8> component_data) {
 
 void DspHle::UnloadComponent() {
     // Do nothing
+}
+
+void DspHle::Tick() {
+    impl->Tick();
 }
 
 } // namespace AudioCore

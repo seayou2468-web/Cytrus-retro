@@ -11,6 +11,7 @@
 #include <dynarmic/interface/A32/a32.h>
 #include <dynarmic/ir/opcodes.h>
 #include "common/common_types.h"
+#include "common/u128.h"
 #include "core/arm/arm_interface.h"
 #include "core/arm/dynarmic/arm_dynarmic_cp15.h"
 #include "core/arm/skyeye_common/armstate.h"
@@ -73,17 +74,26 @@ public:
 
     struct Instruction {
         Dynarmic::IR::Opcode op;
+        void (*handler)(ARM_Hybrid&, const Instruction&, U128* results);
         std::array<Operand, 5> args;
         u8 arg_count;
         u16 result_index;
     };
 
-    ARM_Hybrid_Callbacks& GetCallbacks();
+    using IRHandler = void (*)(ARM_Hybrid&, const Instruction&, U128* results);
+
+    ARM_Hybrid_Callbacks& GetCallbacks() { return *cb; }
 
     using HLEFunction = std::function<void(ARM_Hybrid&)>;
     void RegisterHLEFunction(u32 address, HLEFunction func);
 
     std::shared_ptr<Memory::PageTable> GetPageTable() const override;
+
+    void SetIRRegion(u32 start, u32 size);
+    void SetHLERegion(u32 start, u32 size);
+
+    u32 ReadCP15(u32 crn, u32 op1, u32 crm, u32 op2) const;
+    void WriteCP15(u32 value, u32 crn, u32 op1, u32 crm, u32 op2);
 
 private:
     friend class ARM_Hybrid_Callbacks;
@@ -91,6 +101,8 @@ private:
     struct TranslatedBlock {
         std::vector<Instruction> instructions;
         u32 guest_end_pc;
+        u64 total_ticks = 0;
+        u32 instruction_count = 0;
         bool use_ir = true;
     };
 
@@ -104,9 +116,20 @@ private:
 
     Core::DynarmicExclusiveMonitor& exclusive_monitor;
 
+public:
+    Core::DynarmicExclusiveMonitor& GetExclusiveMonitor() { return exclusive_monitor; }
+
+private:
     std::shared_ptr<Memory::PageTable> current_page_table = nullptr;
     std::unordered_map<u32, TranslatedBlock> block_cache;
     std::unordered_map<u32, HLEFunction> hle_functions;
+
+    struct Region {
+        u32 start;
+        u32 size;
+    };
+    std::vector<Region> ir_regions;
+    std::vector<Region> hle_regions;
 
     // Fast-path cache
     static constexpr size_t FAST_BLOCK_CACHE_SIZE = 4096;
@@ -116,7 +139,7 @@ private:
     };
     std::array<FastCacheEntry, FAST_BLOCK_CACHE_SIZE> fast_block_cache;
 
-    std::vector<unsigned __int128> results_buffer;
+    std::vector<U128> results_buffer;
 
 public:
     std::vector<u32> flags_buffer;

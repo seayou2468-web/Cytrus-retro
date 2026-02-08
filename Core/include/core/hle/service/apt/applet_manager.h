@@ -154,6 +154,7 @@ union AppletAttributes {
     u32 raw;
 
     BitField<0, 3, AppletPos> applet_pos;
+    BitField<5, 1, u32> has_pending_parameter;
     BitField<28, 1, u32> no_exit_on_system_applet;
     BitField<29, 1, u32> is_home_menu;
 
@@ -329,6 +330,9 @@ public:
     Result OrderToCloseApplication();
     Result PrepareToCloseApplication(bool return_to_sys);
     Result CloseApplication(std::shared_ptr<Kernel::Object> object, const std::vector<u8>& buffer);
+
+    Result ReplySleepQuery(AppletId from_applet_id, SleepQueryReply reply);
+    Result ReplySleepNotificationComplete(AppletId from_applet_id);
 
     Result PrepareToDoApplicationJump(u64 title_id, FS::MediaType media_type,
                                       ApplicationJumpFlags flags);
