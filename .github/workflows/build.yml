@@ -1,0 +1,49 @@
+name: Build Libretro Core
+
+on:
+  push:
+    branches: [ main, libretro-port-complete, libretro-port-refined ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 1
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential libgl1-mesa-dev libvulkan-dev
+
+      - name: Build
+        run: make -f Makefile.libretro platform=unix -j$(nproc)
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cytrus_libretro_linux
+          path: cytrus_libretro.so
+
+  build-ios:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 1
+
+      - name: Build
+        run: |
+          IOSSDK=$(xcrun --sdk iphoneos --show-sdk-path)
+          make -f Makefile.libretro platform=ios IOSSDK=$IOSSDK -j$(sysctl -n hw.ncpu)
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cytrus_libretro_ios
+          path: cytrus_libretro_ios.dylib
