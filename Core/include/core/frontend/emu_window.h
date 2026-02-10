@@ -246,6 +246,10 @@ public:
         return framebuffer_layout;
     }
 
+    virtual void* GetLibretroVulkanContext() {
+        return nullptr;
+    }
+
     /**
      * Convenience method to update the current frame layout
      * Read from the current settings to determine which layout to use.

@@ -59,14 +59,14 @@ public:
         return present_renderpass;
     }
 
-    u32 ImageCount() const noexcept {
-        return swapchain.GetImageCount();
-    }
+    u32 ImageCount() const noexcept;
 
 private:
     void PresentThread(std::stop_token token);
 
     void CopyToSwapchain(Frame* frame);
+
+    void LibretroPresent(Frame* frame);
 
     vk::RenderPass CreateRenderpass();
 
@@ -77,7 +77,7 @@ private:
     bool low_refresh_rate;
     vk::SurfaceKHR surface;
     vk::SurfaceKHR next_surface{};
-    Swapchain swapchain;
+    std::unique_ptr<Swapchain> swapchain;
     vk::CommandPool command_pool;
     vk::Queue graphics_queue;
     vk::RenderPass present_renderpass;

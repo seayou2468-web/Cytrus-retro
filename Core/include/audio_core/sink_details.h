@@ -19,7 +19,8 @@ enum class SinkType : u32 {
     Null = 1,
     CoreAudio = 2,
     OpenAL = 3,
-    SDL3 = 4
+    SDL3 = 4,
+    Libretro = 5
 };
 
 struct SinkDetails {

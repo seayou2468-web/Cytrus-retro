@@ -38,6 +38,8 @@ class Instance {
 public:
     explicit Instance(bool validation = false, bool dump_command_buffers = false);
     explicit Instance(Frontend::EmuWindow& window, u32 physical_device_index);
+    explicit Instance(vk::Instance instance, vk::PhysicalDevice physical_device,
+                      vk::Device device, vk::Queue queue, u32 queue_family_index);
     ~Instance();
 
     /// Returns the FormatTraits struct for the provided pixel format
@@ -53,7 +55,7 @@ public:
 
     /// Returns the Vulkan instance
     vk::Instance GetInstance() const {
-        return *instance;
+        return instance;
     }
 
     /// Returns the current physical device
@@ -63,7 +65,7 @@ public:
 
     /// Returns the Vulkan device
     vk::Device GetDevice() const {
-        return *device;
+        return device;
     }
 
     /// Returns the VMA allocator handle
@@ -290,9 +292,11 @@ private:
 
 private:
     std::shared_ptr<Common::DynamicLibrary> library;
-    vk::UniqueInstance instance;
+    vk::Instance instance;
     vk::PhysicalDevice physical_device;
-    vk::UniqueDevice device;
+    vk::Device device;
+    vk::UniqueInstance owned_instance;
+    vk::UniqueDevice owned_device;
     vk::PhysicalDeviceProperties properties;
     vk::PhysicalDeviceFeatures features;
     vk::DriverIdKHR driver_id;

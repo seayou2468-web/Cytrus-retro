@@ -12,6 +12,7 @@
 #include "video_core/custom_textures/custom_format.h"
 #include "video_core/renderer_vulkan/vk_instance.h"
 #include "video_core/renderer_vulkan/vk_platform.h"
+#include "libretro_vulkan.h"
 
 #include <vma/vk_mem_alloc.h>
 
@@ -133,37 +134,74 @@ std::string GetReadableVersion(u32 version) {
 
 Instance::Instance(bool enable_validation, bool dump_command_buffers)
     : library{OpenLibrary()},
-      instance{CreateInstance(*library, Frontend::WindowSystemType::Headless, enable_validation,
-                              dump_command_buffers)},
-      physical_devices{instance->enumeratePhysicalDevices()} {}
+      owned_instance{CreateInstance(*library, Frontend::WindowSystemType::Headless,
+                                    enable_validation, dump_command_buffers)},
+      instance{*owned_instance}, physical_devices{instance.enumeratePhysicalDevices()} {}
 
-Instance::Instance(Frontend::EmuWindow& window, u32 physical_device_index)
-    : library{OpenLibrary(&window)},
-      instance{CreateInstance(*library, window.GetWindowInfo().type,
-                              Settings::values.renderer_debug.GetValue(),
-                              Settings::values.dump_command_buffers.GetValue())},
-      debug_callback{CreateDebugCallback(*instance, debug_utils_supported)},
-      physical_devices{instance->enumeratePhysicalDevices()} {
-    const std::size_t num_physical_devices = static_cast<u16>(physical_devices.size());
-    ASSERT_MSG(physical_device_index < num_physical_devices,
-               "Invalid physical device index {} provided when only {} devices exist",
-               physical_device_index, num_physical_devices);
+Instance::Instance(Frontend::EmuWindow& window, u32 physical_device_index) {
+    if (auto* ctx = window.GetLibretroVulkanContext()) {
+        auto* vk_ctx = static_cast<const struct retro_hw_render_interface_vulkan*>(ctx);
 
-    physical_device = physical_devices[physical_device_index];
+        VULKAN_HPP_DEFAULT_DISPATCHER.init(vk_ctx->get_instance_proc_addr);
+
+        instance = vk_ctx->instance;
+        physical_device = vk_ctx->gpu;
+        device = vk_ctx->device;
+        graphics_queue = vk_ctx->queue;
+        present_queue = vk_ctx->queue;
+        queue_family_index = vk_ctx->queue_index;
+
+        VULKAN_HPP_DEFAULT_DISPATCHER.init(instance);
+        VULKAN_HPP_DEFAULT_DISPATCHER.init(device);
+    } else {
+        library = OpenLibrary(&window);
+        owned_instance = CreateInstance(*library, window.GetWindowInfo().type,
+                                        Settings::values.renderer_debug.GetValue(),
+                                        Settings::values.dump_command_buffers.GetValue());
+        instance = *owned_instance;
+        debug_callback = CreateDebugCallback(instance, debug_utils_supported);
+        physical_devices = instance.enumeratePhysicalDevices();
+        const std::size_t num_physical_devices = static_cast<u16>(physical_devices.size());
+        ASSERT_MSG(physical_device_index < num_physical_devices,
+                   "Invalid physical device index {} provided when only {} devices exist",
+                   physical_device_index, num_physical_devices);
+
+        physical_device = physical_devices[physical_device_index];
+    }
+
     available_extensions = GetSupportedExtensions(physical_device);
     properties = physical_device.getProperties();
-    if (properties.apiVersion < TargetVulkanApiVersion) {
+    if (!window.GetLibretroVulkanContext() && properties.apiVersion < TargetVulkanApiVersion) {
         throw std::runtime_error(fmt::format(
             "Vulkan {}.{} is required, but only {}.{} is supported by device!",
             VK_VERSION_MAJOR(TargetVulkanApiVersion), VK_VERSION_MINOR(TargetVulkanApiVersion),
             VK_VERSION_MAJOR(properties.apiVersion), VK_VERSION_MINOR(properties.apiVersion)));
     }
 
-    CreateDevice();
+    if (!window.GetLibretroVulkanContext()) {
+        CreateDevice();
+    } else {
+        CreateAllocator();
+    }
     CreateFormatTable();
     CollectToolingInfo();
     CreateCustomFormatTable();
     CreateAttribTable();
+}
+
+Instance::Instance(vk::Instance instance_, vk::PhysicalDevice physical_device_,
+                  vk::Device device_, vk::Queue queue_, u32 queue_family_index_)
+    : instance{instance_}, physical_device{physical_device_}, device{device_},
+      graphics_queue{queue_}, present_queue{queue_}, queue_family_index{queue_family_index_} {
+
+    properties = physical_device.getProperties();
+    available_extensions = GetSupportedExtensions(physical_device);
+
+    CreateFormatTable();
+    CollectToolingInfo();
+    CreateCustomFormatTable();
+    CreateAttribTable();
+    CreateAllocator();
 }
 
 Instance::~Instance() {
@@ -613,16 +651,17 @@ bool Instance::CreateDevice() {
 #undef FEAT_SET
 
     try {
-        device = physical_device.createDeviceUnique(device_chain.get());
+        owned_device = physical_device.createDeviceUnique(device_chain.get());
+        device = *owned_device;
     } catch (vk::ExtensionNotPresentError& err) {
         LOG_CRITICAL(Render_Vulkan, "Some required extensions are not available {}", err.what());
         return false;
     }
 
-    VULKAN_HPP_DEFAULT_DISPATCHER.init(*device);
+    VULKAN_HPP_DEFAULT_DISPATCHER.init(device);
 
-    graphics_queue = device->getQueue(queue_family_index, 0);
-    present_queue = device->getQueue(queue_family_index, 0);
+    graphics_queue = device.getQueue(queue_family_index, 0);
+    present_queue = device.getQueue(queue_family_index, 0);
 
     CreateAllocator();
     return true;
@@ -636,9 +675,9 @@ void Instance::CreateAllocator() {
 
     const VmaAllocatorCreateInfo allocator_info = {
         .physicalDevice = physical_device,
-        .device = *device,
+        .device = device,
         .pVulkanFunctions = &functions,
-        .instance = *instance,
+        .instance = instance,
         .vulkanApiVersion = TargetVulkanApiVersion,
     };
 

@@ -12,6 +12,7 @@
 #include "video_core/renderer_vulkan/vk_scheduler.h"
 #include "video_core/renderer_vulkan/vk_swapchain.h"
 #include "vk_platform.h"
+#include "libretro_vulkan.h"
 
 #include <vma/vk_mem_alloc.h>
 
@@ -101,17 +102,28 @@ PresentWindow::PresentWindow(Frontend::EmuWindow& emu_window_, const Instance& i
                              Scheduler& scheduler_, bool low_refresh_rate_)
     : emu_window{emu_window_}, instance{instance_}, scheduler{scheduler_},
       low_refresh_rate{low_refresh_rate_},
-      surface{CreateSurface(instance.GetInstance(), emu_window)}, next_surface{surface},
-      swapchain{instance, emu_window.GetFramebufferLayout().width,
-                emu_window.GetFramebufferLayout().height, surface, low_refresh_rate_},
-      graphics_queue{instance.GetGraphicsQueue()}, present_renderpass{CreateRenderpass()},
+      surface{emu_window.GetLibretroVulkanContext() ? VK_NULL_HANDLE
+                                                    : CreateSurface(instance.GetInstance(),
+                                                                    emu_window)},
+      next_surface{surface}, graphics_queue{instance.GetGraphicsQueue()},
       vsync_enabled{Settings::values.use_vsync_new.GetValue()},
-      blit_supported{
-          CanBlitToSwapchain(instance.GetPhysicalDevice(), swapchain.GetSurfaceFormat().format)},
-      use_present_thread{Settings::values.async_presentation.GetValue()},
+      use_present_thread{emu_window.GetLibretroVulkanContext()
+                             ? false
+                             : Settings::values.async_presentation.GetValue()},
       last_render_surface{emu_window.GetWindowInfo().render_surface} {
 
-    const u32 num_images = swapchain.GetImageCount();
+    if (!emu_window.GetLibretroVulkanContext()) {
+        swapchain = std::make_unique<Swapchain>(
+            instance, emu_window.GetFramebufferLayout().width,
+            emu_window.GetFramebufferLayout().height, surface, low_refresh_rate_);
+        blit_supported = CanBlitToSwapchain(instance.GetPhysicalDevice(),
+                                            swapchain->GetSurfaceFormat().format);
+    } else {
+        blit_supported = false;
+    }
+    present_renderpass = CreateRenderpass();
+
+    const u32 num_images = ImageCount();
     const vk::Device device = instance.GetDevice();
 
     const vk::CommandPoolCreateInfo pool_info = {
@@ -178,7 +190,9 @@ void PresentWindow::RecreateFrame(Frame* frame, u32 width, u32 height) {
         vmaDestroyImage(instance.GetAllocator(), frame->image, frame->allocation);
     }
 
-    const vk::Format format = swapchain.GetSurfaceFormat().format;
+    const vk::Format format = emu_window.GetLibretroVulkanContext()
+                                  ? vk::Format::eR8G8B8A8Unorm
+                                  : swapchain->GetSurfaceFormat().format;
     const vk::ImageCreateInfo image_info = {
         .imageType = vk::ImageType::e2D,
         .format = format,
@@ -281,6 +295,12 @@ Frame* PresentWindow::GetRenderFrame() {
 }
 
 void PresentWindow::Present(Frame* frame) {
+    if (emu_window.GetLibretroVulkanContext()) {
+        scheduler.WaitWorker();
+        LibretroPresent(frame);
+        free_queue.push(frame);
+        return;
+    }
     if (!use_present_thread) {
         scheduler.WaitWorker();
         CopyToSwapchain(frame);
@@ -348,6 +368,42 @@ void PresentWindow::NotifySurfaceChanged() {
     next_surface = CreateSurface(instance.GetInstance(), emu_window);
     recreate_surface_cv.notify_one();
 #endif
+}
+
+void PresentWindow::LibretroPresent(Frame* frame) {
+    auto* ctx = emu_window.GetLibretroVulkanContext();
+    if (!ctx)
+        return;
+    auto* vk_ctx = static_cast<const struct retro_hw_render_interface_vulkan*>(ctx);
+
+    struct retro_vulkan_image libretro_img;
+    libretro_img.image_view = (VkImageView)frame->image_view;
+    libretro_img.image_layout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+    libretro_img.create_info = {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+        .pNext = nullptr,
+        .flags = 0,
+        .image = (VkImage)frame->image,
+        .viewType = VK_IMAGE_VIEW_TYPE_2D,
+        .format = VK_FORMAT_R8G8B8A8_UNORM,
+        .components =
+            {
+                .r = VK_COMPONENT_SWIZZLE_R,
+                .g = VK_COMPONENT_SWIZZLE_G,
+                .b = VK_COMPONENT_SWIZZLE_B,
+                .a = VK_COMPONENT_SWIZZLE_A,
+            },
+        .subresourceRange =
+            {
+                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                .baseMipLevel = 0,
+                .levelCount = 1,
+                .baseArrayLayer = 0,
+                .layerCount = 1,
+            },
+    };
+
+    vk_ctx->set_image(vk_ctx->handle, &libretro_img, 0, nullptr, VK_QUEUE_FAMILY_IGNORED);
 }
 
 void PresentWindow::CopyToSwapchain(Frame* frame) {
@@ -508,7 +564,8 @@ vk::RenderPass PresentWindow::CreateRenderpass() {
     };
 
     const vk::AttachmentDescription color_attachment = {
-        .format = swapchain.GetSurfaceFormat().format,
+        .format = emu_window.GetLibretroVulkanContext() ? vk::Format::eR8G8B8A8Unorm
+                                                        : swapchain->GetSurfaceFormat().format,
         .loadOp = vk::AttachmentLoadOp::eClear,
         .storeOp = vk::AttachmentStoreOp::eStore,
         .stencilLoadOp = vk::AttachmentLoadOp::eDontCare,
@@ -530,3 +587,9 @@ vk::RenderPass PresentWindow::CreateRenderpass() {
 }
 
 } // namespace Vulkan
+
+u32 PresentWindow::ImageCount() const noexcept {
+    if (emu_window.GetLibretroVulkanContext())
+        return 3;
+    return swapchain->GetImageCount();
+}

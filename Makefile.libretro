@@ -1,0 +1,108 @@
+DEBUG = 0
+FRONTEND_SUPPORTS_RGB565 = 1
+
+ifeq ($(platform),)
+	platform = unix
+	ifeq ($(shell uname -a),)
+		platform = win
+	else ifneq ($(findstring MINGW,$(shell uname -a)),)
+		platform = win
+	else ifneq ($(findstring Darwin,$(shell uname -a)),)
+		platform = osx
+	else ifneq ($(findstring win,$(shell uname -a)),)
+		platform = win
+	endif
+endif
+
+TARGET_NAME := cytrus
+
+CORE_DIR := .
+LIBRETRO_DIR := $(CORE_DIR)/libretro
+AZAHAR_DIR := $(CORE_DIR)/externals/azahar
+EXTERNALS_DIR := $(AZAHAR_DIR)/externals
+
+ifneq (,$(findstring unix,$(platform)))
+	TARGET := $(TARGET_NAME)_libretro.so
+	fpic := -fPIC
+	SHARED := -shared -Wl,--version-script=$(LIBRETRO_DIR)/link.T -Wl,--no-undefined
+	LDFLAGS += -lpthread -ldl
+else ifneq (,$(findstring ios,$(platform)))
+	TARGET := $(TARGET_NAME)_libretro_ios.dylib
+	fpic := -fPIC
+	SHARED := -dynamiclib
+	CC = cc -arch arm64 -isysroot $(IOSSDK)
+	CXX = c++ -arch arm64 -isysroot $(IOSSDK)
+	DEFINES += -DIOS -DARM -D__arm64__ -D__aarch64__ -DTARGET_OS_IPHONE
+endif
+
+CFLAGS += $(fpic)
+CXXFLAGS += $(fpic)
+
+INCFLAGS += -I$(CORE_DIR)/Core/include
+INCFLAGS += -I$(EXTERNALS_DIR)/fmt/include
+INCFLAGS += -I$(EXTERNALS_DIR)/boost
+INCFLAGS += -I$(EXTERNALS_DIR)/teakra/include
+INCFLAGS += -I$(EXTERNALS_DIR)/nihstro/include
+INCFLAGS += -I$(EXTERNALS_DIR)/vulkan-headers/include
+INCFLAGS += -I$(EXTERNALS_DIR)/vma/include
+INCFLAGS += -I$(EXTERNALS_DIR)/xxHash
+INCFLAGS += -I$(EXTERNALS_DIR)/soundtouch/include
+INCFLAGS += -I$(EXTERNALS_DIR)/zstd/lib
+INCFLAGS += -I$(EXTERNALS_DIR)/microprofile
+INCFLAGS += -I$(EXTERNALS_DIR)/cryptopp
+INCFLAGS += -I$(EXTERNALS_DIR)/libressl/include
+INCFLAGS += -I$(EXTERNALS_DIR)/enet/include
+INCFLAGS += -I$(CORE_DIR)/externals/libretro-common/include
+INCFLAGS += -I$(LIBRETRO_DIR)
+
+DEFINES += -DENABLE_VULKAN -DENABLE_SOFTWARE_RENDERER -DPACKAGE_VERSION=\"v1.0\" -D_GLIBCXX_USE_CXX11_ABI=1
+DEFINES += -DCRYPTOPP_DISABLE_ASM -DCRYPTOPP_DISABLE_SSSE3 -DCRYPTOPP_DISABLE_AESNI
+DEFINES += -D__LIBRETRO__
+
+# Filter out main files and frontend specific files
+SOURCES_CXX += $(shell find $(CORE_DIR)/Core -name "*.cpp" | grep -v "tests" | grep -v "citra_qt" | grep -v "citra_sdl" | grep -v "android")
+SOURCES_CXX += $(LIBRETRO_DIR)/libretro.cpp
+SOURCES_CXX += $(LIBRETRO_DIR)/libretro_emu_window.cpp
+SOURCES_CXX += $(LIBRETRO_DIR)/libretro_input.cpp
+SOURCES_CXX += $(CORE_DIR)/Core/audio_core/libretro_sink.cpp
+
+# Externals
+SOURCES_CXX += $(EXTERNALS_DIR)/fmt/src/format.cc
+SOURCES_CXX += $(EXTERNALS_DIR)/fmt/src/os.cc
+SOURCES_CXX += $(shell find $(EXTERNALS_DIR)/teakra/src -name "*.cpp" | grep -v "main.cpp" | grep -v "test_generator" | grep -v "test_verifier" | grep -v "step2_test_generator" | grep -v "mod_test_generator" | grep -v "dsp1_reader" | grep -v "coff_reader" | grep -v "makedsp1")
+SOURCES_CXX += $(shell find $(EXTERNALS_DIR)/soundtouch/src -name "*.cpp")
+SOURCES_C   += $(shell find $(EXTERNALS_DIR)/zstd/lib -name "*.c")
+SOURCES_CXX += $(EXTERNALS_DIR)/microprofile/microprofile.cpp
+SOURCES_C   += $(EXTERNALS_DIR)/xxHash/xxhash.c
+SOURCES_C   += $(CORE_DIR)/externals/libretro-common/features/libretro_vulkan.c
+SOURCES_CXX += $(shell find $(EXTERNALS_DIR)/cryptopp -name "*.cpp" | grep -v "test" | grep -v "bench" | grep -v "validat")
+SOURCES_C   += $(shell find $(EXTERNALS_DIR)/libressl/crypto -name "*.c")
+SOURCES_C   += $(shell find $(EXTERNALS_DIR)/libressl/ssl -name "*.c")
+SOURCES_C   += $(shell find $(EXTERNALS_DIR)/libressl/tls -name "*.c")
+SOURCES_C   += $(shell find $(EXTERNALS_DIR)/enet -name "*.c" -maxdepth 1)
+
+# Dynarmic (only if we want JIT, but we'll include it for now since the core expects it)
+# We can add -DDYNARMIC_NO_JIT if needed, but Citra's Core class usually instantiates it.
+SOURCES_CXX += $(shell find $(EXTERNALS_DIR)/dynarmic/src -name "*.cpp" | grep -v "main.cpp" | grep -v "tests")
+
+CXXFLAGS += $(DEFINES) $(INCFLAGS) -std=c++20
+CFLAGS += $(DEFINES) $(INCFLAGS)
+
+OBJS := $(SOURCES_CXX:.cpp=.o) $(SOURCES_CXX:.cc=.o) $(SOURCES_C:.c=.o)
+
+all: $(TARGET)
+
+$(TARGET): $(OBJS)
+	$(CXX) $(SHARED) -o $@ $(OBJS) $(LDFLAGS)
+
+%.o: %.cpp
+	$(CXX) -c -o $@ $< $(CXXFLAGS)
+
+%.o: %.cc
+	$(CXX) -c -o $@ $< $(CXXFLAGS)
+
+%.o: %.c
+	$(CC) -c -o $@ $< $(CFLAGS)
+
+clean:
+	rm -f $(OBJS) $(TARGET)
