@@ -7,28 +7,6 @@ on:
     branches: [ main ]
 
 jobs:
-  build-linux:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: recursive
-          fetch-depth: 1
-
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential libgl1-mesa-dev libvulkan-dev
-
-      - name: Build
-        run: make -f Makefile.libretro platform=unix -j$(nproc)
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: cytrus_libretro_linux
-          path: cytrus_libretro.so
-
   build-ios:
     runs-on: macos-15
     steps:
