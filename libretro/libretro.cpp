@@ -12,6 +12,9 @@
 #include "common/settings.h"
 #include "common/file_util.h"
 #include "common/logging/log.h"
+#include "common/logging/backend.h"
+#include <file/file_path.h>
+#include <retro_miscellaneous.h>
 #include "core/loader/loader.h"
 #include "audio_core/libretro_sink.h"
 #include "audio_core/dsp_interface.h"
@@ -65,11 +68,25 @@ static void get_geometry(u32* width, u32* height, float* aspect) {
 static void setup_paths() {
     const char* system_dir = nullptr;
     if (environ_cb(RETRO_ENVIRONMENT_GET_SYSTEM_DIRECTORY, &system_dir) && system_dir) {
-        std::string base_dir = std::string(system_dir) + "/citra";
+        char base_dir[PATH_MAX_LENGTH];
+        fill_pathname_join(base_dir, system_dir, "citra", sizeof(base_dir));
+        path_mkdir(base_dir);
+
         FileUtil::SetUserPath(base_dir);
-        FileUtil::UpdateUserPath(FileUtil::UserPath::NANDDir, base_dir + "/nand/");
-        FileUtil::UpdateUserPath(FileUtil::UserPath::SysDataDir, base_dir + "/sysdata/");
-        FileUtil::UpdateUserPath(FileUtil::UserPath::SDMCDir, base_dir + "/sdmc/");
+
+        char path[PATH_MAX_LENGTH];
+
+        fill_pathname_join(path, base_dir, "nand", sizeof(path));
+        fill_pathname_slash(path, sizeof(path));
+        FileUtil::UpdateUserPath(FileUtil::UserPath::NANDDir, path);
+
+        fill_pathname_join(path, base_dir, "sysdata", sizeof(path));
+        fill_pathname_slash(path, sizeof(path));
+        FileUtil::UpdateUserPath(FileUtil::UserPath::SysDataDir, path);
+
+        fill_pathname_join(path, base_dir, "sdmc", sizeof(path));
+        fill_pathname_slash(path, sizeof(path));
+        FileUtil::UpdateUserPath(FileUtil::UserPath::SDMCDir, path);
     }
 }
 
@@ -247,6 +264,7 @@ void retro_set_environment(retro_environment_t cb) {
     struct retro_log_callback log;
     if (environ_cb(RETRO_ENVIRONMENT_GET_LOG_INTERFACE, &log)) {
         log_cb = log.log;
+        Common::Log::SetLibretroLogCallback(log_cb);
     }
 }
 

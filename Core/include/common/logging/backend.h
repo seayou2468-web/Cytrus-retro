@@ -5,6 +5,7 @@
 #pragma once
 
 #include <string_view>
+#include <libretro.h>
 #include "common/logging/filter.h"
 
 namespace Common::Log {
@@ -33,4 +34,6 @@ void SetGlobalFilter(const Filter& filter);
 bool SetRegexFilter(const std::string& regex);
 
 void SetColorConsoleBackendEnabled(bool enabled);
+
+void SetLibretroLogCallback(retro_log_printf_t cb);
 } // namespace Common::Log

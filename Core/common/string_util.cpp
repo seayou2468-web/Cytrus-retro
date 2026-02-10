@@ -11,6 +11,7 @@
 #include <string_view>
 
 #include <boost/locale/encoding_utf.hpp>
+#include <string/stdstring.h>
 
 #include "common/common_paths.h"
 #include "common/logging/log.h"
@@ -24,25 +25,23 @@ namespace Common {
 
 /// Make a char lowercase
 char ToLower(char c) {
-    return static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+    return (char)TOLOWER(c);
 }
 
 /// Make a char uppercase
 char ToUpper(char c) {
-    return static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
+    return (char)TOUPPER(c);
 }
 
 /// Make a string lowercase
 std::string ToLower(std::string str) {
-    std::transform(str.begin(), str.end(), str.begin(),
-                   [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    string_to_lower(str.data());
     return str;
 }
 
 /// Make a string uppercase
 std::string ToUpper(std::string str) {
-    std::transform(str.begin(), str.end(), str.begin(),
-                   [](unsigned char c) { return static_cast<char>(std::toupper(c)); });
+    string_to_upper(str.data());
     return str;
 }
 

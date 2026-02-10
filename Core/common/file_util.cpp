@@ -26,6 +26,9 @@
 #include "common/logging/log.h"
 #include "common/scope_exit.h"
 #include "common/string_util.h"
+#include <file/file_path.h>
+#include <retro_dirent.h>
+#include <retro_stat.h>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -109,52 +112,19 @@ static void StripTailDirSlashes(std::string& fname) {
 }
 
 bool Exists(const std::string& filename) {
-    std::string copy(filename);
-    StripTailDirSlashes(copy);
-
-#ifdef _WIN32
-    struct _stat64 file_info;
-    // Windows needs a slash to identify a driver root
-    if (copy.size() != 0 && copy.back() == ':')
-        copy += DIR_SEP_CHR;
-
-    int result = _wstat64(Common::UTF8ToUTF16W(copy).c_str(), &file_info);
-#elif ANDROID
-    int result = AndroidStorage::FileExists(filename) ? 0 : -1;
+#ifdef ANDROID
+    return AndroidStorage::FileExists(filename);
 #else
-    struct stat file_info;
-    int result = stat(copy.c_str(), &file_info);
+    return path_is_valid(filename.c_str());
 #endif
-
-    return (result == 0);
 }
 
 bool IsDirectory(const std::string& filename) {
 #ifdef ANDROID
     return AndroidStorage::IsDirectory(filename);
-#endif
-
-    std::string copy(filename);
-    StripTailDirSlashes(copy);
-
-#ifdef _WIN32
-    struct _stat64 file_info;
-    // Windows needs a slash to identify a driver root
-    if (copy.size() != 0 && copy.back() == ':')
-        copy += DIR_SEP_CHR;
-
-    int result = _wstat64(Common::UTF8ToUTF16W(copy).c_str(), &file_info);
 #else
-    struct stat file_info;
-    int result = stat(copy.c_str(), &file_info);
+    return path_is_directory(filename.c_str());
 #endif
-
-    if (result < 0) {
-        LOG_DEBUG(Common_Filesystem, "stat failed on {}: {}", filename, GetLastErrorMsg());
-        return false;
-    }
-
-    return S_ISDIR(file_info.st_mode);
 }
 
 bool Delete(const std::string& filename) {
@@ -195,17 +165,7 @@ bool Delete(const std::string& filename) {
 
 bool CreateDir(const std::string& path) {
     LOG_TRACE(Common_Filesystem, "directory {}", path);
-#ifdef _WIN32
-    if (::CreateDirectoryW(Common::UTF8ToUTF16W(path).c_str(), nullptr))
-        return true;
-    DWORD error = GetLastError();
-    if (error == ERROR_ALREADY_EXISTS) {
-        LOG_DEBUG(Common_Filesystem, "CreateDirectory failed on {}: already exists", path);
-        return true;
-    }
-    LOG_ERROR(Common_Filesystem, "CreateDirectory failed on {}: {}", path, error);
-    return false;
-#elif ANDROID
+#ifdef ANDROID
     std::string directory = path;
     std::string filename = path;
     if (Common::EndsWith(path, "/")) {
@@ -224,60 +184,13 @@ bool CreateDir(const std::string& path) {
     };
     return true;
 #else
-    if (mkdir(path.c_str(), 0755) == 0)
-        return true;
-
-    int err = errno;
-
-    if (err == EEXIST) {
-        LOG_DEBUG(Common_Filesystem, "mkdir failed on {}: already exists", path);
-        return true;
-    }
-
-    LOG_ERROR(Common_Filesystem, "mkdir failed on {}: {}", path, strerror(err));
-    return false;
+    return path_mkdir(path.c_str());
 #endif
 }
 
 bool CreateFullPath(const std::string& fullPath) {
-    int panicCounter = 100;
     LOG_TRACE(Common_Filesystem, "path {}", fullPath);
-
-    if (FileUtil::Exists(fullPath)) {
-        LOG_DEBUG(Common_Filesystem, "path exists {}", fullPath);
-        return true;
-    }
-
-    std::size_t position = 0;
-    while (true) {
-        std::size_t prev_pos = position;
-        // Find next sub path
-        position = fullPath.find(DIR_SEP_CHR, prev_pos);
-
-#ifdef _WIN32
-        if (position == fullPath.npos)
-            position = fullPath.find(DIR_SEP_CHR_WIN, prev_pos);
-#endif
-
-        // we're done, yay!
-        if (position == fullPath.npos)
-            return true;
-
-        // Include the '/' so the first call is CreateDir("/") rather than CreateDir("")
-        std::string const subPath(fullPath.substr(0, position + 1));
-        if (!FileUtil::IsDirectory(subPath) && !FileUtil::CreateDir(subPath)) {
-            LOG_ERROR(Common, "CreateFullPath: directory creation failed");
-            return false;
-        }
-
-        // A safety check
-        panicCounter--;
-        if (panicCounter <= 0) {
-            LOG_ERROR(Common, "CreateFullPath: directory structure is too deep");
-            return false;
-        }
-        position++;
-    }
+    return path_mkdir(fullPath.c_str());
 }
 
 bool DeleteDir(const std::string& filename) {
@@ -382,35 +295,13 @@ bool Copy(const std::string& srcFilename, const std::string& destFilename) {
 }
 
 u64 GetSize(const std::string& filename) {
-    if (!Exists(filename)) {
-        LOG_ERROR(Common_Filesystem, "failed {}: No such file", filename);
-        return 0;
-    }
-
-    if (IsDirectory(filename)) {
-        LOG_ERROR(Common_Filesystem, "failed {}: is a directory", filename);
-        return 0;
-    }
-#ifndef _WIN32
-    struct stat buf;
-#endif
-#ifdef _WIN32
-    struct _stat64 buf;
-    if (_wstat64(Common::UTF8ToUTF16W(filename).c_str(), &buf) == 0)
-#elif ANDROID
-    u64 result = AndroidStorage::GetSize(filename);
-    LOG_TRACE(Common_Filesystem, "{}: {}", filename, result);
-    return result;
+#ifdef ANDROID
+    return AndroidStorage::GetSize(filename);
 #else
-    if (stat(filename.c_str(), &buf) == 0)
+    int32_t size = path_get_size(filename.c_str());
+    if (size < 0) return 0;
+    return (u64)size;
 #endif
-    {
-        LOG_TRACE(Common_Filesystem, "{}: {}", filename, buf.st_size);
-        return buf.st_size;
-    }
-
-    LOG_ERROR(Common_Filesystem, "Stat failed {}: {}", filename, GetLastErrorMsg());
-    return 0;
 }
 
 u64 GetSize(const int fd) {

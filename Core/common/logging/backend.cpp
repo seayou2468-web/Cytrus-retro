@@ -34,8 +34,14 @@
 #include "common/settings.h"
 #include "common/string_util.h"
 #include "common/thread.h"
+#include <libretro.h>
 
 namespace Common::Log {
+
+static retro_log_printf_t s_libretro_log_cb = nullptr;
+void SetLibretroLogCallback(retro_log_printf_t cb) {
+    s_libretro_log_cb = cb;
+}
 
 namespace {
 
@@ -396,6 +402,7 @@ private:
 #ifdef ANDROID
         lambda(static_cast<Backend&>(lc_backend));
 #endif
+        lambda(static_cast<Backend&>(libretro_backend));
     }
 
     static void Deleter(Impl* ptr) {
@@ -436,9 +443,47 @@ private:
 
     Filter filter;
     boost::regex regex_filter;
+    /**
+     * Backend that writes to the Libretro log callback
+     */
+    class LibretroBackend : public Backend {
+    public:
+        void Write(const Entry& entry) override {
+            if (s_libretro_log_cb) {
+                retro_log_level level;
+                switch (entry.log_level) {
+                case Level::Trace:
+                case Level::Debug:
+                    level = RETRO_LOG_DEBUG;
+                    break;
+                case Level::Info:
+                    level = RETRO_LOG_INFO;
+                    break;
+                case Level::Warning:
+                    level = RETRO_LOG_WARN;
+                    break;
+                case Level::Error:
+                    level = RETRO_LOG_ERROR;
+                    break;
+                case Level::Critical:
+                    level = RETRO_LOG_ERROR;
+                    break;
+                default:
+                    level = RETRO_LOG_INFO;
+                    break;
+                }
+                s_libretro_log_cb(level, "[%s] %s\n", GetLogClassName(entry.log_class),
+                                  entry.message.c_str());
+            }
+        }
+        void Flush() override {}
+        void EnableForStacktrace() override {}
+    };
+
     DebuggerBackend debugger_backend{};
     ColorConsoleBackend color_console_backend{};
     FileBackend file_backend;
+    LibretroBackend libretro_backend{};
 #ifdef ANDROID
     LogcatBackend lc_backend{};
 #endif
