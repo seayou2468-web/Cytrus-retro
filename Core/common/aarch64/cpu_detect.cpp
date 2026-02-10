@@ -114,4 +114,14 @@ const CPUCaps& GetCPUCaps() {
 
 } // namespace Common
 
+extern "C" {
+unsigned int detectCPUextensions(void) {
+    return 0;
+}
+
+void disableExtensions(unsigned int wDisableMask) {
+    (void)wDisableMask;
+}
+}
+
 #endif // CITRA_ARCH(arm64)

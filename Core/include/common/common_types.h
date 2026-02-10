@@ -33,15 +33,31 @@
 #endif
 #endif
 
+#ifndef u8
 typedef std::uint8_t u8;   ///< 8-bit unsigned byte
+#endif
+#ifndef u16
 typedef std::uint16_t u16; ///< 16-bit unsigned short
+#endif
+#ifndef u32
 typedef std::uint32_t u32; ///< 32-bit unsigned word
+#endif
+#ifndef u64
 typedef std::uint64_t u64; ///< 64-bit unsigned int
+#endif
 
+#ifndef s8
 typedef std::int8_t s8;   ///< 8-bit signed byte
+#endif
+#ifndef s16
 typedef std::int16_t s16; ///< 16-bit signed short
+#endif
+#ifndef s32
 typedef std::int32_t s32; ///< 32-bit signed word
+#endif
+#ifndef s64
 typedef std::int64_t s64; ///< 64-bit signed int
+#endif
 
 typedef float f32;  ///< 32-bit floating point
 typedef double f64; ///< 64-bit floating point

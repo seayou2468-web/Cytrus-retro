@@ -344,6 +344,7 @@ bool retro_load_game(const struct retro_game_info *game) {
     Settings::values.graphics_api.SetValue(Settings::GraphicsAPI::Vulkan);
     Settings::values.audio_emulation.SetValue(Settings::AudioEmulation::HLE);
     Settings::values.output_type.SetValue(AudioCore::SinkType::Libretro);
+    Settings::values.use_cpu_jit.SetValue(false);
 
     // Input setup
     Settings::values.current_input_profile.buttons[Settings::NativeButton::A] = "engine:libretro,id:0";

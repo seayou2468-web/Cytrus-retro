@@ -33,6 +33,8 @@ else ifneq (,$(findstring ios,$(platform)))
 	CC = cc -arch arm64 -isysroot $(IOSSDK)
 	CXX = c++ -arch arm64 -isysroot $(IOSSDK)
 	DEFINES += -DIOS -DARM -D__arm64__ -D__aarch64__ -DTARGET_OS_IPHONE
+	INCFLAGS += -I$(EXTERNALS_DIR)/libressl/include/arch/aarch64
+	SOURCES_CXX += $(CORE_DIR)/Core/common/aarch64/cpu_detect.cpp
 endif
 
 CFLAGS += $(fpic)
@@ -47,6 +49,7 @@ INCFLAGS += -I$(EXTERNALS_DIR)/vulkan-headers/include
 INCFLAGS += -I$(EXTERNALS_DIR)/vma/include
 INCFLAGS += -I$(EXTERNALS_DIR)/xxHash
 INCFLAGS += -I$(EXTERNALS_DIR)/soundtouch/include
+INCFLAGS += -I$(EXTERNALS_DIR)/faad2/faad2/include
 INCFLAGS += -I$(EXTERNALS_DIR)/zstd/lib
 INCFLAGS += -I$(EXTERNALS_DIR)/microprofile
 INCFLAGS += -I$(EXTERNALS_DIR)/cryptopp
@@ -54,6 +57,9 @@ INCFLAGS += -I$(EXTERNALS_DIR)/libressl/include
 INCFLAGS += -I$(EXTERNALS_DIR)/enet/include
 INCFLAGS += -I$(CORE_DIR)/externals/libretro-common/include
 INCFLAGS += -I$(LIBRETRO_DIR)
+INCFLAGS += -I$(CORE_DIR)/Core/include/network
+INCFLAGS += -I$(CORE_DIR)/Core/include/network/artic_base
+INCFLAGS += -I$(CORE_DIR)/Core/include/audio_core/hle
 
 DEFINES += -DENABLE_VULKAN -DENABLE_SOFTWARE_RENDERER -DPACKAGE_VERSION=\"v1.0\" -D_GLIBCXX_USE_CXX11_ABI=1
 DEFINES += -DCRYPTOPP_DISABLE_ASM -DCRYPTOPP_DISABLE_SSSE3 -DCRYPTOPP_DISABLE_AESNI
@@ -70,7 +76,8 @@ SOURCES_CXX += $(CORE_DIR)/Core/audio_core/libretro_sink.cpp
 SOURCES_CXX += $(EXTERNALS_DIR)/fmt/src/format.cc
 SOURCES_CXX += $(EXTERNALS_DIR)/fmt/src/os.cc
 SOURCES_CXX += $(shell find $(EXTERNALS_DIR)/teakra/src -name "*.cpp" | grep -v "main.cpp" | grep -v "test_generator" | grep -v "test_verifier" | grep -v "step2_test_generator" | grep -v "mod_test_generator" | grep -v "dsp1_reader" | grep -v "coff_reader" | grep -v "makedsp1")
-SOURCES_CXX += $(shell find $(EXTERNALS_DIR)/soundtouch/src -name "*.cpp")
+SOURCES_CXX += $(shell find $(EXTERNALS_DIR)/soundtouch/source/SoundTouch -name "*.cpp")
+SOURCES_C   += $(shell find $(EXTERNALS_DIR)/faad2/faad2/libfaad -name "*.c")
 SOURCES_C   += $(shell find $(EXTERNALS_DIR)/zstd/lib -name "*.c")
 SOURCES_CXX += $(EXTERNALS_DIR)/microprofile/microprofile.cpp
 SOURCES_C   += $(EXTERNALS_DIR)/xxHash/xxhash.c
