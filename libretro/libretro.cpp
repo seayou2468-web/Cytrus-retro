@@ -27,6 +27,41 @@ static retro_environment_t environ_cb;
 static LibretroEmuWindow* emu_window = nullptr;
 static struct retro_hw_render_interface_vulkan* vk_interface = nullptr;
 
+static void get_geometry(u32* width, u32* height, float* aspect) {
+    u32 base_w = 400;
+    u32 base_h = 240;
+    u32 factor = Settings::values.resolution_factor.GetValue();
+
+    switch (Settings::values.layout_option.GetValue()) {
+    case Settings::LayoutOption::Default:
+        base_w = 400;
+        base_h = 480;
+        break;
+    case Settings::LayoutOption::SideScreen:
+        base_w = 720;
+        base_h = 240;
+        break;
+    case Settings::LayoutOption::SingleScreen:
+        if (Settings::values.swap_screen.GetValue()) {
+            base_w = 320;
+            base_h = 240;
+        } else {
+            base_w = 400;
+            base_h = 240;
+        }
+        break;
+    default:
+        base_w = 400;
+        base_h = 480;
+        break;
+    }
+
+    *width = base_w * factor;
+    *height = base_h * factor;
+    if (aspect)
+        *aspect = (float)base_w / (float)base_h;
+}
+
 static void setup_paths() {
     const char* system_dir = nullptr;
     if (environ_cb(RETRO_ENVIRONMENT_GET_SYSTEM_DIRECTORY, &system_dir) && system_dir) {
@@ -79,6 +114,46 @@ static void setup_core_options() {
             },
             "enabled"
         },
+        {
+            "cytrus_layout",
+            "Screen Layout",
+            "Choose how to display the 3DS screens.",
+            {
+                {"Stacked", "Stacked"},
+                {"Side-by-Side", "Side-by-Side"},
+                {"Single Top", "Single Top"},
+                {"Single Bottom", "Single Bottom"},
+            },
+            "Stacked"
+        },
+        {
+            "cytrus_swap_screens",
+            "Swap Screens",
+            "Swap the positions of the top and bottom screens.",
+            {
+                {"disabled", nullptr},
+                {"enabled", nullptr},
+            },
+            "disabled"
+        },
+        {
+            "cytrus_resolution_factor",
+            "Resolution Factor",
+            "Internal rendering resolution multiplier.",
+            {
+                {"1", nullptr},
+                {"2", nullptr},
+                {"3", nullptr},
+                {"4", nullptr},
+                {"5", nullptr},
+                {"6", nullptr},
+                {"7", nullptr},
+                {"8", nullptr},
+                {"9", nullptr},
+                {"10", nullptr},
+            },
+            "1"
+        },
         { nullptr }
     };
 
@@ -90,8 +165,10 @@ static void setup_core_options() {
     environ_cb(RETRO_ENVIRONMENT_SET_CORE_OPTIONS_V2, &options);
 }
 
+static bool options_changed = false;
 static void update_core_options() {
     struct retro_variable var;
+    options_changed = false;
 
     var.key = "cytrus_cpu_clock_percentage";
     if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value) {
@@ -114,6 +191,53 @@ static void update_core_options() {
     var.key = "cytrus_is_new_3ds";
     if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value) {
         Settings::values.is_new_3ds.SetValue(std::string(var.value) == "enabled");
+    }
+
+    var.key = "cytrus_layout";
+    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value) {
+        Settings::LayoutOption new_opt = Settings::LayoutOption::Default;
+        bool swap = false;
+        if (std::string(var.value) == "Stacked")
+            new_opt = Settings::LayoutOption::Default;
+        else if (std::string(var.value) == "Side-by-Side")
+            new_opt = Settings::LayoutOption::SideScreen;
+        else if (std::string(var.value) == "Single Top")
+            new_opt = Settings::LayoutOption::SingleScreen;
+        else if (std::string(var.value) == "Single Bottom") {
+            new_opt = Settings::LayoutOption::SingleScreen;
+            swap = true;
+        }
+
+        if (Settings::values.layout_option.GetValue() != new_opt || Settings::values.swap_screen.GetValue() != swap) {
+            Settings::values.layout_option.SetValue(new_opt);
+            Settings::values.swap_screen.SetValue(swap);
+            options_changed = true;
+        }
+    }
+
+    var.key = "cytrus_swap_screens";
+    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value) {
+        bool swap = std::string(var.value) == "enabled";
+        if (Settings::values.swap_screen.GetValue() != swap) {
+            Settings::values.swap_screen.SetValue(swap);
+            options_changed = true;
+        }
+    }
+
+    var.key = "cytrus_resolution_factor";
+    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value) {
+        int factor = std::stoi(var.value);
+        if (Settings::values.resolution_factor.GetValue() != (u32)factor) {
+            Settings::values.resolution_factor.SetValue(factor);
+            options_changed = true;
+        }
+    }
+
+    if (options_changed && emu_window) {
+        emu_window->OnFramebufferSizeChanged();
+        struct retro_system_av_info av_info;
+        retro_get_system_av_info(&av_info);
+        environ_cb(RETRO_ENVIRONMENT_SET_GEOMETRY, &av_info.geometry);
     }
 }
 
@@ -158,11 +282,15 @@ void retro_get_system_info(struct retro_system_info *info) {
 }
 
 void retro_get_system_av_info(struct retro_system_av_info *info) {
-    info->geometry.base_width = 400;
-    info->geometry.base_height = 480;
-    info->geometry.max_width = 800;
-    info->geometry.max_height = 960;
-    info->geometry.aspect_ratio = 400.0f / 480.0f;
+    u32 w, h;
+    float aspect;
+    get_geometry(&w, &h, &aspect);
+
+    info->geometry.base_width = w;
+    info->geometry.base_height = h;
+    info->geometry.max_width = 400 * 10;  // Max resolution factor is 10
+    info->geometry.max_height = 480 * 10;
+    info->geometry.aspect_ratio = aspect;
     info->timing.fps = 60.0;
     info->timing.sample_rate = 32728.0;
 }
@@ -186,6 +314,11 @@ bool retro_load_game(const struct retro_game_info *game) {
     if (!game) return false;
 
     setup_paths();
+
+    // Set defaults
+    Settings::values.layout_option.SetValue(Settings::LayoutOption::Default);
+    Settings::values.swap_screen.SetValue(false);
+
     setup_core_options();
     update_core_options();
 
@@ -234,6 +367,11 @@ bool retro_load_game(const struct retro_game_info *game) {
 }
 
 void retro_run(void) {
+    bool updated = false;
+    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE, &updated) && updated) {
+        update_core_options();
+    }
+
     input_poll_cb();
 
     auto& input_manager = LibretroInput::InputManager::GetInstance();
@@ -268,14 +406,62 @@ void retro_run(void) {
     bool pressed = input_state_cb(0, RETRO_DEVICE_POINTER, 0, RETRO_DEVICE_ID_POINTER_PRESSED);
     float norm_x = (tx + 32767) / 65534.0f;
     float norm_y = (ty + 32767) / 65534.0f;
-    if (norm_y >= 0.5f) {
-        input_manager.SetTouch(norm_x, (norm_y - 0.5f) * 2.0f, pressed);
-    } else {
-        input_manager.SetTouch(0, 0, false);
+
+    float touch_x = 0, touch_y = 0;
+    bool touch_pressed = false;
+
+    bool swapped = Settings::values.swap_screen.GetValue();
+    switch (Settings::values.layout_option.GetValue()) {
+    case Settings::LayoutOption::Default:
+        if (!swapped) {
+            if (norm_y >= 0.5f) {
+                touch_x = norm_x;
+                touch_y = (norm_y - 0.5f) * 2.0f;
+                touch_pressed = pressed;
+            }
+        } else {
+            if (norm_y < 0.5f) {
+                touch_x = norm_x;
+                touch_y = norm_y * 2.0f;
+                touch_pressed = pressed;
+            }
+        }
+        break;
+    case Settings::LayoutOption::SideScreen:
+        if (!swapped) {
+            // Top(400) | Bottom(320). Total 720.
+            if (norm_x >= (400.0f / 720.0f)) {
+                touch_x = (norm_x - (400.0f / 720.0f)) * (720.0f / 320.0f);
+                touch_y = norm_y;
+                touch_pressed = pressed;
+            }
+        } else {
+            // Bottom(320) | Top(400). Total 720.
+            if (norm_x < (320.0f / 720.0f)) {
+                touch_x = norm_x * (720.0f / 320.0f);
+                touch_y = norm_y;
+                touch_pressed = pressed;
+            }
+        }
+        break;
+    case Settings::LayoutOption::SingleScreen:
+        if (swapped) {
+            // Only bottom screen shown
+            touch_x = norm_x;
+            touch_y = norm_y;
+            touch_pressed = pressed;
+        }
+        break;
+    default:
+        break;
     }
+    input_manager.SetTouch(touch_x, touch_y, touch_pressed);
 
     auto& system = Core::System::GetInstance();
     system.RunLoop();
+
+    u32 w, h;
+    get_geometry(&w, &h, nullptr);
 
     // Audio
     auto& dsp = system.DSP();
@@ -285,7 +471,7 @@ void retro_run(void) {
     });
 
     // Video
-    video_cb(RETRO_HW_FRAME_BUFFER_VALID, 400, 480, 0);
+    video_cb(RETRO_HW_FRAME_BUFFER_VALID, w, h, 0);
 }
 
 void retro_reset(void) {
