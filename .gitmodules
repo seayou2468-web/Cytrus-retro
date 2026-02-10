@@ -1,0 +1,9 @@
+[submodule "externals/libretro-common"]
+	path = externals/libretro-common
+	url = https://github.com/libretro/libretro-common
+[submodule "externals/libretro-super"]
+	path = externals/libretro-super
+	url = https://github.com/libretro/libretro-super
+[submodule "externals/azahar"]
+	path = externals/azahar
+	url = https://github.com/azahar-emu/azahar
