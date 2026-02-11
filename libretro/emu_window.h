@@ -1,8 +1,11 @@
 #pragma once
 
-#include "core/frontend/emu_window.h"
 #include <vector>
 #include <mutex>
+#include <cassert>
+#include <climits>
+#include "common/common_types.h"
+#include "core/frontend/emu_window.h"
 
 class LibretroEmuWindow : public Frontend::EmuWindow {
 public:

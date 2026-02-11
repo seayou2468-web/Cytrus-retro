@@ -1,5 +1,7 @@
-#include "emu_window.h"
+#include <cassert>
+#include <climits>
 #include <cstring>
+#include "emu_window.h"
 #include "common/settings.h"
 #include "core/core.h"
 #include "video_core/gpu.h"

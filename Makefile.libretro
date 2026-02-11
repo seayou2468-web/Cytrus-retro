@@ -44,20 +44,34 @@ else
     SHARED := -shared
 endif
 
-DEFINES += -D__LIBRETRO__ -DLIBRETRO -DENABLE_SOFTWARE_RENDERER -D__STDC_CONSTANT_MACROS -D__STDC_LIMIT_MACROS -DNDEBUG -DUSE_CPU_JIT=0 -DUNICODE -D_UNICODE
+DEFINES += -D__LIBRETRO__ -DLIBRETRO -DENABLE_SOFTWARE_RENDERER -D__STDC_CONSTANT_MACROS -D__STDC_LIMIT_MACROS -DNDEBUG -DUSE_CPU_JIT=0 -DUNICODE -D_UNICODE -DBOOST_DISABLE_ASSERTS -Dassert\(x\)=\(\(void\)0\)
 
 INCLUDES += -I$(LIBRETRO_COMMON_DIR)/include \
             -I$(CORE_DIR)/include \
+            -I$(CORE_DIR)/include/core \
             -I$(CORE_DIR)/include/common \
+            -I$(CORE_DIR)/common \
+            -I$(CORE_DIR)/core \
+            -I$(CORE_DIR)/core/hle/service \
+            -I$(CORE_DIR)/core/file_sys \
+            -I$(CORE_DIR)/include/core/file_sys \
+            -I$(CORE_DIR)/include/core/hle/service \
+            -I$(CORE_DIR)/video_core/renderer_software \
             -I$(EXTERNALS_DIR) \
             -I$(EXTERNALS_DIR)/boost \
             -I$(EXTERNALS_DIR)/fmt/include \
             -I$(EXTERNALS_DIR)/zstd/lib \
+            -I$(EXTERNALS_DIR)/zstd/contrib \
             -I$(EXTERNALS_DIR)/xxHash \
             -I$(EXTERNALS_DIR)/teakra/include \
-            -I$(EXTERNALS_DIR)/nlohmann_json/include \
+            -I$(EXTERNALS_DIR)/json \
+            -I$(EXTERNALS_DIR)/httplib \
             -I$(EXTERNALS_DIR)/soundtouch/include \
             -I$(EXTERNALS_DIR)/faad2/faad2/include \
+            -I$(EXTERNALS_DIR)/dynarmic/src \
+            -I$(EXTERNALS_DIR)/dds-ktx \
+            -I$(EXTERNALS_DIR)/cryptopp \
+            -I$(EXTERNALS_DIR)/cityhash/src \
             -I. -Ilibretro
 
 SOURCES_CXX := libretro/libretro.cpp \
@@ -72,6 +86,7 @@ SOURCES_CXX := libretro/libretro.cpp \
                $(wildcard $(CORE_DIR)/core/hle/kernel/*.cpp) \
                $(wildcard $(CORE_DIR)/core/hle/service/*.cpp) \
                $(wildcard $(CORE_DIR)/core/hle/service/*/*.cpp) \
+               $(wildcard $(CORE_DIR)/core/hle/service/*/*/*.cpp) \
                $(wildcard $(CORE_DIR)/core/hw/*.cpp) \
                $(wildcard $(CORE_DIR)/core/hw/*/*.cpp) \
                $(wildcard $(CORE_DIR)/core/loader/*.cpp) \
@@ -82,7 +97,10 @@ SOURCES_CXX := libretro/libretro.cpp \
                $(wildcard $(CORE_DIR)/video_core/pica/*.cpp) \
                $(wildcard $(CORE_DIR)/video_core/renderer_software/*.cpp) \
                $(wildcard $(CORE_DIR)/video_core/shader/*.cpp) \
+               $(wildcard $(CORE_DIR)/video_core/shader/generator/*.cpp) \
                $(wildcard $(CORE_DIR)/video_core/texture/*.cpp) \
+               $(wildcard $(CORE_DIR)/video_core/rasterizer_cache/*.cpp) \
+               $(wildcard $(CORE_DIR)/video_core/custom_textures/*.cpp) \
                $(wildcard $(CORE_DIR)/core/arm/*.cpp) \
                $(wildcard $(CORE_DIR)/core/arm/dyncom/*.cpp) \
                $(wildcard $(CORE_DIR)/core/arm/skyeye_common/*.cpp) \
@@ -92,7 +110,8 @@ SOURCES_CXX := libretro/libretro.cpp \
 SOURCES_CXX += $(wildcard $(EXTERNALS_DIR)/fmt/src/*.cpp)
 SOURCES_C += $(wildcard $(EXTERNALS_DIR)/zstd/lib/common/*.c) \
              $(wildcard $(EXTERNALS_DIR)/zstd/lib/compress/*.c) \
-             $(wildcard $(EXTERNALS_DIR)/zstd/lib/decompress/*.c)
+             $(wildcard $(EXTERNALS_DIR)/zstd/lib/decompress/*.c) \
+             $(wildcard $(EXTERNALS_DIR)/zstd/contrib/seekable_format/*.c)
 SOURCES_C += $(EXTERNALS_DIR)/xxHash/xxhash.c
 SOURCES_CXX += $(wildcard $(EXTERNALS_DIR)/teakra/src/*.cpp)
 SOURCES_CXX += $(filter-out %cryptest.cpp %bench.cpp, $(wildcard $(EXTERNALS_DIR)/cryptopp/*.cpp))
@@ -112,7 +131,7 @@ SOURCES_C += $(LIBRETRO_COMMON_DIR)/streams/file_stream.c \
 
 OBJS := $(SOURCES_CXX:.cpp=.o) $(SOURCES_C:.c=.o)
 
-CXXFLAGS += $(fpic) $(DEFINES) $(INCLUDES) $(PLATFORM_DEFINES) -std=c++20 -O3
+CXXFLAGS += $(fpic) $(DEFINES) $(INCLUDES) $(PLATFORM_DEFINES) -std=c++20 -O3 -include cassert
 CFLAGS += $(fpic) $(DEFINES) $(INCLUDES) $(PLATFORM_DEFINES) -O3
 
 all: $(TARGET)
