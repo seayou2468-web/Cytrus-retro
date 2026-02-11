@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdint>
+
 #define MICROPROFILE_DEFINE(...)
 #define MICROPROFILE_DECLARE(...)
 #define MICROPROFILE_DEFINE_GPU(...)
