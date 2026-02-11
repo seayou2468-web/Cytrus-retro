@@ -16,6 +16,7 @@
 #include "core/frontend/emu_window.h"
 #include "emu_window.h"
 #include "audio_core/dsp_interface.h"
+#include "core/hle/service/service.h"
 #include "libretro_sink.h"
 #include "InputManager/InputManager.h"
 #include "input_common/main.h"
@@ -50,10 +51,9 @@ static void setup_settings(const char* system_dir) {
     FileUtil::UpdateUserPath(FileUtil::UserPath::SysDataDir, std::string(citra_path) + "/sysdata");
 
     // Populate LLE modules to prevent crashes
-    Settings::values.lle_modules["FS"] = false;
-    Settings::values.lle_modules["PM"] = false;
-    Settings::values.lle_modules["LDR"] = false;
-    Settings::values.lle_modules["PXI"] = false;
+    for (const auto& module : Service::service_module_map) {
+        Settings::values.lle_modules[module.name] = false;
+    }
 
     // Ensure JIT is disabled globally
     Settings::values.use_cpu_jit.SetValue(false);

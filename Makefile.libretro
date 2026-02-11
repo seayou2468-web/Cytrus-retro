@@ -32,7 +32,8 @@ ifneq ($(findstring ios,$(platform)),)
     OSX_SDK := $(shell xcodebuild -version -sdk iphoneos Path)
     CC = $(CC_ANY) -arch arm64 -isysroot $(OSX_SDK)
     CXX = $(CXX_ANY) -arch arm64 -isysroot $(OSX_SDK)
-    PLATFORM_DEFINES += -DIOS -miphoneos-version-min=14.0 -DHAVE_NEON
+    PLATFORM_DEFINES += -DIOS -miphoneos-version-min=14.0 -DHAVE_NEON -DSOUNDTOUCH_USE_NEON
+    INCLUDES += -I$(EXTERNALS_DIR)/libressl/include/arch/aarch64
     CXXFLAGS += -march=armv8-a+simd
 else ifneq ($(findstring osx,$(platform)),)
     TARGET := $(TARGET_NAME)_libretro.dylib
@@ -44,9 +45,9 @@ else
     SHARED := -shared
 endif
 
-DEFINES += -D__LIBRETRO__ -DLIBRETRO -DENABLE_SOFTWARE_RENDERER -D__STDC_CONSTANT_MACROS -D__STDC_LIMIT_MACROS -DNDEBUG -DUSE_CPU_JIT=0 -DUNICODE -D_UNICODE -DBOOST_DISABLE_ASSERTS -Dassert\(x\)=\(\(void\)0\) -DMICROPROFILE_ENABLED=0
+DEFINES += -D__LIBRETRO__ -DLIBRETRO -DENABLE_SOFTWARE_RENDERER -D__STDC_CONSTANT_MACROS -D__STDC_LIMIT_MACROS -DNDEBUG -DUSE_CPU_JIT=0 -DBOOST_DISABLE_ASSERTS -DMICROPROFILE_ENABLED=0
 
-INCLUDES := -I. \
+BASE_INCLUDES := -I. \
             -Ilibretro \
             -IInputManager \
             -I$(LIBRETRO_COMMON_DIR)/include \
@@ -71,6 +72,8 @@ INCLUDES := -I. \
             -I$(EXTERNALS_DIR)/cryptopp \
             -I$(EXTERNALS_DIR)/cityhash/src \
             -I$(EXTERNALS_DIR)/nihstro/include
+
+INCLUDES += $(BASE_INCLUDES)
 
 SOURCES_CXX := libretro/libretro.cpp \
                libretro/emu_window.cpp \
@@ -104,6 +107,9 @@ SOURCES_CXX := libretro/libretro.cpp \
                $(wildcard $(CORE_DIR)/core/arm/skyeye_common/*.cpp) \
                $(wildcard $(CORE_DIR)/core/arm/skyeye_common/vfp/*.cpp)
 
+# Filter out problematic source files
+SOURCES_CXX := $(filter-out %openal_input.cpp %openal_sink.cpp %sdl2_sink.cpp %sdl3_sink.cpp %coreaudio_sink.cpp %sdl_impl.cpp, $(SOURCES_CXX))
+
 # Externals
 SOURCES_CXX += $(wildcard $(EXTERNALS_DIR)/fmt/src/*.cpp)
 SOURCES_C += $(wildcard $(EXTERNALS_DIR)/zstd/lib/common/*.c) \
@@ -129,7 +135,7 @@ SOURCES_C += $(LIBRETRO_COMMON_DIR)/streams/file_stream.c \
 
 OBJS := $(SOURCES_CXX:.cpp=.o) $(SOURCES_C:.c=.o)
 
-CXXFLAGS += $(fpic) $(DEFINES) $(INCLUDES) $(PLATFORM_DEFINES) -std=c++20 -O3 -include cassert
+CXXFLAGS += $(fpic) $(DEFINES) $(INCLUDES) $(PLATFORM_DEFINES) -std=c++20 -O3
 CFLAGS += $(fpic) $(DEFINES) $(INCLUDES) $(PLATFORM_DEFINES) -O3
 
 all: $(TARGET)

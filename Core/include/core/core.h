@@ -376,6 +376,9 @@ public:
 
     bool IsInitialSetup();
 
+    template <typename Archive>
+    void serialize(Archive& ar, const unsigned int file_version);
+
 private:
     /**
      * Initialize the emulated system.
@@ -479,8 +482,6 @@ private:
     std::vector<u64> lle_modules;
 
     friend class boost::serialization::access;
-    template <typename Archive>
-    void serialize(Archive& ar, const unsigned int file_version);
 };
 
 [[nodiscard]] inline ARM_Interface& GetRunningCore() {

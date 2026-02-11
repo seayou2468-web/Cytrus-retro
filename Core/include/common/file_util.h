@@ -21,6 +21,8 @@
 #include <string_view>
 #include <type_traits>
 #include <vector>
+#include <boost/iostreams/device/file_descriptor.hpp>
+#include <boost/iostreams/stream.hpp>
 #include <boost/serialization/base_object.hpp>
 #include <boost/serialization/export.hpp>
 #include <boost/serialization/split_member.hpp>
@@ -31,6 +33,16 @@
 #ifdef _MSC_VER
 #include "common/string_util.h"
 #endif
+
+// To deal with Windows being dumb at unicode:
+template <typename T>
+void OpenFStream(T& fstream, const std::string& filename, std::ios_base::openmode openmode) {
+#ifdef _MSC_VER
+    fstream.open(Common::UTF8ToUTF16W(filename), openmode);
+#else
+    fstream.open(filename, openmode);
+#endif
+}
 
 namespace FileUtil {
 
@@ -533,18 +545,20 @@ private:
 };
 
 template <std::ios_base::openmode o, typename T>
-void OpenFStream(T& fstream, const std::string& filename);
-} // namespace FileUtil
-
-// To deal with Windows being dumb at unicode:
-template <typename T>
-void OpenFStream(T& fstream, const std::string& filename, std::ios_base::openmode openmode) {
-#ifdef _MSC_VER
-    fstream.open(Common::UTF8ToUTF16W(filename), openmode);
-#else
-    fstream.open(filename, openmode);
-#endif
+void OpenFStream(T& fstream, const std::string& filename) {
+    ::OpenFStream(fstream, filename, o);
 }
+
+template <>
+void OpenFStream<std::ios_base::in>(
+    boost::iostreams::stream<boost::iostreams::file_descriptor_source>& fstream,
+    const std::string& filename);
+template <>
+void OpenFStream<std::ios_base::out>(
+    boost::iostreams::stream<boost::iostreams::file_descriptor_sink>& fstream,
+    const std::string& filename);
+
+} // namespace FileUtil
 
 BOOST_CLASS_EXPORT_KEY(FileUtil::IOFile)
 BOOST_CLASS_EXPORT_KEY(FileUtil::CryptoIOFile)

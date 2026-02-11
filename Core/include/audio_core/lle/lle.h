@@ -39,6 +39,9 @@ public:
     void LoadComponent(const std::span<const u8> buffer) override;
     void UnloadComponent() override;
 
+    template <typename Archive>
+    void serialize(Archive& ar, const unsigned int file_version);
+
 private:
     struct Impl;
     std::unique_ptr<Impl> impl;

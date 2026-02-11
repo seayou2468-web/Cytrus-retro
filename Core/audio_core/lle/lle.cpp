@@ -7,6 +7,7 @@
 #include <thread>
 #include <teakra/teakra.h>
 #include "audio_core/lle/lle.h"
+#include "common/archives.h"
 #include "common/assert.h"
 #include "common/bit_field.h"
 #include "common/swap.h"
@@ -498,5 +499,12 @@ DspLle::DspLle(Core::System& system, Memory::MemorySystem& memory, Core::Timing&
         [this](std::array<s16, 2> sample) { OutputSample(std::move(sample)); });
 }
 DspLle::~DspLle() = default;
+
+template <typename Archive>
+void DspLle::serialize(Archive& ar, const unsigned int file_version) {
+    ar& boost::serialization::base_object<DspInterface>(*this);
+}
+
+SERIALIZE_IMPL(DspLle)
 
 } // namespace AudioCore
