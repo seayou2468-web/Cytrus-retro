@@ -46,19 +46,16 @@ endif
 
 DEFINES += -D__LIBRETRO__ -DLIBRETRO -DENABLE_SOFTWARE_RENDERER -D__STDC_CONSTANT_MACROS -D__STDC_LIMIT_MACROS -DNDEBUG -DUSE_CPU_JIT=0 -DUNICODE -D_UNICODE -DBOOST_DISABLE_ASSERTS -Dassert\(x\)=\(\(void\)0\) -DMICROPROFILE_ENABLED=0
 
-INCLUDES += -I$(LIBRETRO_COMMON_DIR)/include \
-            -I$(EXTERNALS_DIR)/microprofile \
+INCLUDES := -I. \
+            -Ilibretro \
+            -I$(LIBRETRO_COMMON_DIR)/include \
             -I$(CORE_DIR)/include \
             -I$(CORE_DIR)/include/core \
-            -I$(CORE_DIR)/include/common \
-            -I$(CORE_DIR)/common \
-            -I$(CORE_DIR)/core \
-            -I$(CORE_DIR)/core/hle/service \
-            -I$(CORE_DIR)/core/file_sys \
             -I$(CORE_DIR)/include/core/file_sys \
             -I$(CORE_DIR)/include/core/hle/service \
             -I$(CORE_DIR)/video_core/renderer_software \
             -I$(EXTERNALS_DIR) \
+            -I$(EXTERNALS_DIR)/microprofile \
             -I$(EXTERNALS_DIR)/boost \
             -I$(EXTERNALS_DIR)/fmt/include \
             -I$(EXTERNALS_DIR)/zstd/lib \
@@ -73,8 +70,7 @@ INCLUDES += -I$(LIBRETRO_COMMON_DIR)/include \
             -I$(EXTERNALS_DIR)/dds-ktx \
             -I$(EXTERNALS_DIR)/cryptopp \
             -I$(EXTERNALS_DIR)/cityhash/src \
-            -I$(EXTERNALS_DIR)/nihstro/include \
-            -I. -Ilibretro
+            -I$(EXTERNALS_DIR)/nihstro/include
 
 SOURCES_CXX := libretro/libretro.cpp \
                libretro/emu_window.cpp \
