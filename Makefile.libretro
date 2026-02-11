@@ -44,9 +44,10 @@ else
     SHARED := -shared
 endif
 
-DEFINES += -D__LIBRETRO__ -DLIBRETRO -DENABLE_SOFTWARE_RENDERER -D__STDC_CONSTANT_MACROS -D__STDC_LIMIT_MACROS -DNDEBUG -DUSE_CPU_JIT=0 -DUNICODE -D_UNICODE -DBOOST_DISABLE_ASSERTS -Dassert\(x\)=\(\(void\)0\)
+DEFINES += -D__LIBRETRO__ -DLIBRETRO -DENABLE_SOFTWARE_RENDERER -D__STDC_CONSTANT_MACROS -D__STDC_LIMIT_MACROS -DNDEBUG -DUSE_CPU_JIT=0 -DUNICODE -D_UNICODE -DBOOST_DISABLE_ASSERTS -Dassert\(x\)=\(\(void\)0\) -DMICROPROFILE_ENABLED=0
 
 INCLUDES += -I$(LIBRETRO_COMMON_DIR)/include \
+            -I$(EXTERNALS_DIR)/microprofile \
             -I$(CORE_DIR)/include \
             -I$(CORE_DIR)/include/core \
             -I$(CORE_DIR)/include/common \
@@ -72,6 +73,7 @@ INCLUDES += -I$(LIBRETRO_COMMON_DIR)/include \
             -I$(EXTERNALS_DIR)/dds-ktx \
             -I$(EXTERNALS_DIR)/cryptopp \
             -I$(EXTERNALS_DIR)/cityhash/src \
+            -I$(EXTERNALS_DIR)/nihstro/include \
             -I. -Ilibretro
 
 SOURCES_CXX := libretro/libretro.cpp \
