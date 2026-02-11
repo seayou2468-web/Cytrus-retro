@@ -70,7 +70,6 @@ BASE_INCLUDES := -I. \
             -I$(EXTERNALS_DIR)/dynarmic/src \
             -I$(EXTERNALS_DIR)/dds-ktx \
             -I$(EXTERNALS_DIR)/cryptopp \
-            -I$(EXTERNALS_DIR)/cityhash/src \
             -I$(EXTERNALS_DIR)/nihstro/include
 
 INCLUDES += $(BASE_INCLUDES)
@@ -111,7 +110,7 @@ SOURCES_CXX := libretro/libretro.cpp \
 SOURCES_CXX := $(filter-out %openal_input.cpp %openal_sink.cpp %sdl2_sink.cpp %sdl3_sink.cpp %coreaudio_sink.cpp %sdl_impl.cpp, $(SOURCES_CXX))
 
 # Externals
-SOURCES_CXX += $(wildcard $(EXTERNALS_DIR)/fmt/src/*.cpp)
+SOURCES_CXX += $(wildcard $(EXTERNALS_DIR)/fmt/src/*.cc)
 SOURCES_C += $(wildcard $(EXTERNALS_DIR)/zstd/lib/common/*.c) \
              $(wildcard $(EXTERNALS_DIR)/zstd/lib/compress/*.c) \
              $(wildcard $(EXTERNALS_DIR)/zstd/lib/decompress/*.c) \
@@ -133,7 +132,7 @@ SOURCES_C += $(LIBRETRO_COMMON_DIR)/streams/file_stream.c \
              $(LIBRETRO_COMMON_DIR)/string/stdstring.c \
              $(LIBRETRO_COMMON_DIR)/encodings/encoding_utf.c
 
-OBJS := $(SOURCES_CXX:.cpp=.o) $(SOURCES_C:.c=.o)
+OBJS := $(patsubst %.cpp,%.o,$(patsubst %.cc,%.o,$(SOURCES_CXX))) $(SOURCES_C:.c=.o)
 
 CXXFLAGS += $(fpic) $(DEFINES) $(INCLUDES) $(PLATFORM_DEFINES) -std=c++20 -O3
 CFLAGS += $(fpic) $(DEFINES) $(INCLUDES) $(PLATFORM_DEFINES) -O3
@@ -144,6 +143,9 @@ $(TARGET): $(OBJS)
 	$(CXX) $(SHARED) $(fpic) -o $@ $^ $(LDFLAGS)
 
 %.o: %.cpp
+	$(CXX) -c -o $@ $< $(CXXFLAGS)
+
+%.o: %.cc
 	$(CXX) -c -o $@ $< $(CXXFLAGS)
 
 %.o: %.c
