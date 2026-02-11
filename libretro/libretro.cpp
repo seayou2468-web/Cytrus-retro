@@ -35,6 +35,28 @@ static retro_input_state_t input_state_cb;
 static LibretroEmuWindow* emu_window = nullptr;
 static AudioCore::LibretroSink* audio_sink = nullptr;
 
+static void setup_settings(const char* system_dir) {
+    char citra_path[PATH_MAX_LENGTH];
+    fill_pathname_join(citra_path, system_dir, "citra", sizeof(citra_path));
+    path_mkdir(citra_path);
+    FileUtil::SetUserPath(std::string(citra_path) + "/");
+
+    // Map Virtual NAND
+    FileUtil::UpdateUserPath(FileUtil::UserPath::NANDDir, std::string(citra_path) + "/nand");
+    FileUtil::UpdateUserPath(FileUtil::UserPath::SDMCDir, std::string(citra_path) + "/sdmc");
+    FileUtil::UpdateUserPath(FileUtil::UserPath::SysDataDir, std::string(citra_path) + "/sysdata");
+
+    // Populate LLE modules to prevent crashes
+    Settings::values.lle_modules["FS"] = false;
+    Settings::values.lle_modules["PM"] = false;
+    Settings::values.lle_modules["LDR"] = false;
+    Settings::values.lle_modules["PXI"] = false;
+
+    // Ensure JIT is disabled globally
+    Settings::values.use_cpu_jit.SetValue(false);
+    Settings::values.use_shader_jit.SetValue(false);
+}
+
 struct MapEntry {
     unsigned retro_id;
     InputManager::ButtonType n3ds_id;
@@ -60,10 +82,14 @@ static const MapEntry button_map[] = {
 void retro_set_environment(retro_environment_t cb) {
     environ_cb = cb;
 
+    bool supports_no_game = true;
+    cb(RETRO_ENVIRONMENT_SET_SUPPORT_NO_GAME, &supports_no_game);
+
     static const struct retro_variable vars[] = {
         { "cytrus_region", "Region; Auto|Japan|USA|Europe|Australia|China|Korea|Taiwan" },
         { "cytrus_model", "System Model; New 3DS|Old 3DS" },
         { "cytrus_audio_emulation", "Audio Emulation; HLE|LLE" },
+        { "cytrus_direct_boot", "Direct Boot; enabled|disabled" },
         { NULL, NULL },
     };
 
@@ -136,7 +162,7 @@ unsigned retro_api_version(void) {
 }
 
 void retro_get_system_info(struct retro_system_info *info) {
-    info->library_name = "Cytrus IR";
+    info->library_name = "Nintendo - 3DS (Cytrus IR)";
     info->library_version = "v1.0";
     info->valid_extensions = "3ds|3dsx|cia|cci|cxi|app|elf|axf";
     info->need_fullpath = true;
@@ -306,10 +332,7 @@ bool retro_load_game(const struct retro_game_info *game) {
 
     const char* system_dir = nullptr;
     if (environ_cb(RETRO_ENVIRONMENT_GET_SYSTEM_DIRECTORY, &system_dir) && system_dir) {
-        char citra_path[PATH_MAX_LENGTH];
-        fill_pathname_join(citra_path, system_dir, "citra", sizeof(citra_path));
-        path_mkdir(citra_path);
-        FileUtil::SetUserPath(std::string(citra_path) + "/");
+        setup_settings(system_dir);
     }
 
     FileUtil::SetCurrentRomPath(game->path);

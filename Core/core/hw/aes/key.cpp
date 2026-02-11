@@ -281,7 +281,7 @@ void LoadPresetKeys() {
 
 std::istringstream GetKeysStream() {
     const std::string filepath = FileUtil::GetUserPath(FileUtil::UserPath::SysDataDir) + KEYS_FILE;
-    FileUtil::CreateFullPath(filepath); // Create path if not already created
+    FileUtil::CreateFullPath(std::string(FileUtil::GetParentPath(filepath))); // Create path if not already created
 
     boost::iostreams::stream<boost::iostreams::file_descriptor_source> file;
     FileUtil::OpenFStream<std::ios_base::in>(file, filepath);

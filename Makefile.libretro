@@ -48,9 +48,9 @@ DEFINES += -D__LIBRETRO__ -DLIBRETRO -DENABLE_SOFTWARE_RENDERER -D__STDC_CONSTAN
 
 INCLUDES += -I$(LIBRETRO_COMMON_DIR)/include \
             -I$(CORE_DIR)/include \
+            -I$(EXTERNALS_DIR) \
             -I$(EXTERNALS_DIR)/boost \
             -I$(EXTERNALS_DIR)/fmt/include \
-            -I$(EXTERNALS_DIR)/cryptopp \
             -I$(EXTERNALS_DIR)/zstd/lib \
             -I$(EXTERNALS_DIR)/xxHash \
             -I$(EXTERNALS_DIR)/teakra/include \
@@ -59,7 +59,9 @@ INCLUDES += -I$(LIBRETRO_COMMON_DIR)/include \
             -I$(EXTERNALS_DIR)/faad2/include \
             -I. -Ilibretro
 
-SOURCES_CXX := $(wildcard libretro/*.cpp) \
+SOURCES_CXX := libretro/libretro.cpp \
+               libretro/emu_window.cpp \
+               libretro/input_handler.cpp \
                $(wildcard $(CORE_DIR)/common/*.cpp) \
                $(wildcard $(CORE_DIR)/common/aarch64/*.cpp) \
                $(wildcard $(CORE_DIR)/common/logging/*.cpp) \

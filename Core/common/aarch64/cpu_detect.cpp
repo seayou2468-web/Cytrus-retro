@@ -114,4 +114,10 @@ const CPUCaps& GetCPUCaps() {
 
 } // namespace Common
 
+// SoundTouch stubs for ARM64 compatibility
+extern "C" {
+void detectCPUextensions() {}
+void disableExtensions() {}
+}
+
 #endif // CITRA_ARCH(arm64)
