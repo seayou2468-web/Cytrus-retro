@@ -9,8 +9,8 @@
 #include <memory>
 #include <boost/serialization/unique_ptr.hpp>
 #include "common/common_types.h"
+#include "core/file_sys/delay_generator.h"
 #include "core/hle/result.h"
-#include "delay_generator.h"
 
 namespace FileSys {
 
