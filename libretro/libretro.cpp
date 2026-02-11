@@ -3,6 +3,8 @@
 #include <vector>
 #include <algorithm>
 #include <cstring>
+#include <cassert>
+#include <climits>
 
 #include "libretro.h"
 #include "common/settings.h"
@@ -36,10 +38,8 @@ static retro_input_state_t input_state_cb;
 static LibretroEmuWindow* emu_window = nullptr;
 static AudioCore::LibretroSink* audio_sink = nullptr;
 
-#define PATH_MAX_LENGTH 4096
-
 static void setup_settings(const char* system_dir) {
-    char citra_path[PATH_MAX_LENGTH];
+    char citra_path[PATH_MAX];
     fill_pathname_join(citra_path, system_dir, "citra", sizeof(citra_path));
     path_mkdir(citra_path);
     FileUtil::SetUserPath(std::string(citra_path) + "/");

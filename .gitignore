@@ -1,1 +1,7 @@
-.DS_Store
+*.o
+*.so
+*.dylib
+*.a
+libretro/cytrus_ir_libretro.so
+libretro/cytrus_ir_libretro.dylib
+Core/common/BuildStrings.h

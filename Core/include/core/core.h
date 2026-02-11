@@ -479,6 +479,7 @@ private:
     std::vector<u64> lle_modules;
 
     friend class boost::serialization::access;
+public:
     template <typename Archive>
     void serialize(Archive& ar, const unsigned int file_version);
 };
