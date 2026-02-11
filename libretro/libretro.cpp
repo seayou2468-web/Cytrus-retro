@@ -13,6 +13,7 @@
 #include "video_core/renderer_base.h"
 #include "core/frontend/emu_window.h"
 #include "emu_window.h"
+#include "audio_core/dsp_interface.h"
 #include "libretro_sink.h"
 #include "InputManager/InputManager.h"
 #include "input_common/main.h"
@@ -34,6 +35,8 @@ static retro_input_state_t input_state_cb;
 
 static LibretroEmuWindow* emu_window = nullptr;
 static AudioCore::LibretroSink* audio_sink = nullptr;
+
+#define PATH_MAX_LENGTH 4096
 
 static void setup_settings(const char* system_dir) {
     char citra_path[PATH_MAX_LENGTH];
@@ -257,7 +260,7 @@ void retro_run(void) {
 
     Core::System& system = Core::System::GetInstance();
     if (system.IsPoweredOn()) {
-        system.RunLoop();
+        (void)system.RunLoop();
     }
 
     if (emu_window) {
@@ -288,7 +291,7 @@ bool retro_serialize(void *data, size_t len) {
         io::array_sink sink((char*)data, len);
         io::stream<io::array_sink> os(sink);
         boost::archive::binary_oarchive ar(os);
-        Core::System::GetInstance().serialize(ar, 1);
+        ar & Core::System::GetInstance();
         return true;
     } catch (const std::exception& e) {
         LOG_ERROR(Core, "retro_serialize failed: {}", e.what());
@@ -302,7 +305,7 @@ bool retro_unserialize(const void *data, size_t len) {
         io::array_source source((const char*)data, len);
         io::stream<io::array_source> is(source);
         boost::archive::binary_iarchive ar(is);
-        Core::System::GetInstance().serialize(ar, 1);
+        ar & Core::System::GetInstance();
         return true;
     } catch (const std::exception& e) {
         LOG_ERROR(Core, "retro_unserialize failed: {}", e.what());

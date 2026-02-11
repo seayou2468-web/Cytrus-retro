@@ -12,7 +12,7 @@
 #include "audio_core/sdl3_sink.h"
 #include "audio_core/openal_sink.h"
 #ifdef LIBRETRO
-#include "../../libretro/libretro_sink.h"
+#include "libretro_sink.h"
 #endif
 #include "common/logging/log.h"
 

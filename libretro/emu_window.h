@@ -10,6 +10,7 @@ public:
     ~LibretroEmuWindow();
 
     void PollEvents() override;
+    void SwapBuffers() override;
 
     // Libretro doesn't need these usually as it's not managing the window itself
     void OnMinimalClientAreaChangeRequest(std::pair<u32, u32> minimal_size) override {}
