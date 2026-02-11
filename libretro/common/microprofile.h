@@ -45,4 +45,4 @@
 #define MP_RGB(r, g, b) ((r) << 16 | (g) << 8 | (b) << 0)
 #endif
 
-typedef uint64_t MicroProfileToken;
+typedef std::uint64_t MicroProfileToken;
