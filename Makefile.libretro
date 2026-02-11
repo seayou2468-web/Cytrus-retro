@@ -1,0 +1,127 @@
+DEBUG = 0
+TARGET_NAME := cytrus_ir
+
+LIBRETRO_COMMON_DIR := externals/libretro-common
+CORE_DIR := Core
+# Note: Dependencies are sourced from the existing submodule as they are required for compilation.
+EXTERNALS_DIR := externals/azahar/externals
+
+ifeq ($(platform),)
+platform = unix
+ifeq ($(shell uname -a),)
+   platform = win
+else ifneq ($(findstring MINGW,$(shell uname -a)),)
+   platform = win
+else ifneq ($(findstring Darwin,$(shell uname -a)),)
+   platform = osx
+else ifneq ($(findstring win,$(shell uname -a)),)
+   platform = win
+endif
+endif
+
+CC_ANY = clang
+CXX_ANY = clang++
+
+CC = $(CC_ANY)
+CXX = $(CXX_ANY)
+
+ifneq ($(findstring ios,$(platform)),)
+    TARGET := $(TARGET_NAME)_libretro_ios.dylib
+    fpic := -fPIC
+    SHARED := -dynamiclib
+    OSX_SDK := $(shell xcodebuild -version -sdk iphoneos Path)
+    CC = $(CC_ANY) -arch arm64 -isysroot $(OSX_SDK)
+    CXX = $(CXX_ANY) -arch arm64 -isysroot $(OSX_SDK)
+    PLATFORM_DEFINES += -DIOS -miphoneos-version-min=14.0 -DHAVE_NEON
+    CXXFLAGS += -march=armv8-a+simd
+else ifneq ($(findstring osx,$(platform)),)
+    TARGET := $(TARGET_NAME)_libretro.dylib
+    fpic := -fPIC
+    SHARED := -dynamiclib
+else
+    TARGET := $(TARGET_NAME)_libretro.so
+    fpic := -fPIC
+    SHARED := -shared
+endif
+
+DEFINES += -D__LIBRETRO__ -DLIBRETRO -DENABLE_SOFTWARE_RENDERER -D__STDC_CONSTANT_MACROS -D__STDC_LIMIT_MACROS -DNDEBUG -DUSE_CPU_JIT=0 -DUNICODE -D_UNICODE
+
+INCLUDES += -I$(LIBRETRO_COMMON_DIR)/include \
+            -I$(CORE_DIR)/include \
+            -I$(EXTERNALS_DIR)/boost \
+            -I$(EXTERNALS_DIR)/fmt/include \
+            -I$(EXTERNALS_DIR)/cryptopp \
+            -I$(EXTERNALS_DIR)/zstd/lib \
+            -I$(EXTERNALS_DIR)/xxHash \
+            -I$(EXTERNALS_DIR)/teakra/include \
+            -I$(EXTERNALS_DIR)/nlohmann_json/include \
+            -I$(EXTERNALS_DIR)/soundtouch/include \
+            -I$(EXTERNALS_DIR)/faad2/include \
+            -I. -Ilibretro
+
+SOURCES_CXX := $(wildcard libretro/*.cpp) \
+               $(wildcard $(CORE_DIR)/common/*.cpp) \
+               $(wildcard $(CORE_DIR)/common/aarch64/*.cpp) \
+               $(wildcard $(CORE_DIR)/common/logging/*.cpp) \
+               $(wildcard $(CORE_DIR)/core/*.cpp) \
+               $(wildcard $(CORE_DIR)/core/file_sys/*.cpp) \
+               $(wildcard $(CORE_DIR)/core/hle/*.cpp) \
+               $(wildcard $(CORE_DIR)/core/hle/kernel/*.cpp) \
+               $(wildcard $(CORE_DIR)/core/hle/service/*.cpp) \
+               $(wildcard $(CORE_DIR)/core/hle/service/*/*.cpp) \
+               $(wildcard $(CORE_DIR)/core/hw/*.cpp) \
+               $(wildcard $(CORE_DIR)/core/hw/*/*.cpp) \
+               $(wildcard $(CORE_DIR)/core/loader/*.cpp) \
+               $(wildcard $(CORE_DIR)/audio_core/*.cpp) \
+               $(wildcard $(CORE_DIR)/audio_core/hle/*.cpp) \
+               $(wildcard $(CORE_DIR)/audio_core/lle/*.cpp) \
+               $(wildcard $(CORE_DIR)/video_core/*.cpp) \
+               $(wildcard $(CORE_DIR)/video_core/pica/*.cpp) \
+               $(wildcard $(CORE_DIR)/video_core/renderer_software/*.cpp) \
+               $(wildcard $(CORE_DIR)/video_core/shader/*.cpp) \
+               $(wildcard $(CORE_DIR)/video_core/texture/*.cpp) \
+               $(wildcard $(CORE_DIR)/core/arm/*.cpp) \
+               $(wildcard $(CORE_DIR)/core/arm/dyncom/*.cpp) \
+               $(wildcard $(CORE_DIR)/core/arm/skyeye_common/*.cpp) \
+               $(wildcard $(CORE_DIR)/core/arm/skyeye_common/vfp/*.cpp)
+
+# Externals
+SOURCES_CXX += $(wildcard $(EXTERNALS_DIR)/fmt/src/*.cpp)
+SOURCES_C += $(wildcard $(EXTERNALS_DIR)/zstd/lib/common/*.c) \
+             $(wildcard $(EXTERNALS_DIR)/zstd/lib/compress/*.c) \
+             $(wildcard $(EXTERNALS_DIR)/zstd/lib/decompress/*.c)
+SOURCES_C += $(EXTERNALS_DIR)/xxHash/xxhash.c
+SOURCES_CXX += $(wildcard $(EXTERNALS_DIR)/teakra/src/*.cpp)
+SOURCES_CXX += $(filter-out %cryptest.cpp %bench.cpp, $(wildcard $(EXTERNALS_DIR)/cryptopp/*.cpp))
+SOURCES_CXX += $(wildcard $(EXTERNALS_DIR)/soundtouch/source/SoundTouch/*.cpp)
+SOURCES_C += $(wildcard $(EXTERNALS_DIR)/faad2/faad2/libfaad/*.c)
+
+# Boost components needed for serialization
+BOOST_DIR := $(EXTERNALS_DIR)/boost
+SOURCES_CXX += $(wildcard $(BOOST_DIR)/libs/serialization/src/*.cpp)
+SOURCES_CXX += $(wildcard $(BOOST_DIR)/libs/iostreams/src/*.cpp)
+
+# libretro-common
+SOURCES_C += $(LIBRETRO_COMMON_DIR)/streams/file_stream.c \
+             $(LIBRETRO_COMMON_DIR)/vfs/vfs_implementation.c \
+             $(LIBRETRO_COMMON_DIR)/string/stdstring.c \
+             $(LIBRETRO_COMMON_DIR)/encodings/encoding_utf.c
+
+OBJS := $(SOURCES_CXX:.cpp=.o) $(SOURCES_C:.c=.o)
+
+CXXFLAGS += $(fpic) $(DEFINES) $(INCLUDES) $(PLATFORM_DEFINES) -std=c++20 -O3
+CFLAGS += $(fpic) $(DEFINES) $(INCLUDES) $(PLATFORM_DEFINES) -O3
+
+all: $(TARGET)
+
+$(TARGET): $(OBJS)
+	$(CXX) $(SHARED) $(fpic) -o $@ $^ $(LDFLAGS)
+
+%.o: %.cpp
+	$(CXX) -c -o $@ $< $(CXXFLAGS)
+
+%.o: %.c
+	$(CC) -c -o $@ $< $(CFLAGS)
+
+clean:
+	rm -f $(OBJS) $(TARGET)
