@@ -66,7 +66,7 @@ DEFINES += -DCRYPTOPP_DISABLE_ASM -DCRYPTOPP_DISABLE_SSSE3 -DCRYPTOPP_DISABLE_AE
 DEFINES += -D__LIBRETRO__
 
 # Filter out main files and frontend specific files
-SOURCES_CXX += $(shell find $(CORE_DIR)/Core -name "*.cpp" | grep -v "tests" | grep -v "citra_qt" | grep -v "citra_sdl" | grep -v "android" | grep -v "openal" | grep -v "sdl3" | grep -v "coreaudio")
+SOURCES_CXX += $(shell find $(CORE_DIR)/Core -name "*.cpp" | grep -v "tests" | grep -v "citra_qt" | grep -v "citra_sdl" | grep -v "android" | grep -v "openal" | grep -v "sdl3" | grep -v "coreaudio" | grep -v "cubeb")
 SOURCES_CXX += $(LIBRETRO_DIR)/libretro.cpp
 SOURCES_CXX += $(LIBRETRO_DIR)/libretro_emu_window.cpp
 SOURCES_CXX += $(LIBRETRO_DIR)/libretro_input.cpp
@@ -76,7 +76,7 @@ SOURCES_CXX += $(CORE_DIR)/Core/audio_core/libretro_sink.cpp
 SOURCES_CXX += $(EXTERNALS_DIR)/fmt/src/format.cc
 SOURCES_CXX += $(EXTERNALS_DIR)/fmt/src/os.cc
 SOURCES_CXX += $(shell find $(EXTERNALS_DIR)/teakra/src -name "*.cpp" | grep -v "main.cpp" | grep -v "test_generator" | grep -v "test_verifier" | grep -v "step2_test_generator" | grep -v "mod_test_generator" | grep -v "dsp1_reader" | grep -v "coff_reader" | grep -v "makedsp1")
-SOURCES_CXX += $(shell find $(EXTERNALS_DIR)/soundtouch/source/SoundTouch -name "*.cpp")
+SOURCES_CXX += $(shell find $(EXTERNALS_DIR)/soundtouch/source/SoundTouch -name "*.cpp" | grep -v "x86" | grep -v "mmx" | grep -v "sse")
 SOURCES_C   += $(shell find $(EXTERNALS_DIR)/faad2/faad2/libfaad -name "*.c")
 SOURCES_C   += $(shell find $(EXTERNALS_DIR)/zstd/lib -name "*.c")
 SOURCES_CXX += $(EXTERNALS_DIR)/microprofile/microprofile.cpp
@@ -87,10 +87,6 @@ SOURCES_C   += $(shell find $(EXTERNALS_DIR)/libressl/crypto -name "*.c")
 SOURCES_C   += $(shell find $(EXTERNALS_DIR)/libressl/ssl -name "*.c")
 SOURCES_C   += $(shell find $(EXTERNALS_DIR)/libressl/tls -name "*.c")
 SOURCES_C   += $(shell find $(EXTERNALS_DIR)/enet -name "*.c" -maxdepth 1)
-
-# Dynarmic (only if we want JIT, but we'll include it for now since the core expects it)
-# We can add -DDYNARMIC_NO_JIT if needed, but Citra's Core class usually instantiates it.
-SOURCES_CXX += $(shell find $(EXTERNALS_DIR)/dynarmic/src -name "*.cpp" | grep -v "main.cpp" | grep -v "tests")
 
 CXXFLAGS += $(DEFINES) $(INCFLAGS) -std=c++20
 CFLAGS += $(DEFINES) $(INCFLAGS)

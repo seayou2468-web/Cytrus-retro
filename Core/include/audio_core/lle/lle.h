@@ -40,6 +40,10 @@ public:
     void UnloadComponent() override;
 
 private:
+    template <class Archive>
+    void serialize(Archive& ar, const unsigned int file_version);
+    friend class boost::serialization::access;
+
     struct Impl;
     std::unique_ptr<Impl> impl;
 };

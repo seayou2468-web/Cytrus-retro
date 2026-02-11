@@ -87,6 +87,10 @@ static void setup_paths() {
         fill_pathname_join(path, base_dir, "sdmc", sizeof(path));
         fill_pathname_slash(path, sizeof(path));
         FileUtil::UpdateUserPath(FileUtil::UserPath::SDMCDir, path);
+
+        fill_pathname_join(path, base_dir, "sysdata", sizeof(path));
+        fill_pathname_slash(path, sizeof(path));
+        FileUtil::UpdateUserPath(FileUtil::UserPath::KeysDir, path);
     }
 }
 
@@ -261,6 +265,9 @@ static void update_core_options() {
 void retro_set_environment(retro_environment_t cb) {
     environ_cb = cb;
 
+    bool no_game = true;
+    environ_cb(RETRO_ENVIRONMENT_SET_SUPPORT_NO_GAME, &no_game);
+
     struct retro_log_callback log;
     if (environ_cb(RETRO_ENVIRONMENT_GET_LOG_INTERFACE, &log)) {
         log_cb = log.log;
@@ -329,8 +336,6 @@ static void context_destroy(void) {
 }
 
 bool retro_load_game(const struct retro_game_info *game) {
-    if (!game) return false;
-
     setup_paths();
 
     // Set defaults
@@ -378,7 +383,33 @@ bool retro_load_game(const struct retro_game_info *game) {
     emu_window = new LibretroEmuWindow();
 
     auto& system = Core::System::GetInstance();
-    if (system.Load(*emu_window, game->path) != Core::System::ResultStatus::Success) {
+
+    // Logic to detect Home Menu in NAND
+    std::string boot_path;
+    if (game && game->path && strlen(game->path) > 0) {
+        boot_path = game->path;
+    } else {
+        // Try to find Home Menu in NAND
+        // 0004003000008F02 (JPN), 0004003000008202 (USA), 0004003000009802 (EUR)
+        static const char* titles[] = {
+            "0004003000008f02", "0004003000008202", "0004003000009802", "000400300000a102",
+            "000400300000a902", "000400300000b102", "000400300000b902"
+        };
+        std::string nand_root = FileUtil::GetUserPath(FileUtil::UserPath::NANDDir);
+        for (const char* title : titles) {
+            std::string path = nand_root + "title/00040030/" + std::string(title).substr(8) + "/content/00000000.app";
+            if (FileUtil::Exists(path)) {
+                boot_path = path;
+                break;
+            }
+        }
+    }
+
+    if (boot_path.empty()) {
+        return false;
+    }
+
+    if (system.Load(*emu_window, boot_path) != Core::System::ResultStatus::Success) {
         return false;
     }
 
