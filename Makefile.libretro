@@ -33,7 +33,7 @@ ifneq ($(findstring ios,$(platform)),)
     CC = $(CC_ANY) -arch arm64 -isysroot $(OSX_SDK)
     CXX = $(CXX_ANY) -arch arm64 -isysroot $(OSX_SDK)
     PLATFORM_DEFINES += -DIOS -miphoneos-version-min=14.0 -DHAVE_NEON -DSOUNDTOUCH_USE_NEON
-    INCLUDES += -I$(EXTERNALS_DIR)/libressl/include/arch/aarch64
+    INCLUDES += -I$(EXTERNALS_DIR)/libressl/include -I$(EXTERNALS_DIR)/libressl/include/arch/aarch64
     CXXFLAGS += -march=armv8-a+simd
 else ifneq ($(findstring osx,$(platform)),)
     TARGET := $(TARGET_NAME)_libretro.dylib

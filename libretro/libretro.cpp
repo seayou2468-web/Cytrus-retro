@@ -5,6 +5,7 @@
 #include <cstring>
 #include <cassert>
 #include <climits>
+#include <cstdint>
 
 #include "libretro.h"
 #include "common/settings.h"
@@ -237,8 +238,8 @@ static void update_input() {
 
     // Pointer (Touch)
     if (input_state_cb(0, RETRO_DEVICE_POINTER, 0, RETRO_DEVICE_ID_POINTER_PRESSED)) {
-        int16_t px = input_state_cb(0, RETRO_DEVICE_POINTER, 0, RETRO_DEVICE_ID_POINTER_X);
-        int16_t py = input_state_cb(0, RETRO_DEVICE_POINTER, 0, RETRO_DEVICE_ID_POINTER_Y);
+        s16 px = input_state_cb(0, RETRO_DEVICE_POINTER, 0, RETRO_DEVICE_ID_POINTER_X);
+        s16 py = input_state_cb(0, RETRO_DEVICE_POINTER, 0, RETRO_DEVICE_ID_POINTER_Y);
 
         // Convert [-32767, 32767] to [0, 400], [0, 480]
         unsigned fx = (px + 32767) * 400 / 65534;

@@ -39,7 +39,7 @@
 #define MicroProfileEnableMetaCounter(...)
 #define MicroProfileDisableMetaCounter(...)
 #define MicroProfileDumpFile(...)
-#define MicroProfileWebServerPort() ((uint32_t)-1)
+#define MicroProfileWebServerPort() ((std::uint32_t)-1)
 
 #ifndef MP_RGB
 #define MP_RGB(r, g, b) ((r) << 16 | (g) << 8 | (b) << 0)
