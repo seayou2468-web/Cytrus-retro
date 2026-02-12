@@ -2,10 +2,9 @@
 // Licensed under GPLv2 or any later version
 // Refer to the license.txt file included.
 
-#include "artic_base_client.h"
 #include "common/assert.h"
 #include "common/logging/log.h"
-
+#include "network/artic_base/artic_base_client.h"
 #include "algorithm"
 #include "chrono"
 #include "limits.h"
