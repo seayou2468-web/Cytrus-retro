@@ -4,6 +4,45 @@
 [submodule "externals/libretro-super"]
 	path = externals/libretro-super
 	url = https://github.com/libretro/libretro-super
-[submodule "externals/azahar"]
-	path = externals/azahar
-	url = https://github.com/azahar-emu/azahar
+[submodule "externals/boost"]
+	path = externals/boost
+	url = https://github.com/azahar-emu/ext-boost.git
+[submodule "externals/fmt"]
+	path = externals/fmt
+	url = https://github.com/fmtlib/fmt.git
+[submodule "externals/zstd"]
+	path = externals/zstd
+	url = https://github.com/facebook/zstd.git
+[submodule "externals/xxHash"]
+	path = externals/xxHash
+	url = https://github.com/Cyan4973/xxHash.git
+[submodule "externals/teakra"]
+	path = externals/teakra
+	url = https://github.com/wwylele/teakra.git
+[submodule "externals/soundtouch"]
+	path = externals/soundtouch
+	url = https://github.com/azahar-emu/soundtouch.git
+[submodule "externals/faad2"]
+	path = externals/faad2
+	url = https://github.com/knik0/faad2
+[submodule "externals/dynarmic"]
+	path = externals/dynarmic
+	url = https://github.com/azahar-emu/dynarmic.git
+[submodule "externals/libressl"]
+	path = externals/libressl
+	url = https://github.com/azahar-emu/ext-libressl-portable.git
+[submodule "externals/cryptopp"]
+	path = externals/cryptopp
+	url = https://github.com/weidai11/cryptopp.git
+[submodule "externals/nihstro"]
+	path = externals/nihstro
+	url = https://github.com/neobrain/nihstro.git
+[submodule "externals/dds-ktx"]
+	path = externals/dds-ktx
+	url = https://github.com/septag/dds-ktx
+[submodule "externals/json"]
+	path = externals/json
+	url = https://github.com/nlohmann/json.git
+[submodule "externals/httplib"]
+	path = externals/httplib
+	url = https://github.com/yhirose/cpp-httplib.git

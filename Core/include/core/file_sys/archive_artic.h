@@ -2,7 +2,7 @@
 // Licensed under GPLv2 or any later version
 // Refer to the license.txt file included.
 
-#include "atomic"
+#include <atomic>
 
 #include <boost/serialization/unique_ptr.hpp>
 #include "common/common_types.h"

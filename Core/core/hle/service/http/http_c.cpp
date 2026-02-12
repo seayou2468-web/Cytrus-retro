@@ -9,6 +9,12 @@
 #include <cryptopp/aes.h>
 #include <cryptopp/modes.h>
 #include <fmt/format.h>
+#ifdef CPPHTTPLIB_OPENSSL_SUPPORT
+#include <openssl/evp.h>
+#include <openssl/rand.h>
+#include <openssl/ssl.h>
+#include <openssl/x509.h>
+#endif
 #include "common/archives.h"
 #include "common/assert.h"
 #include "common/scope_exit.h"

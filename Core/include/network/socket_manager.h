@@ -3,7 +3,7 @@
 // Refer to the license.txt file included.
 
 #pragma once
-#include "atomic"
+#include <atomic>
 #include "common/common_types.h"
 
 namespace Network {
