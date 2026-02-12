@@ -3,16 +3,16 @@
 // Refer to the license.txt file included.
 
 #pragma once
-#include "condition_variable"
-#include "cstring"
-#include "functional"
-#include "map"
-#include "memory"
-#include "mutex"
+#include <condition_variable>
+#include <cstring>
+#include <functional>
+#include <map>
+#include <memory>
+#include <mutex>
 #include "optional"
-#include "string"
-#include "thread"
-#include "utility"
+#include <string>
+#include <thread>
+#include <utility>
 
 #include "artic_base_common.h"
 #include "network/socket_manager.h"

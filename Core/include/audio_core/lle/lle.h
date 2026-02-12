@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include <array>
 #include <span>
 #include "audio_core/dsp_interface.h"
 
@@ -38,6 +39,11 @@ public:
 
     void LoadComponent(const std::span<const u8> buffer) override;
     void UnloadComponent() override;
+
+    std::array<u8, Memory::DSP_RAM_SIZE> dsp_memory;
+
+    template <typename Archive>
+    void serialize(Archive& ar, const unsigned int file_version);
 
 private:
     struct Impl;

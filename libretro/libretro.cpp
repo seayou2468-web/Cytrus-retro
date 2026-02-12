@@ -5,6 +5,7 @@
 #include <cstring>
 #include <cassert>
 #include <climits>
+#include <cstdint>
 
 #include "libretro.h"
 #include "common/settings.h"
@@ -16,6 +17,7 @@
 #include "core/frontend/emu_window.h"
 #include "emu_window.h"
 #include "audio_core/dsp_interface.h"
+#include "core/hle/service/service.h"
 #include "libretro_sink.h"
 #include "InputManager/InputManager.h"
 #include "input_common/main.h"
@@ -50,10 +52,9 @@ static void setup_settings(const char* system_dir) {
     FileUtil::UpdateUserPath(FileUtil::UserPath::SysDataDir, std::string(citra_path) + "/sysdata");
 
     // Populate LLE modules to prevent crashes
-    Settings::values.lle_modules["FS"] = false;
-    Settings::values.lle_modules["PM"] = false;
-    Settings::values.lle_modules["LDR"] = false;
-    Settings::values.lle_modules["PXI"] = false;
+    for (const auto& module : Service::service_module_map) {
+        Settings::values.lle_modules[module.name] = false;
+    }
 
     // Ensure JIT is disabled globally
     Settings::values.use_cpu_jit.SetValue(false);
@@ -237,8 +238,8 @@ static void update_input() {
 
     // Pointer (Touch)
     if (input_state_cb(0, RETRO_DEVICE_POINTER, 0, RETRO_DEVICE_ID_POINTER_PRESSED)) {
-        int16_t px = input_state_cb(0, RETRO_DEVICE_POINTER, 0, RETRO_DEVICE_ID_POINTER_X);
-        int16_t py = input_state_cb(0, RETRO_DEVICE_POINTER, 0, RETRO_DEVICE_ID_POINTER_Y);
+        s16 px = input_state_cb(0, RETRO_DEVICE_POINTER, 0, RETRO_DEVICE_ID_POINTER_X);
+        s16 py = input_state_cb(0, RETRO_DEVICE_POINTER, 0, RETRO_DEVICE_ID_POINTER_Y);
 
         // Convert [-32767, 32767] to [0, 400], [0, 480]
         unsigned fx = (px + 32767) * 400 / 65534;
@@ -273,19 +274,19 @@ void retro_run(void) {
     }
 
     if (audio_sink) {
-        static constexpr size_t samples_per_frame = 32768 / 60;
+        static constexpr std::size_t samples_per_frame = 32768 / 60;
         s16 samples[samples_per_frame * 2]; // * 2 for safety
         audio_sink->PullSamples(samples, samples_per_frame);
         audio_batch_cb(samples, samples_per_frame);
     }
 }
 
-size_t retro_serialize_size(void) {
+std::size_t retro_serialize_size(void) {
     // 3DS states can be large. 64MB should be a safe upper bound for most games.
     return 64 * 1024 * 1024;
 }
 
-bool retro_serialize(void *data, size_t len) {
+bool retro_serialize(void *data, std::size_t len) {
     try {
         namespace io = boost::iostreams;
         io::array_sink sink((char*)data, len);
@@ -299,7 +300,7 @@ bool retro_serialize(void *data, size_t len) {
     }
 }
 
-bool retro_unserialize(const void *data, size_t len) {
+bool retro_unserialize(const void *data, std::size_t len) {
     try {
         namespace io = boost::iostreams;
         io::array_source source((const char*)data, len);
@@ -350,7 +351,7 @@ bool retro_load_game(const struct retro_game_info *game) {
     return false;
 }
 
-bool retro_load_game_special(unsigned game_type, const struct retro_game_info *info, size_t num_info) {
+bool retro_load_game_special(unsigned game_type, const struct retro_game_info *info, std::size_t num_info) {
     return false;
 }
 
@@ -367,6 +368,6 @@ void *retro_get_memory_data(unsigned id) {
     return nullptr;
 }
 
-size_t retro_get_memory_size(unsigned id) {
+std::size_t retro_get_memory_size(unsigned id) {
     return 0;
 }

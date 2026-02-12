@@ -1,6 +1,7 @@
 #include <cassert>
 #include <climits>
 #include <cstring>
+#include <mutex>
 #include "emu_window.h"
 #include "common/settings.h"
 #include "core/core.h"

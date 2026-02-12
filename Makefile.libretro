@@ -3,8 +3,7 @@ TARGET_NAME := cytrus_ir
 
 LIBRETRO_COMMON_DIR := externals/libretro-common
 CORE_DIR := Core
-# Note: Dependencies are sourced from the existing submodule as they are required for compilation.
-EXTERNALS_DIR := externals/azahar/externals
+EXTERNALS_DIR := externals
 
 ifeq ($(platform),)
 platform = unix
@@ -32,7 +31,8 @@ ifneq ($(findstring ios,$(platform)),)
     OSX_SDK := $(shell xcodebuild -version -sdk iphoneos Path)
     CC = $(CC_ANY) -arch arm64 -isysroot $(OSX_SDK)
     CXX = $(CXX_ANY) -arch arm64 -isysroot $(OSX_SDK)
-    PLATFORM_DEFINES += -DIOS -miphoneos-version-min=14.0 -DHAVE_NEON
+    PLATFORM_DEFINES += -DIOS -miphoneos-version-min=14.0 -DHAVE_NEON -DSOUNDTOUCH_USE_NEON
+    INCLUDES += -I$(EXTERNALS_DIR)/libressl/include -I$(EXTERNALS_DIR)/libressl/include/arch/aarch64
     CXXFLAGS += -march=armv8-a+simd
 else ifneq ($(findstring osx,$(platform)),)
     TARGET := $(TARGET_NAME)_libretro.dylib
@@ -44,9 +44,9 @@ else
     SHARED := -shared
 endif
 
-DEFINES += -D__LIBRETRO__ -DLIBRETRO -DENABLE_SOFTWARE_RENDERER -D__STDC_CONSTANT_MACROS -D__STDC_LIMIT_MACROS -DNDEBUG -DUSE_CPU_JIT=0 -DUNICODE -D_UNICODE -DBOOST_DISABLE_ASSERTS -Dassert\(x\)=\(\(void\)0\) -DMICROPROFILE_ENABLED=0
+DEFINES += -D__LIBRETRO__ -DLIBRETRO -DENABLE_SOFTWARE_RENDERER -D__STDC_CONSTANT_MACROS -D__STDC_LIMIT_MACROS -DNDEBUG -DUSE_CPU_JIT=0 -DBOOST_DISABLE_ASSERTS -DMICROPROFILE_ENABLED=0 -DCPPHTTPLIB_OPENSSL_SUPPORT
 
-INCLUDES := -I. \
+BASE_INCLUDES := -I. \
             -Ilibretro \
             -IInputManager \
             -I$(LIBRETRO_COMMON_DIR)/include \
@@ -62,15 +62,17 @@ INCLUDES := -I. \
             -I$(EXTERNALS_DIR)/zstd/contrib \
             -I$(EXTERNALS_DIR)/xxHash \
             -I$(EXTERNALS_DIR)/teakra/include \
-            -I$(EXTERNALS_DIR)/json \
+            -I$(EXTERNALS_DIR)/json/single_include \
             -I$(EXTERNALS_DIR)/httplib \
             -I$(EXTERNALS_DIR)/soundtouch/include \
-            -I$(EXTERNALS_DIR)/faad2/faad2/include \
+            -I$(EXTERNALS_DIR)/faad2/include \
             -I$(EXTERNALS_DIR)/dynarmic/src \
             -I$(EXTERNALS_DIR)/dds-ktx \
             -I$(EXTERNALS_DIR)/cryptopp \
-            -I$(EXTERNALS_DIR)/cityhash/src \
-            -I$(EXTERNALS_DIR)/nihstro/include
+            -I$(EXTERNALS_DIR)/nihstro/include \
+            -I$(EXTERNALS_DIR)/libressl/include
+
+INCLUDES += $(BASE_INCLUDES)
 
 SOURCES_CXX := libretro/libretro.cpp \
                libretro/emu_window.cpp \
@@ -104,17 +106,73 @@ SOURCES_CXX := libretro/libretro.cpp \
                $(wildcard $(CORE_DIR)/core/arm/skyeye_common/*.cpp) \
                $(wildcard $(CORE_DIR)/core/arm/skyeye_common/vfp/*.cpp)
 
+# Filter out problematic source files
+SOURCES_CXX := $(filter-out %openal_input.cpp %openal_sink.cpp %sdl2_sink.cpp %sdl3_sink.cpp %coreaudio_sink.cpp %sdl_impl.cpp, $(SOURCES_CXX))
+
 # Externals
-SOURCES_CXX += $(wildcard $(EXTERNALS_DIR)/fmt/src/*.cpp)
+SOURCES_CXX += $(wildcard $(EXTERNALS_DIR)/fmt/src/*.cc)
 SOURCES_C += $(wildcard $(EXTERNALS_DIR)/zstd/lib/common/*.c) \
              $(wildcard $(EXTERNALS_DIR)/zstd/lib/compress/*.c) \
              $(wildcard $(EXTERNALS_DIR)/zstd/lib/decompress/*.c) \
              $(wildcard $(EXTERNALS_DIR)/zstd/contrib/seekable_format/*.c)
 SOURCES_C += $(EXTERNALS_DIR)/xxHash/xxhash.c
+
+# LibreSSL
+LIBRESSL_DIR := $(EXTERNALS_DIR)/libressl
+DEFINES += -DOPENSSL_NO_ASM -DLIBRESSL_INTERNAL -D__BEGIN_HIDDEN_DECLS= -D__END_HIDDEN_DECLS=
+SOURCES_C += $(wildcard $(LIBRESSL_DIR)/crypto/*.c) \
+             $(wildcard $(LIBRESSL_DIR)/crypto/aes/*.c) \
+             $(wildcard $(LIBRESSL_DIR)/crypto/asn1/*.c) \
+             $(wildcard $(LIBRESSL_DIR)/crypto/bio/*.c) \
+             $(wildcard $(LIBRESSL_DIR)/crypto/bn/*.c) \
+             $(wildcard $(LIBRESSL_DIR)/crypto/buffer/*.c) \
+             $(wildcard $(LIBRESSL_DIR)/crypto/camellia/*.c) \
+             $(wildcard $(LIBRESSL_DIR)/crypto/cast/*.c) \
+             $(wildcard $(LIBRESSL_DIR)/crypto/cmac/*.c) \
+             $(wildcard $(LIBRESSL_DIR)/crypto/comp/*.c) \
+             $(wildcard $(LIBRESSL_DIR)/crypto/conf/*.c) \
+             $(wildcard $(LIBRESSL_DIR)/crypto/ct/*.c) \
+             $(wildcard $(LIBRESSL_DIR)/crypto/curve25519/*.c) \
+             $(wildcard $(LIBRESSL_DIR)/crypto/des/*.c) \
+             $(wildcard $(LIBRESSL_DIR)/crypto/dh/*.c) \
+             $(wildcard $(LIBRESSL_DIR)/crypto/dsa/*.c) \
+             $(wildcard $(LIBRESSL_DIR)/crypto/ec/*.c) \
+             $(wildcard $(LIBRESSL_DIR)/crypto/ecdh/*.c) \
+             $(wildcard $(LIBRESSL_DIR)/crypto/ecdsa/*.c) \
+             $(wildcard $(LIBRESSL_DIR)/crypto/err/*.c) \
+             $(wildcard $(LIBRESSL_DIR)/crypto/evp/*.c) \
+             $(wildcard $(LIBRESSL_DIR)/crypto/hkdf/*.c) \
+             $(wildcard $(LIBRESSL_DIR)/crypto/hmac/*.c) \
+             $(wildcard $(LIBRESSL_DIR)/crypto/idea/*.c) \
+             $(wildcard $(LIBRESSL_DIR)/crypto/kdf/*.c) \
+             $(wildcard $(LIBRESSL_DIR)/crypto/lhash/*.c) \
+             $(wildcard $(LIBRESSL_DIR)/crypto/md4/*.c) \
+             $(wildcard $(LIBRESSL_DIR)/crypto/md5/*.c) \
+             $(wildcard $(LIBRESSL_DIR)/crypto/modes/*.c) \
+             $(wildcard $(LIBRESSL_DIR)/crypto/objects/*.c) \
+             $(wildcard $(LIBRESSL_DIR)/crypto/ocsp/*.c) \
+             $(wildcard $(LIBRESSL_DIR)/crypto/pem/*.c) \
+             $(wildcard $(LIBRESSL_DIR)/crypto/pkcs12/*.c) \
+             $(wildcard $(LIBRESSL_DIR)/crypto/pkcs7/*.c) \
+             $(wildcard $(LIBRESSL_DIR)/crypto/poly1305/*.c) \
+             $(wildcard $(LIBRESSL_DIR)/crypto/rand/*.c) \
+             $(wildcard $(LIBRESSL_DIR)/crypto/rc2/*.c) \
+             $(wildcard $(LIBRESSL_DIR)/crypto/rc4/*.c) \
+             $(wildcard $(LIBRESSL_DIR)/crypto/rsa/*.c) \
+             $(wildcard $(LIBRESSL_DIR)/crypto/sha/*.c) \
+             $(wildcard $(LIBRESSL_DIR)/crypto/stack/*.c) \
+             $(wildcard $(LIBRESSL_DIR)/crypto/ts/*.c) \
+             $(wildcard $(LIBRESSL_DIR)/crypto/txt_db/*.c) \
+             $(wildcard $(LIBRESSL_DIR)/crypto/ui/*.c) \
+             $(wildcard $(LIBRESSL_DIR)/crypto/whrlpool/*.c) \
+             $(wildcard $(LIBRESSL_DIR)/crypto/x509/*.c) \
+             $(wildcard $(LIBRESSL_DIR)/crypto/x509v3/*.c) \
+             $(wildcard $(LIBRESSL_DIR)/ssl/*.c)
+
 SOURCES_CXX += $(wildcard $(EXTERNALS_DIR)/teakra/src/*.cpp)
 SOURCES_CXX += $(filter-out %cryptest.cpp %bench.cpp, $(wildcard $(EXTERNALS_DIR)/cryptopp/*.cpp))
 SOURCES_CXX += $(wildcard $(EXTERNALS_DIR)/soundtouch/source/SoundTouch/*.cpp)
-SOURCES_C += $(wildcard $(EXTERNALS_DIR)/faad2/faad2/libfaad/*.c)
+SOURCES_C += $(wildcard $(EXTERNALS_DIR)/faad2/libfaad/*.c)
 
 # Boost components needed for serialization
 BOOST_DIR := $(EXTERNALS_DIR)/boost
@@ -127,9 +185,9 @@ SOURCES_C += $(LIBRETRO_COMMON_DIR)/streams/file_stream.c \
              $(LIBRETRO_COMMON_DIR)/string/stdstring.c \
              $(LIBRETRO_COMMON_DIR)/encodings/encoding_utf.c
 
-OBJS := $(SOURCES_CXX:.cpp=.o) $(SOURCES_C:.c=.o)
+OBJS := $(patsubst %.cpp,%.o,$(patsubst %.cc,%.o,$(SOURCES_CXX))) $(SOURCES_C:.c=.o)
 
-CXXFLAGS += $(fpic) $(DEFINES) $(INCLUDES) $(PLATFORM_DEFINES) -std=c++20 -O3 -include cassert
+CXXFLAGS += $(fpic) $(DEFINES) $(INCLUDES) $(PLATFORM_DEFINES) -std=c++20 -O3
 CFLAGS += $(fpic) $(DEFINES) $(INCLUDES) $(PLATFORM_DEFINES) -O3
 
 all: $(TARGET)
@@ -138,6 +196,9 @@ $(TARGET): $(OBJS)
 	$(CXX) $(SHARED) $(fpic) -o $@ $^ $(LDFLAGS)
 
 %.o: %.cpp
+	$(CXX) -c -o $@ $< $(CXXFLAGS)
+
+%.o: %.cc
 	$(CXX) -c -o $@ $< $(CXXFLAGS)
 
 %.o: %.c

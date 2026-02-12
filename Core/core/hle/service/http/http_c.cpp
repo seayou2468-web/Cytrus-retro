@@ -9,6 +9,12 @@
 #include <cryptopp/aes.h>
 #include <cryptopp/modes.h>
 #include <fmt/format.h>
+#ifdef CPPHTTPLIB_OPENSSL_SUPPORT
+#include <openssl/evp.h>
+#include <openssl/rand.h>
+#include <openssl/ssl.h>
+#include <openssl/x509.h>
+#endif
 #include "common/archives.h"
 #include "common/assert.h"
 #include "common/scope_exit.h"
@@ -28,8 +34,8 @@ SERIALIZE_EXPORT_IMPL(Service::HTTP::SessionData)
 
 namespace Service::HTTP {
 
-#include "ctr-common-1-cert.h"
-#include "ctr-common-1-key.h"
+#include "core/hle/service/http/ctr-common-1-cert.h"
+#include "core/hle/service/http/ctr-common-1-key.h"
 
 namespace ErrCodes {
 enum {

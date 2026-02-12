@@ -12,7 +12,7 @@
 #include <span>
 #include <type_traits>
 #include <utility>
-#include "common_types.h"
+#include "common/common_types.h"
 
 namespace Common {
 

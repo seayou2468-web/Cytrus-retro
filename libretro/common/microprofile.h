@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdint>
+
 #define MICROPROFILE_DEFINE(...)
 #define MICROPROFILE_DECLARE(...)
 #define MICROPROFILE_DEFINE_GPU(...)
@@ -37,10 +39,10 @@
 #define MicroProfileEnableMetaCounter(...)
 #define MicroProfileDisableMetaCounter(...)
 #define MicroProfileDumpFile(...)
-#define MicroProfileWebServerPort() ((uint32_t)-1)
+#define MicroProfileWebServerPort() ((std::uint32_t)-1)
 
 #ifndef MP_RGB
 #define MP_RGB(r, g, b) ((r) << 16 | (g) << 8 | (b) << 0)
 #endif
 
-typedef uint64_t MicroProfileToken;
+typedef std::uint64_t MicroProfileToken;

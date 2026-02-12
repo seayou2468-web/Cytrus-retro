@@ -22,12 +22,12 @@ public:
     const void* GetVideoBuffer() const { return video_buffer.data(); }
     unsigned GetVideoWidth() const { return video_width; }
     unsigned GetVideoHeight() const { return video_height; }
-    size_t GetVideoPitch() const { return video_width * 4; }
+    std::size_t GetVideoPitch() const { return video_width * 4; }
 
     void SetVideoBuffer(const void* data, unsigned width, unsigned height);
 
 private:
-    std::vector<uint32_t> video_buffer;
+    std::vector<u32> video_buffer;
     unsigned video_width = 400;
     unsigned video_height = 480;
     std::mutex buffer_mutex;
