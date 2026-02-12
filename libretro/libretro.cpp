@@ -274,19 +274,19 @@ void retro_run(void) {
     }
 
     if (audio_sink) {
-        static constexpr size_t samples_per_frame = 32768 / 60;
+        static constexpr std::size_t samples_per_frame = 32768 / 60;
         s16 samples[samples_per_frame * 2]; // * 2 for safety
         audio_sink->PullSamples(samples, samples_per_frame);
         audio_batch_cb(samples, samples_per_frame);
     }
 }
 
-size_t retro_serialize_size(void) {
+std::size_t retro_serialize_size(void) {
     // 3DS states can be large. 64MB should be a safe upper bound for most games.
     return 64 * 1024 * 1024;
 }
 
-bool retro_serialize(void *data, size_t len) {
+bool retro_serialize(void *data, std::size_t len) {
     try {
         namespace io = boost::iostreams;
         io::array_sink sink((char*)data, len);
@@ -300,7 +300,7 @@ bool retro_serialize(void *data, size_t len) {
     }
 }
 
-bool retro_unserialize(const void *data, size_t len) {
+bool retro_unserialize(const void *data, std::size_t len) {
     try {
         namespace io = boost::iostreams;
         io::array_source source((const char*)data, len);
@@ -351,7 +351,7 @@ bool retro_load_game(const struct retro_game_info *game) {
     return false;
 }
 
-bool retro_load_game_special(unsigned game_type, const struct retro_game_info *info, size_t num_info) {
+bool retro_load_game_special(unsigned game_type, const struct retro_game_info *info, std::size_t num_info) {
     return false;
 }
 
@@ -368,6 +368,6 @@ void *retro_get_memory_data(unsigned id) {
     return nullptr;
 }
 
-size_t retro_get_memory_size(unsigned id) {
+std::size_t retro_get_memory_size(unsigned id) {
     return 0;
 }

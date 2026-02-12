@@ -22,7 +22,7 @@ public:
     const void* GetVideoBuffer() const { return video_buffer.data(); }
     unsigned GetVideoWidth() const { return video_width; }
     unsigned GetVideoHeight() const { return video_height; }
-    size_t GetVideoPitch() const { return video_width * 4; }
+    std::size_t GetVideoPitch() const { return video_width * 4; }
 
     void SetVideoBuffer(const void* data, unsigned width, unsigned height);
 
